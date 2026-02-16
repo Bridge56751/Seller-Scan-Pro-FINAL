@@ -2,7 +2,7 @@ import { StyleSheet, Text, View, Pressable, Platform } from "react-native";
 import { useState, useRef, useCallback } from "react";
 import { CameraView, useCameraPermissions, BarcodeScanningResult } from "expo-camera";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { router } from "expo-router";
+import { router, useFocusEffect } from "expo-router";
 import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import Colors from "@/constants/colors";
@@ -19,6 +19,16 @@ export default function ScanScreen() {
   const [notFound, setNotFound] = useState(false);
   const scanTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const scanLockRef = useRef(false);
+  const [isFocused, setIsFocused] = useState(true);
+
+  useFocusEffect(
+    useCallback(() => {
+      setIsFocused(true);
+      return () => {
+        setIsFocused(false);
+      };
+    }, [])
+  );
 
   const handleBarCodeScanned = useCallback(async (result: BarcodeScanningResult) => {
     if (scanLockRef.current) return;
@@ -91,16 +101,18 @@ export default function ScanScreen() {
 
   return (
     <View style={styles.container}>
-      <CameraView
-        style={StyleSheet.absoluteFill}
-        facing="back"
-        enableTorch={flashOn}
-        zoom={0.3}
-        barcodeScannerSettings={{
-          barcodeTypes: ["ean13", "ean8", "upc_a", "upc_e", "code128", "code39"],
-        }}
-        onBarcodeScanned={scanned ? undefined : handleBarCodeScanned}
-      />
+      {isFocused && (
+        <CameraView
+          style={StyleSheet.absoluteFill}
+          facing="back"
+          enableTorch={flashOn}
+          zoom={0.3}
+          barcodeScannerSettings={{
+            barcodeTypes: ["ean13", "ean8", "upc_a", "upc_e", "code128", "code39"],
+          }}
+          onBarcodeScanned={scanned ? undefined : handleBarCodeScanned}
+        />
+      )}
 
       <View style={styles.overlay}>
         <View style={[styles.topBar, { paddingTop: insets.top + webTopInset + 6 }]}>
