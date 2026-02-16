@@ -132,7 +132,7 @@ export default function ScanScreen() {
           ) : notFound ? (
             <View style={styles.resultBanner}>
               <Feather name="x-circle" size={16} color={Colors.light.loss} />
-              <Text style={styles.resultTextFail}>Not found: {lastBarcode}</Text>
+              <Text style={styles.resultTextFail}>Not on Amazon: {lastBarcode}</Text>
             </View>
           ) : scanned ? (
             <View style={[styles.resultBanner, { backgroundColor: "rgba(22,163,74,0.15)" }]}>

@@ -7,6 +7,9 @@ const API_BASE = getApiUrl();
 async function fetchJson(path: string) {
   const url = new URL(path, API_BASE).toString();
   const res = await fetch(url);
+  if (res.status === 404) {
+    return { notFound: true };
+  }
   if (!res.ok) {
     const body = await res.json().catch(() => ({ error: "Unknown error" }));
     throw new Error(body.error || `Request failed: ${res.status}`);
@@ -20,11 +23,11 @@ export async function lookupProductByUPC(upc: string): Promise<ProductData | nul
 
   try {
     const data = await fetchJson(`/api/product/upc/${encodeURIComponent(upc)}`);
+    if (data.notFound) return null;
     if (data.product) return data.product;
     return null;
   } catch (err: any) {
     if (err.message?.includes("not configured")) return null;
-    console.warn("API lookup failed for UPC:", upc, err.message);
     return null;
   }
 }
@@ -35,11 +38,11 @@ export async function lookupProductByASIN(asin: string): Promise<ProductData | n
 
   try {
     const data = await fetchJson(`/api/product/asin/${encodeURIComponent(asin)}`);
+    if (data.notFound) return null;
     if (data.product) return data.product;
     return null;
   } catch (err: any) {
     if (err.message?.includes("not configured")) return null;
-    console.warn("API lookup failed for ASIN:", asin, err.message);
     return null;
   }
 }
@@ -55,11 +58,11 @@ export async function searchProductsAPI(query: string): Promise<ProductData[]> {
 
   try {
     const data = await fetchJson(`/api/product/search/${encodeURIComponent(query)}`);
+    if (data.notFound) return [];
     if (data.products && Array.isArray(data.products)) return data.products;
     return [];
   } catch (err: any) {
     if (err.message?.includes("not configured")) return [];
-    console.warn("API search failed:", query, err.message);
     return [];
   }
 }

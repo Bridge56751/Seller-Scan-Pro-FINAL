@@ -23,7 +23,7 @@ export async function fetchProductByAsin(asin: string): Promise<any> {
 
 export async function fetchProductByGtin(upc: string): Promise<any> {
   const apiKey = getApiKey();
-  const url = `${RAINFOREST_BASE_URL}?api_key=${encodeURIComponent(apiKey)}&type=product&gtin=${encodeURIComponent(upc)}&amazon_domain=amazon.com`;
+  const url = `${RAINFOREST_BASE_URL}?api_key=${encodeURIComponent(apiKey)}&type=product&gtin=${encodeURIComponent(upc)}&amazon_domain=amazon.com&skip_gtin_cache=true`;
   const response = await fetch(url);
   if (!response.ok) {
     const body = await response.text();
