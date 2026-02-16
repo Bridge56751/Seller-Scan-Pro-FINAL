@@ -9,6 +9,7 @@ import { lookupByAsin, calculateProfit, type ProductData } from "@/lib/mock-data
 import { lookupProductByASIN } from "@/lib/api";
 import { getCachedProduct } from "@/lib/product-cache";
 import { addToScanHistory } from "@/lib/scan-history";
+import { BuyRatingPanel } from "@/components/BuyRatingPanel";
 import { QuickInfoPanel } from "@/components/QuickInfoPanel";
 import { AlertsPanel } from "@/components/AlertsPanel";
 import { OffersPanel } from "@/components/OffersPanel";
@@ -117,6 +118,7 @@ export default function ProductDetailScreen() {
         keyboardShouldPersistTaps="handled"
       >
         <QuickInfoPanel product={product} costPrice={costPrice} onCostChange={setCostPrice} />
+        <BuyRatingPanel product={product} costPrice={costPrice} />
         <AlertsPanel product={product} />
         <OffersPanel product={product} costPrice={costPrice} />
         <RanksPricesPanel product={product} />
