@@ -1,8 +1,6 @@
 import { isLiquidGlassAvailable } from "expo-glass-effect";
 import { Tabs } from "expo-router";
 import { NativeTabs, Icon, Label } from "expo-router/unstable-native-tabs";
-import { BlurView } from "expo-blur";
-import { SymbolView } from "expo-symbols";
 import { Platform, StyleSheet } from "react-native";
 import React from "react";
 import { Feather } from "@expo/vector-icons";
@@ -32,11 +30,11 @@ function ClassicTabLayout() {
     <Tabs
       screenOptions={{
         headerShown: false,
-        tabBarActiveTintColor: Colors.dark.tint,
-        tabBarInactiveTintColor: Colors.dark.tabIconDefault,
+        tabBarActiveTintColor: Colors.light.accent,
+        tabBarInactiveTintColor: Colors.light.tabIconDefault,
         tabBarStyle: {
-          backgroundColor: Colors.dark.surface,
-          borderTopColor: Colors.dark.border,
+          backgroundColor: Colors.light.surface,
+          borderTopColor: Colors.light.border,
           borderTopWidth: 1,
           height: Platform.OS === "web" ? 84 : 85,
           paddingBottom: Platform.OS === "web" ? 34 : 28,
@@ -52,7 +50,7 @@ function ClassicTabLayout() {
         name="index"
         options={{
           title: "Scan",
-          tabBarIcon: ({ color, size }) => (
+          tabBarIcon: ({ color }) => (
             <Feather name="camera" size={22} color={color} />
           ),
         }}
@@ -61,7 +59,7 @@ function ClassicTabLayout() {
         name="search"
         options={{
           title: "Search",
-          tabBarIcon: ({ color, size }) => (
+          tabBarIcon: ({ color }) => (
             <Feather name="search" size={22} color={color} />
           ),
         }}
@@ -70,7 +68,7 @@ function ClassicTabLayout() {
         name="history"
         options={{
           title: "History",
-          tabBarIcon: ({ color, size }) => (
+          tabBarIcon: ({ color }) => (
             <Feather name="clock" size={22} color={color} />
           ),
         }}

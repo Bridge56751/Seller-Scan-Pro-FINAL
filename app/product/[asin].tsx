@@ -1,22 +1,24 @@
 import { StyleSheet, Text, View, ScrollView, Pressable, Platform } from "react-native";
 import { useLocalSearchParams, router } from "expo-router";
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import Colors from "@/constants/colors";
-import { lookupByAsin, calculateProfit, type ProductData } from "@/lib/mock-data";
+import { lookupByAsin, calculateProfit } from "@/lib/mock-data";
 import { addToScanHistory } from "@/lib/scan-history";
-import { ProductHeader } from "@/components/ProductHeader";
-import { ProfitCard } from "@/components/ProfitCard";
-import { PriceChart } from "@/components/PriceChart";
-import { CompetitorList } from "@/components/CompetitorList";
-import { AlertBanner } from "@/components/AlertBanner";
+import { QuickInfoPanel } from "@/components/QuickInfoPanel";
+import { AlertsPanel } from "@/components/AlertsPanel";
+import { OffersPanel } from "@/components/OffersPanel";
+import { RanksPricesPanel } from "@/components/RanksPricesPanel";
+import { ProfitCalculatorPanel } from "@/components/ProfitCalculatorPanel";
+import { ChartsPanel } from "@/components/ChartsPanel";
 
 export default function ProductDetailScreen() {
   const { asin } = useLocalSearchParams<{ asin: string }>();
   const insets = useSafeAreaInsets();
   const webTopInset = Platform.OS === "web" ? 67 : 0;
+  const [costPrice, setCostPrice] = useState(0);
 
   const product = useMemo(() => {
     if (!asin) return null;
@@ -45,12 +47,12 @@ export default function ProductDetailScreen() {
     return (
       <View style={[styles.container, { paddingTop: insets.top + webTopInset }]}>
         <View style={styles.notFound}>
-          <Feather name="alert-circle" size={48} color={Colors.dark.textTertiary} />
+          <Feather name="alert-circle" size={40} color={Colors.light.textTertiary} />
           <Text style={styles.notFoundTitle}>Product Not Found</Text>
-          <Text style={styles.notFoundText}>We couldn't find data for ASIN: {asin}</Text>
-          <Pressable onPress={() => router.back()} style={({ pressed }) => [styles.backBtn, pressed && { opacity: 0.8 }]}>
-            <Feather name="arrow-left" size={18} color={Colors.dark.background} />
-            <Text style={styles.backBtnText}>Go Back</Text>
+          <Text style={styles.notFoundText}>No data found for ASIN: {asin}</Text>
+          <Pressable onPress={() => router.back()} style={({ pressed }) => [styles.backBtnFull, pressed && { opacity: 0.8 }]}>
+            <Feather name="arrow-left" size={16} color="#FFF" />
+            <Text style={styles.backBtnFullText}>Go Back</Text>
           </Pressable>
         </View>
       </View>
@@ -59,37 +61,32 @@ export default function ProductDetailScreen() {
 
   return (
     <View style={styles.container}>
-      <View style={[styles.topNav, { paddingTop: insets.top + webTopInset + 4 }]}>
+      <View style={[styles.topBar, { paddingTop: insets.top + webTopInset + 4 }]}>
         <Pressable
           onPress={() => {
             Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
             router.back();
           }}
-          style={({ pressed }) => [styles.navBtn, pressed && { opacity: 0.7 }]}
+          style={({ pressed }) => [styles.backBtn, pressed && { opacity: 0.7 }]}
         >
-          <Feather name="arrow-left" size={22} color={Colors.dark.text} />
+          <Feather name="arrow-left" size={20} color={Colors.light.text} />
         </Pressable>
-        <Text style={styles.navTitle} numberOfLines={1}>{product.brand}</Text>
-        <View style={styles.navBtn} />
+        <Text style={styles.topBarTitle} numberOfLines={1}>Product Analysis</Text>
+        <View style={{ width: 36 }} />
       </View>
 
       <ScrollView
         style={styles.scroll}
         contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + (Platform.OS === "web" ? 34 : 0) + 20 }]}
         showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
       >
-        {product.alerts.length > 0 && (
-          <AlertBanner alerts={product.alerts} />
-        )}
-        <ProductHeader product={product} />
-        <ProfitCard product={product} />
-        <PriceChart priceHistory={product.priceHistory} rankHistory={product.rankHistory} />
-        <CompetitorList
-          competitors={product.competitors}
-          buyBoxPrice={product.buyBoxPrice}
-          fbaSellerCount={product.fbaSellerCount}
-          fbmSellerCount={product.fbmSellerCount}
-        />
+        <QuickInfoPanel product={product} costPrice={costPrice} onCostChange={setCostPrice} />
+        <AlertsPanel product={product} />
+        <OffersPanel product={product} costPrice={costPrice} />
+        <RanksPricesPanel product={product} />
+        <ProfitCalculatorPanel product={product} costPrice={costPrice} />
+        <ChartsPanel priceHistory={product.priceHistory} rankHistory={product.rankHistory} />
       </ScrollView>
     </View>
   );
@@ -98,70 +95,68 @@ export default function ProductDetailScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: Colors.dark.background,
+    backgroundColor: Colors.light.background,
   },
-  topNav: {
+  topBar: {
     flexDirection: "row",
-    justifyContent: "space-between",
     alignItems: "center",
-    paddingHorizontal: 16,
+    justifyContent: "space-between",
+    backgroundColor: Colors.light.surface,
+    paddingHorizontal: 12,
     paddingBottom: 10,
     borderBottomWidth: 1,
-    borderBottomColor: Colors.dark.border,
-    backgroundColor: Colors.dark.background,
+    borderBottomColor: Colors.light.border,
   },
-  navBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
+  backBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 8,
     justifyContent: "center",
     alignItems: "center",
   },
-  navTitle: {
-    fontSize: 17,
+  topBarTitle: {
+    fontSize: 15,
     fontWeight: "700" as const,
-    color: Colors.dark.text,
-    flex: 1,
-    textAlign: "center",
+    color: Colors.light.text,
   },
   scroll: {
     flex: 1,
   },
   scrollContent: {
-    padding: 16,
-    gap: 14,
+    padding: 12,
+    gap: 10,
   },
   notFound: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
-    gap: 10,
+    gap: 8,
     paddingHorizontal: 40,
   },
   notFoundTitle: {
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: "700" as const,
-    color: Colors.dark.text,
+    color: Colors.light.text,
     marginTop: 8,
   },
   notFoundText: {
     fontSize: 14,
-    color: Colors.dark.textTertiary,
+    color: Colors.light.textTertiary,
     textAlign: "center",
   },
-  backBtn: {
+  backBtnFull: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 8,
-    backgroundColor: Colors.dark.tint,
-    paddingHorizontal: 24,
-    paddingVertical: 12,
-    borderRadius: 12,
+    gap: 6,
+    backgroundColor: Colors.light.accent,
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 8,
     marginTop: 12,
   },
-  backBtnText: {
-    fontSize: 15,
-    fontWeight: "700" as const,
-    color: Colors.dark.background,
+  backBtnFullText: {
+    fontSize: 14,
+    fontWeight: "600" as const,
+    color: "#FFFFFF",
   },
 });

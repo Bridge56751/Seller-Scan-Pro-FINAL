@@ -40,7 +40,7 @@ export default function ScanScreen() {
     return (
       <View style={[styles.container, { paddingTop: insets.top + webTopInset }]}>
         <View style={styles.centerContent}>
-          <Feather name="loader" size={32} color={Colors.dark.textTertiary} />
+          <Feather name="loader" size={28} color={Colors.light.textTertiary} />
         </View>
       </View>
     );
@@ -50,16 +50,16 @@ export default function ScanScreen() {
     return (
       <View style={[styles.container, { paddingTop: insets.top + webTopInset }]}>
         <View style={styles.centerContent}>
-          <View style={styles.permissionIcon}>
-            <Feather name="camera-off" size={48} color={Colors.dark.textTertiary} />
+          <View style={styles.permIcon}>
+            <Feather name="camera-off" size={36} color={Colors.light.textTertiary} />
           </View>
-          <Text style={styles.permissionTitle}>Camera Access Required</Text>
-          <Text style={styles.permissionText}>
-            ScanProfit needs your camera to scan product barcodes and look up pricing data.
+          <Text style={styles.permTitle}>Camera Access Required</Text>
+          <Text style={styles.permText}>
+            Enable camera to scan product barcodes for instant pricing analysis.
           </Text>
-          <Pressable onPress={requestPermission} style={({ pressed }) => [styles.permissionBtn, pressed && { opacity: 0.8 }]}>
-            <Feather name="camera" size={18} color={Colors.dark.background} />
-            <Text style={styles.permissionBtnText}>Enable Camera</Text>
+          <Pressable onPress={requestPermission} style={({ pressed }) => [styles.permBtn, pressed && { opacity: 0.85 }]}>
+            <Feather name="camera" size={16} color="#FFF" />
+            <Text style={styles.permBtnText}>Enable Camera</Text>
           </Pressable>
         </View>
       </View>
@@ -79,8 +79,11 @@ export default function ScanScreen() {
       />
 
       <View style={styles.overlay}>
-        <View style={[styles.topBar, { paddingTop: insets.top + webTopInset + 8 }]}>
-          <Text style={styles.topTitle}>ScanProfit</Text>
+        <View style={[styles.topBar, { paddingTop: insets.top + webTopInset + 6 }]}>
+          <View style={styles.topLeft}>
+            <MaterialCommunityIcons name="barcode-scan" size={22} color="#FFF" />
+            <Text style={styles.topTitle}>ScanProfit</Text>
+          </View>
           <Pressable
             onPress={() => {
               setFlashOn(!flashOn);
@@ -88,11 +91,11 @@ export default function ScanScreen() {
             }}
             style={({ pressed }) => [styles.flashBtn, pressed && { opacity: 0.7 }]}
           >
-            <Feather name={flashOn ? "zap" : "zap-off"} size={20} color="#FFF" />
+            <Feather name={flashOn ? "zap" : "zap-off"} size={18} color="#FFF" />
           </Pressable>
         </View>
 
-        <View style={styles.scanArea}>
+        <View style={styles.scanFrame}>
           <View style={styles.cornerTL} />
           <View style={styles.cornerTR} />
           <View style={styles.cornerBL} />
@@ -100,19 +103,19 @@ export default function ScanScreen() {
           <ScanLine />
         </View>
 
-        <View style={[styles.bottomBar, { paddingBottom: insets.bottom + (Platform.OS === "web" ? 34 : 0) + 90 }]}>
+        <View style={[styles.bottomArea, { paddingBottom: insets.bottom + (Platform.OS === "web" ? 34 : 0) + 90 }]}>
           {lastBarcode && !scanned ? (
             <View style={styles.resultBanner}>
-              <MaterialCommunityIcons name="barcode" size={18} color={Colors.dark.tint} />
-              <Text style={styles.resultText}>No product found for: {lastBarcode}</Text>
+              <Feather name="x-circle" size={16} color={Colors.light.loss} />
+              <Text style={styles.resultTextFail}>Not found: {lastBarcode}</Text>
             </View>
           ) : scanned ? (
-            <View style={styles.resultBanner}>
-              <Feather name="check-circle" size={18} color={Colors.dark.tint} />
-              <Text style={styles.resultText}>Product found! Loading...</Text>
+            <View style={[styles.resultBanner, { backgroundColor: "rgba(22,163,74,0.15)" }]}>
+              <Feather name="check-circle" size={16} color={Colors.light.profit} />
+              <Text style={[styles.resultTextFail, { color: Colors.light.profit }]}>Product found!</Text>
             </View>
           ) : (
-            <Text style={styles.instructionText}>Point camera at a product barcode</Text>
+            <Text style={styles.instructionText}>Align barcode within the frame</Text>
           )}
         </View>
       </View>
@@ -126,8 +129,8 @@ function ScanLine() {
       {
         translateY: withRepeat(
           withSequence(
-            withTiming(-60, { duration: 1500 }),
-            withTiming(60, { duration: 1500 })
+            withTiming(-50, { duration: 1400 }),
+            withTiming(50, { duration: 1400 })
           ),
           -1,
           true
@@ -136,68 +139,68 @@ function ScanLine() {
     ],
   }));
 
-  return (
-    <Animated.View style={[styles.scanLine, animStyle]} />
-  );
+  return <Animated.View style={[styles.scanLine, animStyle]} />;
 }
 
-const CORNER_SIZE = 24;
-const CORNER_WIDTH = 3;
-const SCAN_AREA_SIZE = 260;
+const CS = 22;
+const CW = 3;
+const FRAME_W = 260;
+const FRAME_H = 150;
 
 const cornerBase = {
   position: "absolute" as const,
-  width: CORNER_SIZE,
-  height: CORNER_SIZE,
+  width: CS,
+  height: CS,
 };
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: Colors.dark.background,
+    backgroundColor: "#000",
   },
   centerContent: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
     paddingHorizontal: 40,
+    backgroundColor: Colors.light.background,
   },
-  permissionIcon: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
-    backgroundColor: Colors.dark.surfaceElevated,
+  permIcon: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: Colors.light.surfaceElevated,
     justifyContent: "center",
     alignItems: "center",
+    marginBottom: 20,
+  },
+  permTitle: {
+    fontSize: 20,
+    fontWeight: "700" as const,
+    color: Colors.light.text,
+    marginBottom: 8,
+    textAlign: "center",
+  },
+  permText: {
+    fontSize: 14,
+    color: Colors.light.textSecondary,
+    textAlign: "center",
+    lineHeight: 20,
     marginBottom: 24,
   },
-  permissionTitle: {
-    fontSize: 22,
-    fontWeight: "700" as const,
-    color: Colors.dark.text,
-    marginBottom: 10,
-    textAlign: "center",
-  },
-  permissionText: {
-    fontSize: 15,
-    color: Colors.dark.textSecondary,
-    textAlign: "center",
-    lineHeight: 22,
-    marginBottom: 28,
-  },
-  permissionBtn: {
+  permBtn: {
     flexDirection: "row",
     alignItems: "center",
     gap: 8,
-    backgroundColor: Colors.dark.tint,
-    paddingHorizontal: 28,
-    paddingVertical: 14,
-    borderRadius: 14,
+    backgroundColor: Colors.light.accent,
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 10,
   },
-  permissionBtnText: {
-    fontSize: 16,
+  permBtnText: {
+    fontSize: 15,
     fontWeight: "700" as const,
-    color: Colors.dark.background,
+    color: "#FFF",
   },
   overlay: {
     ...StyleSheet.absoluteFillObject,
@@ -207,100 +210,97 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    paddingHorizontal: 20,
-    paddingBottom: 12,
-    backgroundColor: "rgba(10, 14, 26, 0.6)",
+    paddingHorizontal: 16,
+    paddingBottom: 10,
+    backgroundColor: "rgba(0,0,0,0.5)",
+  },
+  topLeft: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
   },
   topTitle: {
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: "800" as const,
-    color: "#FFFFFF",
-    letterSpacing: -0.5,
+    color: "#FFF",
+    letterSpacing: -0.3,
   },
   flashBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: "rgba(255,255,255,0.15)",
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: "rgba(255,255,255,0.2)",
     justifyContent: "center",
     alignItems: "center",
   },
-  scanArea: {
-    width: SCAN_AREA_SIZE,
-    height: SCAN_AREA_SIZE * 0.6,
+  scanFrame: {
+    width: FRAME_W,
+    height: FRAME_H,
     alignSelf: "center",
     justifyContent: "center",
     alignItems: "center",
   },
   cornerTL: {
     ...cornerBase,
-    top: 0,
-    left: 0,
-    borderTopWidth: CORNER_WIDTH,
-    borderLeftWidth: CORNER_WIDTH,
-    borderColor: Colors.dark.tint,
+    top: 0, left: 0,
+    borderTopWidth: CW, borderLeftWidth: CW,
+    borderColor: "#FFF",
     borderTopLeftRadius: 4,
   },
   cornerTR: {
     ...cornerBase,
-    top: 0,
-    right: 0,
-    borderTopWidth: CORNER_WIDTH,
-    borderRightWidth: CORNER_WIDTH,
-    borderColor: Colors.dark.tint,
+    top: 0, right: 0,
+    borderTopWidth: CW, borderRightWidth: CW,
+    borderColor: "#FFF",
     borderTopRightRadius: 4,
   },
   cornerBL: {
     ...cornerBase,
-    bottom: 0,
-    left: 0,
-    borderBottomWidth: CORNER_WIDTH,
-    borderLeftWidth: CORNER_WIDTH,
-    borderColor: Colors.dark.tint,
+    bottom: 0, left: 0,
+    borderBottomWidth: CW, borderLeftWidth: CW,
+    borderColor: "#FFF",
     borderBottomLeftRadius: 4,
   },
   cornerBR: {
     ...cornerBase,
-    bottom: 0,
-    right: 0,
-    borderBottomWidth: CORNER_WIDTH,
-    borderRightWidth: CORNER_WIDTH,
-    borderColor: Colors.dark.tint,
+    bottom: 0, right: 0,
+    borderBottomWidth: CW, borderRightWidth: CW,
+    borderColor: "#FFF",
     borderBottomRightRadius: 4,
   },
   scanLine: {
-    width: SCAN_AREA_SIZE - 20,
+    width: FRAME_W - 16,
     height: 2,
-    backgroundColor: Colors.dark.tint,
+    backgroundColor: Colors.light.accent,
     borderRadius: 1,
-    shadowColor: Colors.dark.tint,
+    shadowColor: Colors.light.accent,
     shadowOffset: { width: 0, height: 0 },
     shadowOpacity: 0.8,
-    shadowRadius: 8,
+    shadowRadius: 6,
   },
-  bottomBar: {
+  bottomArea: {
     paddingHorizontal: 20,
-    paddingTop: 16,
-    backgroundColor: "rgba(10, 14, 26, 0.7)",
+    paddingTop: 14,
+    backgroundColor: "rgba(0,0,0,0.6)",
     alignItems: "center",
   },
   instructionText: {
-    fontSize: 15,
-    color: "rgba(255,255,255,0.7)",
+    fontSize: 14,
+    color: "rgba(255,255,255,0.75)",
     fontWeight: "500" as const,
   },
   resultBanner: {
     flexDirection: "row",
     alignItems: "center",
     gap: 8,
-    backgroundColor: Colors.dark.tintDim,
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 10,
+    backgroundColor: "rgba(220,38,38,0.15)",
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 8,
   },
-  resultText: {
-    fontSize: 14,
-    color: Colors.dark.tint,
-    fontWeight: "500" as const,
+  resultTextFail: {
+    fontSize: 13,
+    fontWeight: "600" as const,
+    color: Colors.light.loss,
   },
 });

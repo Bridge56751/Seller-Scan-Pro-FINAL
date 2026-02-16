@@ -41,7 +41,7 @@ export default function RootLayout() {
       <QueryClientProvider client={queryClient}>
         <GestureHandlerRootView>
           <KeyboardProvider>
-            <StatusBar style="light" />
+            <StatusBar style="dark" />
             <RootLayoutNav />
           </KeyboardProvider>
         </GestureHandlerRootView>
