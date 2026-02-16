@@ -14,24 +14,46 @@ export default function ScanScreen() {
   const [scanned, setScanned] = useState(false);
   const [lastBarcode, setLastBarcode] = useState<string | null>(null);
   const [flashOn, setFlashOn] = useState(false);
+  const [lookingUp, setLookingUp] = useState(false);
+  const [notFound, setNotFound] = useState(false);
   const scanTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const scanLockRef = useRef(false);
 
   const handleBarCodeScanned = useCallback(async (result: BarcodeScanningResult) => {
-    if (scanned) return;
+    if (scanLockRef.current) return;
+    scanLockRef.current = true;
     const barcode = result.data;
     setScanned(true);
     setLastBarcode(barcode);
+    setLookingUp(true);
+    setNotFound(false);
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
 
-    const product = await lookupProductByUPC(barcode);
-    if (product) {
-      router.push({ pathname: "/product/[asin]", params: { asin: product.asin } });
+    try {
+      const product = await lookupProductByUPC(barcode);
+      if (product) {
+        router.push({ pathname: "/product/[asin]", params: { asin: product.asin } });
+        scanTimeoutRef.current = setTimeout(() => {
+          scanLockRef.current = false;
+          setScanned(false);
+          setLookingUp(false);
+        }, 3000);
+        return;
+      }
+      setNotFound(true);
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+    } catch {
+      setNotFound(true);
+    } finally {
+      setLookingUp(false);
     }
 
     scanTimeoutRef.current = setTimeout(() => {
+      scanLockRef.current = false;
       setScanned(false);
-    }, 2000);
-  }, [scanned]);
+      setNotFound(false);
+    }, 4000);
+  }, []);
 
   const webTopInset = Platform.OS === "web" ? 67 : 0;
 
@@ -102,7 +124,12 @@ export default function ScanScreen() {
         </View>
 
         <View style={[styles.bottomArea, { paddingBottom: insets.bottom + (Platform.OS === "web" ? 34 : 0) + 90 }]}>
-          {lastBarcode && !scanned ? (
+          {lookingUp ? (
+            <View style={[styles.resultBanner, { backgroundColor: "rgba(37,99,235,0.15)" }]}>
+              <Feather name="loader" size={16} color={Colors.light.accent} />
+              <Text style={[styles.resultTextFail, { color: Colors.light.accent }]}>Looking up {lastBarcode}...</Text>
+            </View>
+          ) : notFound ? (
             <View style={styles.resultBanner}>
               <Feather name="x-circle" size={16} color={Colors.light.loss} />
               <Text style={styles.resultTextFail}>Not found: {lastBarcode}</Text>
