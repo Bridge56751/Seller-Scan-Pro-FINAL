@@ -95,7 +95,7 @@ export default function ScanScreen() {
         style={StyleSheet.absoluteFill}
         facing="back"
         enableTorch={flashOn}
-        zoom={1}
+        zoom={0.3}
         barcodeScannerSettings={{
           barcodeTypes: ["ean13", "ean8", "upc_a", "upc_e", "code128", "code39"],
         }}
