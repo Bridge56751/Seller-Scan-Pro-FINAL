@@ -5,7 +5,8 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import Colors from "@/constants/colors";
-import { lookupByAsin, calculateProfit } from "@/lib/mock-data";
+import { lookupByAsin, calculateProfit, type ProductData } from "@/lib/mock-data";
+import { lookupProductByASIN } from "@/lib/api";
 import { addToScanHistory } from "@/lib/scan-history";
 import { QuickInfoPanel } from "@/components/QuickInfoPanel";
 import { AlertsPanel } from "@/components/AlertsPanel";
@@ -19,10 +20,21 @@ export default function ProductDetailScreen() {
   const insets = useSafeAreaInsets();
   const webTopInset = Platform.OS === "web" ? 67 : 0;
   const [costPrice, setCostPrice] = useState(0);
+  const [product, setProduct] = useState<ProductData | null>(null);
+  const [loading, setLoading] = useState(true);
 
-  const product = useMemo(() => {
-    if (!asin) return null;
-    return lookupByAsin(asin);
+  useEffect(() => {
+    if (!asin) { setLoading(false); return; }
+    const mock = lookupByAsin(asin);
+    if (mock) {
+      setProduct(mock);
+      setLoading(false);
+    } else {
+      lookupProductByASIN(asin).then((p) => {
+        setProduct(p);
+        setLoading(false);
+      }).catch(() => setLoading(false));
+    }
   }, [asin]);
 
   useEffect(() => {
@@ -42,6 +54,22 @@ export default function ProductDetailScreen() {
       });
     }
   }, [product]);
+
+  if (loading) {
+    return (
+      <View style={[styles.container, { paddingTop: insets.top + webTopInset }]}>
+        <View style={styles.notFound}>
+          <Feather name="loader" size={32} color={Colors.light.accent} />
+          <Text style={styles.notFoundTitle}>Loading Product...</Text>
+          <Text style={styles.notFoundText}>Fetching data from Amazon</Text>
+          <Pressable onPress={() => router.back()} style={({ pressed }) => [styles.backBtnFull, pressed && { opacity: 0.8 }, { backgroundColor: Colors.light.textTertiary }]}>
+            <Feather name="arrow-left" size={16} color="#FFF" />
+            <Text style={styles.backBtnFullText}>Cancel</Text>
+          </Pressable>
+        </View>
+      </View>
+    );
+  }
 
   if (!product) {
     return (

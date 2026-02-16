@@ -5,9 +5,8 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { router } from "expo-router";
 import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
-import Animated, { useAnimatedStyle, withRepeat, withTiming, withSequence } from "react-native-reanimated";
 import Colors from "@/constants/colors";
-import { lookupByBarcode } from "@/lib/mock-data";
+import { lookupProductByUPC } from "@/lib/api";
 
 export default function ScanScreen() {
   const insets = useSafeAreaInsets();
@@ -17,14 +16,14 @@ export default function ScanScreen() {
   const [flashOn, setFlashOn] = useState(false);
   const scanTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const handleBarCodeScanned = useCallback((result: BarcodeScanningResult) => {
+  const handleBarCodeScanned = useCallback(async (result: BarcodeScanningResult) => {
     if (scanned) return;
     const barcode = result.data;
     setScanned(true);
     setLastBarcode(barcode);
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
 
-    const product = lookupByBarcode(barcode);
+    const product = await lookupProductByUPC(barcode);
     if (product) {
       router.push({ pathname: "/product/[asin]", params: { asin: product.asin } });
     }
@@ -100,7 +99,6 @@ export default function ScanScreen() {
           <View style={styles.cornerTR} />
           <View style={styles.cornerBL} />
           <View style={styles.cornerBR} />
-          <ScanLine />
         </View>
 
         <View style={[styles.bottomArea, { paddingBottom: insets.bottom + (Platform.OS === "web" ? 34 : 0) + 90 }]}>
@@ -121,25 +119,6 @@ export default function ScanScreen() {
       </View>
     </View>
   );
-}
-
-function ScanLine() {
-  const animStyle = useAnimatedStyle(() => ({
-    transform: [
-      {
-        translateY: withRepeat(
-          withSequence(
-            withTiming(-50, { duration: 1400 }),
-            withTiming(50, { duration: 1400 })
-          ),
-          -1,
-          true
-        ),
-      },
-    ],
-  }));
-
-  return <Animated.View style={[styles.scanLine, animStyle]} />;
 }
 
 const CS = 22;

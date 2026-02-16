@@ -6,7 +6,8 @@ import { Image } from "expo-image";
 import { Feather, MaterialCommunityIcons, Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import Colors from "@/constants/colors";
-import { searchProducts, lookupByAsin, lookupByBarcode, formatCurrency, formatBSR, type ProductData } from "@/lib/mock-data";
+import { formatCurrency, formatBSR, type ProductData } from "@/lib/mock-data";
+import { searchProductsAPI, lookupProductByASIN, lookupProductByUPC } from "@/lib/api";
 
 export default function SearchScreen() {
   const insets = useSafeAreaInsets();
@@ -16,22 +17,27 @@ export default function SearchScreen() {
   const [loading, setLoading] = useState(false);
   const webTopInset = Platform.OS === "web" ? 67 : 0;
 
-  const handleSearch = useCallback(() => {
+  const handleSearch = useCallback(async () => {
     if (!query.trim()) return;
     setLoading(true);
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
 
-    setTimeout(() => {
+    try {
       const q = query.trim();
-      const byAsin = lookupByAsin(q);
+      const byAsin = await lookupProductByASIN(q);
       if (byAsin) { setResults([byAsin]); setSearched(true); setLoading(false); return; }
-      const byBarcode = lookupByBarcode(q);
+      const byBarcode = await lookupProductByUPC(q);
       if (byBarcode) { setResults([byBarcode]); setSearched(true); setLoading(false); return; }
-      const searchResults = searchProducts(q);
+      const searchResults = await searchProductsAPI(q);
       setResults(searchResults);
       setSearched(true);
+    } catch (err) {
+      console.warn("Search error:", err);
+      setResults([]);
+      setSearched(true);
+    } finally {
       setLoading(false);
-    }, 300);
+    }
   }, [query]);
 
   const renderResult = useCallback(({ item }: { item: ProductData }) => {
