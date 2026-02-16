@@ -90,20 +90,22 @@ router.get("/api/product/upc/:upc", async (req: Request, res: Response) => {
       return res.status(404).json({ error: "Product not found", product: null });
     }
 
-    const gtinData = await fetchProductByGtin(upc);
-    if (gtinData.product) {
+    const [gtinResult, searchResult] = await Promise.allSettled([
+      fetchProductByGtin(upc),
+      searchProducts(upc),
+    ]);
+
+    const gtinData = gtinResult.status === "fulfilled" ? gtinResult.value : null;
+    if (gtinData?.product) {
       const product = transformProductResponse(gtinData);
       setCache(cacheKey, product);
       return res.json({ product });
     }
 
-    console.log(`GTIN lookup failed for ${upc}, trying search fallback...`);
-    const searchData = await searchProducts(upc);
-    const searchResults = searchData.search_results || [];
-
+    const searchData = searchResult.status === "fulfilled" ? searchResult.value : null;
+    const searchResults = searchData?.search_results || [];
     if (searchResults.length > 0) {
-      const firstResult = searchResults[0];
-      const asin = firstResult.asin;
+      const asin = searchResults[0].asin;
       if (asin) {
         const asinCacheKey = `asin:${asin}`;
         const asinCached = getCached(asinCacheKey);

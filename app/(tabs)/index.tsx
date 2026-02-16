@@ -7,6 +7,7 @@ import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import Colors from "@/constants/colors";
 import { lookupProductByUPC } from "@/lib/api";
+import { cacheProduct } from "@/lib/product-cache";
 
 export default function ScanScreen() {
   const insets = useSafeAreaInsets();
@@ -32,6 +33,7 @@ export default function ScanScreen() {
     try {
       const product = await lookupProductByUPC(barcode);
       if (product) {
+        cacheProduct(product);
         router.push({ pathname: "/product/[asin]", params: { asin: product.asin } });
         scanTimeoutRef.current = setTimeout(() => {
           scanLockRef.current = false;

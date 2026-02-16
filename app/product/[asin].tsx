@@ -7,6 +7,7 @@ import * as Haptics from "expo-haptics";
 import Colors from "@/constants/colors";
 import { lookupByAsin, calculateProfit, type ProductData } from "@/lib/mock-data";
 import { lookupProductByASIN } from "@/lib/api";
+import { getCachedProduct } from "@/lib/product-cache";
 import { addToScanHistory } from "@/lib/scan-history";
 import { QuickInfoPanel } from "@/components/QuickInfoPanel";
 import { AlertsPanel } from "@/components/AlertsPanel";
@@ -29,12 +30,18 @@ export default function ProductDetailScreen() {
     if (mock) {
       setProduct(mock);
       setLoading(false);
-    } else {
-      lookupProductByASIN(asin).then((p) => {
-        setProduct(p);
-        setLoading(false);
-      }).catch(() => setLoading(false));
+      return;
     }
+    const cached = getCachedProduct(asin);
+    if (cached) {
+      setProduct(cached);
+      setLoading(false);
+      return;
+    }
+    lookupProductByASIN(asin).then((p) => {
+      setProduct(p);
+      setLoading(false);
+    }).catch(() => setLoading(false));
   }, [asin]);
 
   useEffect(() => {
