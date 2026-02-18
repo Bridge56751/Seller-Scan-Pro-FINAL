@@ -1,4 +1,4 @@
-import { StyleSheet, Text, View, TextInput } from "react-native";
+import { StyleSheet, Text, View, TextInput, Pressable, Linking } from "react-native";
 import { useState, useMemo } from "react";
 import { Feather, MaterialCommunityIcons, Ionicons } from "@expo/vector-icons";
 import { Image } from "expo-image";
@@ -51,6 +51,13 @@ export function QuickInfoPanel({ product, costPrice, onCostChange, salePrice, on
             <Text style={styles.ratingText}>{product.rating}</Text>
             <Text style={styles.reviewText}>({product.reviewCount.toLocaleString()} reviews)</Text>
           </View>
+          <Pressable
+            onPress={() => Linking.openURL(`https://www.amazon.com/dp/${product.asin}`)}
+            style={({ pressed }) => [styles.amazonLink, pressed && { opacity: 0.7 }]}
+          >
+            <Feather name="external-link" size={11} color={Colors.light.accent} />
+            <Text style={styles.amazonLinkText}>View on Amazon</Text>
+          </Pressable>
         </View>
       </View>
 
@@ -177,6 +184,17 @@ const styles = StyleSheet.create({
   reviewText: {
     fontSize: 11,
     color: Colors.light.textTertiary,
+  },
+  amazonLink: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    marginTop: 2,
+  },
+  amazonLinkText: {
+    fontSize: 11,
+    fontWeight: "600" as const,
+    color: Colors.light.accent,
   },
   divider: {
     height: 1,
