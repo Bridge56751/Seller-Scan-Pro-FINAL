@@ -4,7 +4,7 @@
 
 ScanProfit is a mobile-first product scanning and profit analysis app for Amazon sellers. Users can scan product barcodes (or search by ASIN/UPC), view detailed product data (pricing, BSR rankings, competitor offers, alerts), and calculate profitability for reselling on Amazon FBA/FBM. The app uses Expo (React Native) for the frontend and Express.js for the backend API server.
 
-Currently, the app uses **mock data** (`lib/mock-data.ts`) for all product lookups and profit calculations. The backend server is mostly scaffolded with minimal routes. The database schema exists but is only used for user management so far.
+The app integrates with **Rainforest API** for real-time Amazon product data (pricing, BSR, offers, alerts) and **Keepa API** for historical price/sales rank charts. Mock data (`lib/mock-data.ts`) still provides fallback interfaces and helper functions.
 
 ## User Preferences
 
@@ -32,7 +32,8 @@ Preferred communication style: Simple, everyday language.
 
 - **Framework**: Express 5 running on Node.js
 - **Entry Point**: `server/index.ts` - Sets up CORS (supports Replit domains and localhost), JSON parsing, and serves static web builds in production
-- **Routes**: `server/routes.ts` - Currently empty scaffold, all routes should be prefixed with `/api`
+- **Routes**: `server/routes.ts` - Empty scaffold. Active routes in `server/routes/rainforest.ts` (product lookup by ASIN/UPC/search) and `server/routes/keepa.ts` (historical charts). All prefixed with `/api`
+- **Services**: `server/services/rainforest.ts` (Rainforest API integration with product transforms), `server/services/keepa.ts` (Keepa API with price/rank history parsing)
 - **Storage**: `server/storage.ts` - In-memory storage implementation (`MemStorage`) with a `IStorage` interface. Currently only handles user CRUD operations
 - **Build**: Server is bundled with esbuild for production (`server_dist/`)
 
@@ -61,4 +62,6 @@ Preferred communication style: Simple, everyday language.
 - **AsyncStorage**: `@react-native-async-storage/async-storage` for on-device persistence of scan history
 - **TanStack React Query**: Server state management and caching
 - **Replit Environment**: The app is designed to run on Replit, using `REPLIT_DEV_DOMAIN`, `REPLIT_DOMAINS`, and `REPLIT_INTERNAL_APP_DOMAIN` environment variables for URL configuration and CORS
-- **No external product data APIs are currently integrated** - all product/pricing data is mocked. A real implementation would need Amazon Product API, Keepa, or similar services
+- **Rainforest API**: Real-time Amazon product data (pricing, BSR, offers, alerts). Server-side cache: 30min for products, 10min for not-found. Env var: `RAINFOREST_API_KEY`
+- **Keepa API**: Historical price and sales rank charts (180 days). Server-side cache: 24hr per ASIN. Budget: ~20 tokens/min, 1 token per product lookup. Env var: `KEEPA_API_KEY`
+- **Caching Strategy**: Rainforest data cached 30min server-side + client-side product cache (`lib/product-cache.ts`). Keepa chart data cached 24hr server-side. Critical for supporting 1,000 users on limited API budgets
