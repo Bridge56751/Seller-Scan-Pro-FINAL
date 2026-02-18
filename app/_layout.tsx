@@ -1,5 +1,5 @@
 import { QueryClientProvider } from "@tanstack/react-query";
-import { Stack, useRouter, useSegments } from "expo-router";
+import { Stack } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import React, { useEffect } from "react";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
@@ -14,27 +14,8 @@ import Colors from "@/constants/colors";
 
 SplashScreen.preventAutoHideAsync();
 
-function useProtectedRoute() {
-  const { isAuthenticated, isLoading } = useAuth();
-  const segments = useSegments();
-  const router = useRouter();
-
-  useEffect(() => {
-    if (isLoading) return;
-
-    const inSignIn = segments[0] === "sign-in";
-
-    if (!isAuthenticated && !inSignIn) {
-      router.replace("/sign-in");
-    } else if (isAuthenticated && inSignIn) {
-      router.replace("/(tabs)");
-    }
-  }, [isAuthenticated, isLoading, segments]);
-}
-
 function RootLayoutNav() {
   const { isLoading } = useAuth();
-  useProtectedRoute();
 
   if (isLoading) {
     return (
@@ -46,7 +27,6 @@ function RootLayoutNav() {
 
   return (
     <Stack screenOptions={{ headerBackTitle: "Back" }}>
-      <Stack.Screen name="sign-in" options={{ headerShown: false }} />
       <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
       <Stack.Screen name="product/[asin]" options={{ headerShown: false }} />
       <Stack.Screen name="paywall" options={{ headerShown: false, presentation: "modal" }} />
