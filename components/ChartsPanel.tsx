@@ -1,6 +1,7 @@
-import { StyleSheet, Text, View, Pressable, ActivityIndicator } from "react-native";
-import { useState, useMemo } from "react";
-import Svg, { Path, Line, Text as SvgText, Rect } from "react-native-svg";
+import { StyleSheet, Text, View, Pressable, ActivityIndicator, PanResponder } from "react-native";
+import { useState, useMemo, useRef, useCallback } from "react";
+import Svg, { Path, Line, Text as SvgText, Rect, Circle } from "react-native-svg";
+import * as Haptics from "expo-haptics";
 import type { PricePoint, RankPoint } from "@/lib/mock-data";
 import { CollapsiblePanel } from "./CollapsiblePanel";
 import Colors from "@/constants/colors";
@@ -14,9 +15,16 @@ interface ChartsPanelProps {
 type ChartMode = "price" | "rank";
 type TimeRange = "30" | "90" | "180";
 
+interface ScrubData {
+  x: number;
+  index: number;
+}
+
 export function ChartsPanel({ priceHistory, rankHistory, loading }: ChartsPanelProps) {
   const [mode, setMode] = useState<ChartMode>("price");
   const [range, setRange] = useState<TimeRange>("90");
+  const [scrub, setScrub] = useState<ScrubData | null>(null);
+  const lastIndexRef = useRef(-1);
 
   const rangeNum = parseInt(range);
   const chartWidth = 310;
@@ -31,12 +39,84 @@ export function ChartsPanel({ priceHistory, rankHistory, loading }: ChartsPanelP
   const filteredPrices = useMemo(() => priceHistory.slice(-rangeNum), [priceHistory, rangeNum]);
   const filteredRanks = useMemo(() => rankHistory.slice(-rangeNum), [rankHistory, rangeNum]);
 
+  const activeData = mode === "price" ? filteredPrices : filteredRanks;
+  const dataLen = activeData.length;
+
+  const xToIndex = useCallback((pageX: number, layoutX: number) => {
+    const localX = pageX - layoutX;
+    const clampedX = Math.max(padLeft, Math.min(localX, padLeft + drawW));
+    const ratio = (clampedX - padLeft) / drawW;
+    const idx = Math.round(ratio * Math.max(dataLen - 1, 0));
+    return { x: clampedX, index: Math.max(0, Math.min(idx, dataLen - 1)) };
+  }, [dataLen, padLeft, drawW]);
+
+  const chartLayoutRef = useRef({ x: 0, y: 0, width: 0, height: 0 });
+
+  const panResponder = useMemo(() => PanResponder.create({
+    onStartShouldSetPanResponder: () => dataLen > 0,
+    onMoveShouldSetPanResponder: () => dataLen > 0,
+    onPanResponderGrant: (evt) => {
+      const { x, index } = xToIndex(evt.nativeEvent.pageX, chartLayoutRef.current.x);
+      lastIndexRef.current = index;
+      setScrub({ x, index });
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    },
+    onPanResponderMove: (evt) => {
+      const { x, index } = xToIndex(evt.nativeEvent.pageX, chartLayoutRef.current.x);
+      if (index !== lastIndexRef.current) {
+        lastIndexRef.current = index;
+        Haptics.selectionAsync();
+      }
+      setScrub({ x, index });
+    },
+    onPanResponderRelease: () => {
+      setScrub(null);
+      lastIndexRef.current = -1;
+    },
+    onPanResponderTerminate: () => {
+      setScrub(null);
+      lastIndexRef.current = -1;
+    },
+  }), [dataLen, xToIndex]);
+
+  const scrubInfo = useMemo(() => {
+    if (!scrub || dataLen === 0) return null;
+    const idx = scrub.index;
+
+    if (mode === "price" && filteredPrices[idx]) {
+      const p = filteredPrices[idx];
+      return {
+        date: p.date,
+        primary: `$${p.buyBox.toFixed(2)}`,
+        primaryLabel: "Buy Box",
+        secondary: p.amazon !== null ? `$${p.amazon.toFixed(2)}` : null,
+        secondaryLabel: "Amazon",
+        tertiary: p.newPrice > 0 ? `$${p.newPrice.toFixed(2)}` : null,
+        tertiaryLabel: "FBA",
+      };
+    }
+    if (mode === "rank" && filteredRanks[idx]) {
+      const r = filteredRanks[idx];
+      return {
+        date: r.date,
+        primary: r.rank >= 1000 ? (r.rank / 1000).toFixed(1) + "K" : r.rank.toString(),
+        primaryLabel: "BSR",
+        secondary: null,
+        secondaryLabel: "",
+        tertiary: null,
+        tertiaryLabel: "",
+      };
+    }
+    return null;
+  }, [scrub, mode, filteredPrices, filteredRanks, dataLen]);
+
   const priceChartData = useMemo(() => {
     if (filteredPrices.length === 0) return null;
     const buyBoxPrices = filteredPrices.map((p) => p.buyBox);
     const amazonPrices = filteredPrices.map((p) => p.amazon).filter((p): p is number => p !== null);
     const newPrices = filteredPrices.map((p) => p.newPrice);
-    const allPrices = [...buyBoxPrices, ...amazonPrices, ...newPrices];
+    const allPrices = [...buyBoxPrices, ...amazonPrices, ...newPrices].filter(v => v > 0);
+    if (allPrices.length === 0) return null;
     const minP = Math.min(...allPrices) * 0.97;
     const maxP = Math.max(...allPrices) * 1.03;
     const rangeP = maxP - minP || 1;
@@ -45,7 +125,7 @@ export function ChartsPanel({ priceHistory, rankHistory, loading }: ChartsPanelP
       let path = "";
       let started = false;
       prices.forEach((p, i) => {
-        if (p === null) return;
+        if (p === null || p <= 0) return;
         const x = padLeft + (i / Math.max(prices.length - 1, 1)) * drawW;
         const y = padTop + (1 - (p - minP) / rangeP) * drawH;
         if (!started) { path += `M${x},${y}`; started = true; }
@@ -54,11 +134,17 @@ export function ChartsPanel({ priceHistory, rankHistory, loading }: ChartsPanelP
       return path;
     };
 
+    const getYForIndex = (idx: number) => {
+      const p = filteredPrices[idx];
+      if (!p || p.buyBox <= 0) return padTop + drawH / 2;
+      return padTop + (1 - (p.buyBox - minP) / rangeP) * drawH;
+    };
+
     return {
       buyBoxPath: toPath(buyBoxPrices),
       amazonPath: toPath(filteredPrices.map((p) => p.amazon)),
       fbaPath: toPath(newPrices),
-      minP, maxP,
+      minP, maxP, getYForIndex,
     };
   }, [filteredPrices, drawW, drawH, padLeft, padTop]);
 
@@ -77,8 +163,35 @@ export function ChartsPanel({ priceHistory, rankHistory, loading }: ChartsPanelP
       else path += ` L${x},${y}`;
     });
 
-    return { path, minR, maxR };
+    const getYForIndex = (idx: number) => {
+      const r = filteredRanks[idx];
+      if (!r) return padTop + drawH / 2;
+      return padTop + ((r.rank - minR) / rangeR) * drawH;
+    };
+
+    return { path, minR, maxR, getYForIndex };
   }, [filteredRanks, drawW, drawH, padLeft, padTop]);
+
+  const scrubDotY = useMemo(() => {
+    if (!scrub) return 0;
+    if (mode === "price" && priceChartData) {
+      return priceChartData.getYForIndex(scrub.index);
+    }
+    if (mode === "rank" && rankChartData) {
+      return rankChartData.getYForIndex(scrub.index);
+    }
+    return padTop + drawH / 2;
+  }, [scrub, mode, priceChartData, rankChartData, padTop, drawH]);
+
+  const formatDate = (dateStr: string) => {
+    const parts = dateStr.split("-");
+    if (parts.length === 3) {
+      const months = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+      const m = parseInt(parts[1]) - 1;
+      return `${months[m]} ${parseInt(parts[2])}`;
+    }
+    return dateStr;
+  };
 
   return (
     <CollapsiblePanel title="Charts" icon="trending-up">
@@ -100,7 +213,36 @@ export function ChartsPanel({ priceHistory, rankHistory, loading }: ChartsPanelP
         </View>
       </View>
 
-      <View style={styles.chartWrap}>
+      {scrub && scrubInfo && (
+        <View style={styles.scrubTooltip}>
+          <Text style={styles.scrubDate}>{formatDate(scrubInfo.date)}</Text>
+          <View style={styles.scrubValues}>
+            <Text style={[styles.scrubValue, { color: mode === "price" ? Colors.light.accent : Colors.light.accent }]}>
+              {scrubInfo.primaryLabel}: {scrubInfo.primary}
+            </Text>
+            {scrubInfo.secondary && (
+              <Text style={[styles.scrubValue, { color: Colors.light.amazon }]}>
+                {scrubInfo.secondaryLabel}: {scrubInfo.secondary}
+              </Text>
+            )}
+            {scrubInfo.tertiary && (
+              <Text style={[styles.scrubValue, { color: Colors.light.fba }]}>
+                {scrubInfo.tertiaryLabel}: {scrubInfo.tertiary}
+              </Text>
+            )}
+          </View>
+        </View>
+      )}
+
+      <View
+        style={styles.chartWrap}
+        onLayout={(e) => {
+          e.target.measureInWindow((x: number, y: number, width: number, height: number) => {
+            chartLayoutRef.current = { x, y, width, height };
+          });
+        }}
+        {...panResponder.panHandlers}
+      >
         {loading ? (
           <View style={[styles.loadingWrap, { width: chartWidth, height: chartHeight }]}>
             <ActivityIndicator size="small" color={Colors.light.accent} />
@@ -143,13 +285,45 @@ export function ChartsPanel({ priceHistory, rankHistory, loading }: ChartsPanelP
               </>
             )}
 
-            <SvgText x={padLeft} y={padTop + drawH + 14} fontSize={9} fill={Colors.light.textTertiary}>{rangeNum}d ago</SvgText>
-            <SvgText x={padLeft + drawW} y={padTop + drawH + 14} textAnchor="end" fontSize={9} fill={Colors.light.textTertiary}>Today</SvgText>
+            {scrub && (
+              <>
+                <Line
+                  x1={scrub.x}
+                  y1={padTop}
+                  x2={scrub.x}
+                  y2={padTop + drawH}
+                  stroke={Colors.light.text}
+                  strokeWidth={1}
+                  strokeDasharray="3,2"
+                  opacity={0.5}
+                />
+                <Circle
+                  cx={scrub.x}
+                  cy={scrubDotY}
+                  r={4}
+                  fill={Colors.light.accent}
+                  stroke="#FFFFFF"
+                  strokeWidth={2}
+                />
+              </>
+            )}
+
+            {!scrub && (
+              <>
+                <SvgText x={padLeft} y={padTop + drawH + 14} fontSize={9} fill={Colors.light.textTertiary}>{rangeNum}d ago</SvgText>
+                <SvgText x={padLeft + drawW} y={padTop + drawH + 14} textAnchor="end" fontSize={9} fill={Colors.light.textTertiary}>Today</SvgText>
+              </>
+            )}
+            {scrub && scrubInfo && (
+              <SvgText x={scrub.x} y={padTop + drawH + 14} textAnchor="middle" fontSize={9} fontWeight="600" fill={Colors.light.text}>
+                {formatDate(scrubInfo.date)}
+              </SvgText>
+            )}
           </Svg>
         )}
       </View>
 
-      {mode === "price" && (
+      {mode === "price" && !scrub && (
         <View style={styles.legend}>
           <View style={styles.legendItem}>
             <View style={[styles.legendLine, { backgroundColor: Colors.light.accent }]} />
@@ -254,5 +428,28 @@ const styles = StyleSheet.create({
   legendText: {
     fontSize: 10,
     color: Colors.light.textSecondary,
+  },
+  scrubTooltip: {
+    backgroundColor: Colors.light.text,
+    borderRadius: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    marginBottom: 6,
+    alignSelf: "center",
+  },
+  scrubDate: {
+    fontSize: 10,
+    fontWeight: "600" as const,
+    color: "#FFFFFF",
+    textAlign: "center",
+    marginBottom: 2,
+  },
+  scrubValues: {
+    flexDirection: "row",
+    gap: 10,
+  },
+  scrubValue: {
+    fontSize: 10,
+    fontWeight: "700" as const,
   },
 });
