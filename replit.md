@@ -1,8 +1,8 @@
-# ScanProfit - Replit Agent Guide
+# Seller Scan - Replit Agent Guide
 
 ## Overview
 
-ScanProfit is a mobile-first product scanning and profit analysis app for Amazon sellers. Users can scan product barcodes (or search by ASIN/UPC), view detailed product data (pricing, BSR rankings, competitor offers, alerts), and calculate profitability for reselling on Amazon FBA/FBM. The app uses Expo (React Native) for the frontend and Express.js for the backend API server.
+Seller Scan is a mobile-first product scanning and profit analysis app for Amazon sellers. Users can scan product barcodes (or search by ASIN/UPC), view detailed product data (pricing, BSR rankings, competitor offers, alerts), and calculate profitability for reselling on Amazon FBA/FBM. The app uses Expo (React Native) for the frontend and Express.js for the backend API server.
 
 The app uses **Keepa API** as the sole data source for all Amazon product data (pricing, BSR, offers, alerts) and historical price/sales rank charts. The Rainforest API has been fully removed. `lib/mock-data.ts` provides TypeScript interfaces and helper functions (calculateProfit, formatCurrency, etc.) but no longer serves as a data fallback.
 
@@ -15,7 +15,8 @@ Preferred communication style: Simple, everyday language.
 ### Frontend (Expo / React Native)
 
 - **Framework**: Expo SDK 54 with React Native 0.81, using the new architecture (`newArchEnabled: true`)
-- **Routing**: `expo-router` with file-based routing. Tab navigation lives in `app/(tabs)/` with three tabs: Scan (barcode camera), Search, and History. Product detail pages are at `app/product/[asin].tsx`
+- **Routing**: `expo-router` with file-based routing. Auth gate in `app/_layout.tsx` redirects unauthenticated users to `app/sign-in.tsx`. Tab navigation lives in `app/(tabs)/` with three tabs: Scan (barcode camera), Search, and History. Product detail pages are at `app/product/[asin].tsx`
+- **Authentication**: Apple Sign In via `expo-apple-authentication` (iOS only). Auth state managed by `lib/auth-context.tsx` with session tokens stored in `expo-secure-store`. Web has a dev mode sign-in for testing
 - **State Management**: `@tanstack/react-query` for server state (configured in `lib/query-client.ts`), React `useState` for local UI state, and `AsyncStorage` for persisting scan history locally on-device
 - **UI**: Custom components with no external UI library. Light theme with a clean, professional color system defined in `constants/colors.ts`. Uses `expo-camera` for barcode scanning, `expo-haptics` for tactile feedback, `expo-image` for optimized image rendering, and `react-native-reanimated` for animations
 - **Fonts**: Inter font family (400, 500, 600, 700 weights) loaded via `@expo-google-fonts/inter`
@@ -32,17 +33,17 @@ Preferred communication style: Simple, everyday language.
 
 - **Framework**: Express 5 running on Node.js
 - **Entry Point**: `server/index.ts` - Sets up CORS (supports Replit domains and localhost), JSON parsing, and serves static web builds in production
-- **Routes**: `server/routes.ts` - Empty scaffold. All active routes in `server/routes/keepa.ts`: product lookup by ASIN (`/api/product/asin/:asin`), UPC (`/api/product/upc/:upc`), search (`/api/product/search/:query`), chart data (`/api/keepa/product/:asin`), token status (`/api/keepa/tokens`). Offers route removed (API plan doesn't support it). All prefixed with `/api`
+- **Routes**: `server/routes/auth.ts` handles Apple Sign In (`POST /api/auth/apple`), session check (`GET /api/auth/me`), and logout (`POST /api/auth/logout`). `server/routes/keepa.ts` handles product lookup by ASIN, UPC, search, chart data, and token status. All prefixed with `/api`
 - **Services**: `server/services/keepa.ts` (Keepa API integration - full product data, chart history, search, UPC/barcode lookup, transformation to ProductData format. Note: `fetchKeepaOffers` exists but current API plan doesn't support detailed seller listings)
-- **Storage**: `server/storage.ts` - In-memory storage implementation (`MemStorage`) with a `IStorage` interface. Currently only handles user CRUD operations
+- **Storage**: `server/storage.ts` - PostgreSQL-backed `DatabaseStorage` using Drizzle ORM. Handles user lookup by Apple ID or session token, user creation, and session management
 - **Build**: Server is bundled with esbuild for production (`server_dist/`)
 
 ### Data Layer
 
-- **Schema**: Defined in `shared/schema.ts` using Drizzle ORM with PostgreSQL dialect. Currently only has a `users` table (id, username, password). Uses `drizzle-zod` for validation schemas
+- **Schema**: Defined in `shared/schema.ts` using Drizzle ORM with PostgreSQL dialect. `users` table has: id (UUID), appleUserId (unique), email, fullName, sessionToken, createdAt, lastLoginAt. Uses `drizzle-zod` for validation schemas
 - **Database**: PostgreSQL configured via `DATABASE_URL` environment variable. Drizzle Kit handles migrations (`drizzle.config.ts` outputs to `./migrations`)
 - **Mock Data**: `lib/mock-data.ts` exports TypeScript interfaces (ProductData, PricePoint, RankPoint, Competitor, Alert) and helper functions (`calculateProfit`, `formatCurrency`, `formatBSR`, `estimateSalesPerDay`). Product data now comes entirely from Keepa API
-- **Local Storage**: Scan history is persisted on-device using `AsyncStorage` (`lib/scan-history.ts`), capped at 100 items
+- **Local Storage**: Scan history is persisted on-device using `AsyncStorage` (`lib/scan-history.ts`), capped at 15 items
 
 ### API Communication
 
