@@ -118,7 +118,7 @@ export default function ScanScreen() {
         <View style={[styles.topBar, { paddingTop: insets.top + webTopInset + 6 }]}>
           <View style={styles.topLeft}>
             <MaterialCommunityIcons name="barcode-scan" size={22} color="#FFF" />
-            <Text style={styles.topTitle}>Seller Scan Pro</Text>
+            <Text style={styles.topTitle}>Seller Scan</Text>
           </View>
           <Pressable
             onPress={() => {

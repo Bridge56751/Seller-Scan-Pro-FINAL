@@ -137,7 +137,7 @@ export default function ProductDetailScreen() {
         >
           <Feather name="arrow-left" size={20} color={Colors.light.text} />
         </Pressable>
-        <Text style={styles.topBarTitle} numberOfLines={1}>Product Analysis</Text>
+        <Text style={styles.topBarTitle} numberOfLines={1}>Seller Scan</Text>
         <View style={{ width: 36 }} />
       </View>
 

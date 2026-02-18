@@ -75,6 +75,7 @@ export default function SearchScreen() {
 
   return (
     <View style={[styles.container, { paddingTop: insets.top + webTopInset }]}>
+      <Text style={styles.brandTitle}>Seller Scan</Text>
       <View style={styles.headerArea}>
         <View style={styles.searchRow}>
           <View style={styles.searchWrap}>
@@ -150,10 +151,19 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: Colors.light.background,
   },
+  brandTitle: {
+    fontSize: 18,
+    fontWeight: "700" as const,
+    color: Colors.light.text,
+    paddingHorizontal: 14,
+    paddingTop: 8,
+    paddingBottom: 6,
+    backgroundColor: Colors.light.surface,
+  },
   headerArea: {
     backgroundColor: Colors.light.surface,
     paddingHorizontal: 14,
-    paddingTop: 10,
+    paddingTop: 4,
     paddingBottom: 10,
     borderBottomWidth: 1,
     borderBottomColor: Colors.light.border,
