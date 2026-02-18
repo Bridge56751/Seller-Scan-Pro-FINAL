@@ -185,34 +185,52 @@ export default function SettingsScreen() {
           </View>
         </View>
 
-        {!user?.isGuest && (
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Actions</Text>
-            <View style={styles.card}>
-              <Pressable
-                style={({ pressed }) => [styles.menuRow, pressed && { backgroundColor: Colors.light.background }]}
-                onPress={handleSignOut}
-              >
-                <View style={styles.menuLeft}>
-                  <Feather name="log-out" size={18} color={Colors.light.textSecondary} />
-                  <Text style={styles.menuText}>Sign Out</Text>
-                </View>
-                <Feather name="chevron-right" size={16} color={Colors.light.textTertiary} />
-              </Pressable>
-              <View style={styles.menuDivider} />
-              <Pressable
-                style={({ pressed }) => [styles.menuRow, pressed && { backgroundColor: Colors.light.dangerDim }]}
-                onPress={handleDeleteAccount}
-              >
-                <View style={styles.menuLeft}>
-                  <Feather name="trash-2" size={18} color={Colors.light.danger} />
-                  <Text style={[styles.menuText, { color: Colors.light.danger }]}>Delete Account</Text>
-                </View>
-                <Feather name="chevron-right" size={16} color={Colors.light.danger} />
-              </Pressable>
-            </View>
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Actions</Text>
+          <View style={styles.card}>
+            <Pressable
+              style={({ pressed }) => [styles.menuRow, user?.isGuest && styles.menuRowDisabled, !user?.isGuest && pressed && { backgroundColor: Colors.light.background }]}
+              onPress={() => {
+                if (user?.isGuest) {
+                  if (Platform.OS === "web") {
+                    alert("You need to create an account first before you can sign out.");
+                  } else {
+                    Alert.alert("No Account", "You need to create an account first before you can sign out.");
+                  }
+                  return;
+                }
+                handleSignOut();
+              }}
+            >
+              <View style={styles.menuLeft}>
+                <Feather name="log-out" size={18} color={user?.isGuest ? Colors.light.textTertiary : Colors.light.textSecondary} />
+                <Text style={[styles.menuText, user?.isGuest && { color: Colors.light.textTertiary }]}>Sign Out</Text>
+              </View>
+              <Feather name="chevron-right" size={16} color={Colors.light.textTertiary} />
+            </Pressable>
+            <View style={styles.menuDivider} />
+            <Pressable
+              style={({ pressed }) => [styles.menuRow, user?.isGuest && styles.menuRowDisabled, !user?.isGuest && pressed && { backgroundColor: Colors.light.dangerDim }]}
+              onPress={() => {
+                if (user?.isGuest) {
+                  if (Platform.OS === "web") {
+                    alert("You need to create an account first before you can delete it.");
+                  } else {
+                    Alert.alert("No Account", "You need to create an account first before you can delete it.");
+                  }
+                  return;
+                }
+                handleDeleteAccount();
+              }}
+            >
+              <View style={styles.menuLeft}>
+                <Feather name="trash-2" size={18} color={user?.isGuest ? Colors.light.textTertiary : Colors.light.danger} />
+                <Text style={[styles.menuText, { color: user?.isGuest ? Colors.light.textTertiary : Colors.light.danger }]}>Delete Account</Text>
+              </View>
+              <Feather name="chevron-right" size={16} color={user?.isGuest ? Colors.light.textTertiary : Colors.light.danger} />
+            </Pressable>
           </View>
-        )}
+        </View>
 
         <Text style={styles.versionText}>Seller Scan v1.0.0</Text>
       </ScrollView>
@@ -388,6 +406,9 @@ const styles = StyleSheet.create({
   menuText: {
     fontSize: 15,
     color: Colors.light.text,
+  },
+  menuRowDisabled: {
+    opacity: 0.5,
   },
   supportEmail: {
     fontSize: 12,
