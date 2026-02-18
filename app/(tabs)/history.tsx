@@ -79,7 +79,8 @@ export default function HistoryScreen() {
   }, []);
 
   return (
-    <View style={[styles.container, { paddingTop: insets.top + webTopInset }]}>
+    <View style={styles.container}>
+      <View style={[styles.topFill, { height: insets.top + webTopInset }]} />
       <Text style={styles.brandTitle}>Seller Scan</Text>
       <View style={styles.header}>
         <Text style={styles.headerTitle}>History</Text>
@@ -124,6 +125,9 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: Colors.light.background,
+  },
+  topFill: {
+    backgroundColor: Colors.light.accent,
   },
   brandTitle: {
     fontSize: 18,
