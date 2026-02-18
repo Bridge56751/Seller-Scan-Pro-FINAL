@@ -2,7 +2,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import type { ScanHistoryItem } from "./mock-data";
 
 const HISTORY_KEY = "scan_history";
-const MAX_HISTORY = 100;
+const MAX_HISTORY = 15;
 
 export async function getScanHistory(): Promise<ScanHistoryItem[]> {
   try {
