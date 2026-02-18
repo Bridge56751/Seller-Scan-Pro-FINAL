@@ -18,6 +18,15 @@ export const users = pgTable("users", {
   lastLoginAt: timestamp("last_login_at").defaultNow(),
 });
 
+export const deviceScans = pgTable("device_scans", {
+  deviceId: text("device_id").primaryKey(),
+  scanCount: integer("scan_count").default(0),
+  firstSeen: timestamp("first_seen").defaultNow(),
+  lastSeen: timestamp("last_seen").defaultNow(),
+});
+
+export type DeviceScan = typeof deviceScans.$inferSelect;
+
 export const insertUserSchema = createInsertSchema(users).pick({
   appleUserId: true,
   email: true,
