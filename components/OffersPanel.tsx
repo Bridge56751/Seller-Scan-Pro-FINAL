@@ -18,7 +18,7 @@ function AmazonSellerWarning({ product }: { product: ProductData }) {
 
   return (
     <View style={styles.amazonWarning}>
-      <Feather name="alert-circle" size={14} color={Colors.light.red} />
+      <Feather name="alert-circle" size={14} color={Colors.light.yellow} />
       <Text style={styles.amazonWarningText}>Amazon sells this product directly</Text>
     </View>
   );
@@ -99,7 +99,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 8,
-    backgroundColor: Colors.light.redBg,
+    backgroundColor: Colors.light.yellowBg,
     borderRadius: 6,
     paddingHorizontal: 10,
     paddingVertical: 8,
@@ -107,7 +107,7 @@ const styles = StyleSheet.create({
   amazonWarningText: {
     fontSize: 12,
     fontWeight: "600" as const,
-    color: Colors.light.red,
+    color: Colors.light.yellow,
   },
   buyBoxRow: {
     flexDirection: "row",
