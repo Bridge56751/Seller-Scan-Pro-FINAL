@@ -89,11 +89,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   async function signIn(appleUserId: string, email?: string, fullName?: string, identityToken?: string) {
     const baseUrl = getApiUrl();
     const url = new URL("/api/auth/apple", baseUrl);
+    const deviceId = await getDeviceId();
 
     const res = await fetch(url.toString(), {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ appleUserId, email, fullName, identityToken }),
+      body: JSON.stringify({ appleUserId, email, fullName, identityToken, deviceId }),
     });
 
     if (!res.ok) {

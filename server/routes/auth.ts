@@ -6,9 +6,15 @@ const router = Router();
 
 const FREE_SCAN_LIMIT = 5;
 
+function getEffectiveFreeScansLeft(userScanCount: number, deviceScanCount: number, isPaid: boolean): number {
+  if (isPaid) return 0;
+  const effective = Math.max(userScanCount, deviceScanCount);
+  return Math.max(0, FREE_SCAN_LIMIT - effective);
+}
+
 router.post("/api/auth/apple", async (req: Request, res: Response) => {
   try {
-    const { appleUserId, email, fullName, identityToken } = req.body;
+    const { appleUserId, email, fullName, identityToken, deviceId } = req.body;
 
     if (!appleUserId) {
       return res.status(400).json({ error: "Apple user ID is required" });
@@ -21,15 +27,26 @@ router.post("/api/auth/apple", async (req: Request, res: Response) => {
         appleUserId,
         email: email || null,
         fullName: fullName || null,
-      }, false);
-      console.log(`[Auth] New user created: ${user.id}`);
+      }, false, deviceId || undefined);
+      console.log(`[Auth] New Apple user created: ${user.id}, device: ${deviceId || "unknown"}`);
     } else {
       await storage.updateLastLogin(user.id);
-      console.log(`[Auth] Existing user logged in: ${user.id}`);
+      if (deviceId && !user.deviceId) {
+        await storage.updateDeviceId(user.id, deviceId);
+      }
+      console.log(`[Auth] Existing Apple user logged in: ${user.id}`);
     }
 
     const sessionToken = randomUUID();
     await storage.updateSessionToken(user.id, sessionToken);
+
+    const effectiveDeviceId = deviceId || user.deviceId;
+    let deviceScanCount = 0;
+    if (effectiveDeviceId) {
+      deviceScanCount = await storage.getDeviceScanCount(effectiveDeviceId);
+    }
+
+    const effectiveScans = Math.max(user.scanCount ?? 0, deviceScanCount);
 
     return res.json({
       user: {
@@ -38,8 +55,8 @@ router.post("/api/auth/apple", async (req: Request, res: Response) => {
         fullName: user.fullName,
         isGuest: user.isGuest,
         isPaid: user.isPaid,
-        scanCount: user.scanCount,
-        freeScansLeft: Math.max(0, FREE_SCAN_LIMIT - (user.scanCount ?? 0)),
+        scanCount: effectiveScans,
+        freeScansLeft: getEffectiveFreeScansLeft(user.scanCount ?? 0, deviceScanCount, user.isPaid ?? false),
       },
       sessionToken,
     });
@@ -52,26 +69,27 @@ router.post("/api/auth/apple", async (req: Request, res: Response) => {
 router.post("/api/auth/guest", async (req: Request, res: Response) => {
   try {
     const { deviceId } = req.body || {};
+
+    if (!deviceId) {
+      return res.status(400).json({ error: "Device ID is required" });
+    }
+
     const guestId = `guest-${randomUUID()}`;
 
     const user = await storage.createUser({
       appleUserId: guestId,
       email: null,
       fullName: "Guest",
-    }, true);
+    }, true, deviceId);
 
     const sessionToken = randomUUID();
     await storage.updateSessionToken(user.id, sessionToken);
 
-    let deviceScanCount = 0;
-    if (deviceId) {
-      deviceScanCount = await storage.getDeviceScanCount(deviceId);
-    }
-
+    const deviceScanCount = await storage.getDeviceScanCount(deviceId);
     const effectiveScansUsed = Math.max(user.scanCount ?? 0, deviceScanCount);
     const freeScansLeft = Math.max(0, FREE_SCAN_LIMIT - effectiveScansUsed);
 
-    console.log(`[Auth] Guest user created: ${user.id}, device: ${deviceId || "unknown"}, deviceScans: ${deviceScanCount}`);
+    console.log(`[Auth] Guest user created: ${user.id}, device: ${deviceId}, deviceScans: ${deviceScanCount}`);
 
     return res.json({
       user: {
@@ -105,6 +123,13 @@ router.get("/api/auth/me", async (req: Request, res: Response) => {
       return res.status(401).json({ error: "Invalid session" });
     }
 
+    let deviceScanCount = 0;
+    if (user.deviceId) {
+      deviceScanCount = await storage.getDeviceScanCount(user.deviceId);
+    }
+
+    const effectiveScans = Math.max(user.scanCount ?? 0, deviceScanCount);
+
     return res.json({
       user: {
         id: user.id,
@@ -112,8 +137,8 @@ router.get("/api/auth/me", async (req: Request, res: Response) => {
         fullName: user.fullName,
         isGuest: user.isGuest,
         isPaid: user.isPaid,
-        scanCount: user.scanCount,
-        freeScansLeft: Math.max(0, FREE_SCAN_LIMIT - (user.scanCount ?? 0)),
+        scanCount: effectiveScans,
+        freeScansLeft: getEffectiveFreeScansLeft(user.scanCount ?? 0, deviceScanCount, user.isPaid ?? false),
       },
     });
   } catch (error: any) {
@@ -157,11 +182,16 @@ router.post("/api/auth/record-scan", async (req: Request, res: Response) => {
       return res.json({ allowed: true, scanCount: user.scanCount, freeScansLeft: 0, isPaid: true });
     }
 
-    const { deviceId } = req.body || {};
+    const { deviceId: requestDeviceId } = req.body || {};
+    const effectiveDeviceId = requestDeviceId || user.deviceId;
+
+    if (requestDeviceId && !user.deviceId) {
+      await storage.updateDeviceId(user.id, requestDeviceId);
+    }
 
     let deviceScanCount = 0;
-    if (deviceId) {
-      deviceScanCount = await storage.getDeviceScanCount(deviceId);
+    if (effectiveDeviceId) {
+      deviceScanCount = await storage.getDeviceScanCount(effectiveDeviceId);
     }
 
     const effectiveCount = Math.max(user.scanCount ?? 0, deviceScanCount);
@@ -172,8 +202,8 @@ router.post("/api/auth/record-scan", async (req: Request, res: Response) => {
 
     const newUserCount = await storage.incrementScanCount(user.id);
     let newDeviceCount = deviceScanCount;
-    if (deviceId) {
-      newDeviceCount = await storage.incrementDeviceScanCount(deviceId);
+    if (effectiveDeviceId) {
+      newDeviceCount = await storage.incrementDeviceScanCount(effectiveDeviceId);
     }
 
     const newEffective = Math.max(newUserCount, newDeviceCount);
@@ -204,7 +234,7 @@ router.delete("/api/auth/delete-account", async (req: Request, res: Response) =>
     }
 
     await storage.deleteUser(user.id);
-    console.log(`[Auth] User deleted: ${user.id}`);
+    console.log(`[Auth] User deleted: ${user.id} (device scans preserved)`);
 
     return res.json({ success: true });
   } catch (error: any) {

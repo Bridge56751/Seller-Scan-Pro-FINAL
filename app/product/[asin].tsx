@@ -30,6 +30,7 @@ export default function ProductDetailScreen() {
   const [chartData, setChartData] = useState<KeepaChartData | null>(null);
   const [chartsLoading, setChartsLoading] = useState(false);
   const [scanBlocked, setScanBlocked] = useState(false);
+  const [scanCheckDone, setScanCheckDone] = useState(false);
   const lastShakeRef = useRef(0);
   const scanRecordedRef = useRef(false);
   const { user, recordScan } = useAuth();
@@ -52,7 +53,37 @@ export default function ProductDetailScreen() {
   }, []);
 
   useEffect(() => {
-    if (!asin) { setLoading(false); return; }
+    if (!asin) {
+      setScanCheckDone(true);
+      setLoading(false);
+      return;
+    }
+
+    if (user && user.isPaid) {
+      setScanCheckDone(true);
+      return;
+    }
+
+    if (user && !user.isPaid && !scanRecordedRef.current) {
+      scanRecordedRef.current = true;
+      recordScan().then(({ allowed }) => {
+        if (!allowed) {
+          setScanBlocked(true);
+          router.replace("/paywall");
+        } else {
+          setScanCheckDone(true);
+        }
+      }).catch(() => {
+        setScanBlocked(true);
+        router.replace("/paywall");
+      });
+    } else if (!user) {
+      setScanCheckDone(true);
+    }
+  }, [asin, user]);
+
+  useEffect(() => {
+    if (!asin || !scanCheckDone || scanBlocked) { setLoading(false); return; }
     const mock = lookupByAsin(asin);
     if (mock) {
       setProduct(mock);
@@ -69,30 +100,19 @@ export default function ProductDetailScreen() {
       setProduct(p);
       setLoading(false);
     }).catch(() => setLoading(false));
-  }, [asin]);
+  }, [asin, scanCheckDone, scanBlocked]);
 
   useEffect(() => {
-    if (!asin) return;
+    if (!asin || !scanCheckDone || scanBlocked) return;
     setChartsLoading(true);
     fetchKeepaChartData(asin).then((data) => {
       setChartData(data);
       setChartsLoading(false);
     }).catch(() => setChartsLoading(false));
-  }, [asin]);
+  }, [asin, scanCheckDone, scanBlocked]);
 
   useEffect(() => {
-    if (product && !scanRecordedRef.current) {
-      scanRecordedRef.current = true;
-
-      if (user && !user.isPaid) {
-        recordScan().then(({ allowed }) => {
-          if (!allowed) {
-            setScanBlocked(true);
-            router.replace("/paywall");
-          }
-        });
-      }
-
+    if (product) {
       const calc = calculateProfit(product, 0);
       addToScanHistory({
         id: Date.now().toString() + Math.random().toString(36).substr(2, 9),

@@ -39,9 +39,13 @@ export class DatabaseStorage implements IStorage {
     return user;
   }
 
-  async createUser(insertUser: InsertUser, isGuest = false): Promise<User> {
-    const [user] = await db.insert(users).values({ ...insertUser, isGuest }).returning();
+  async createUser(insertUser: InsertUser, isGuest = false, deviceId?: string): Promise<User> {
+    const [user] = await db.insert(users).values({ ...insertUser, isGuest, deviceId: deviceId || null }).returning();
     return user;
+  }
+
+  async updateDeviceId(userId: string, deviceId: string): Promise<void> {
+    await db.update(users).set({ deviceId }).where(eq(users.id, userId));
   }
 
   async updateSessionToken(userId: string, token: string): Promise<void> {

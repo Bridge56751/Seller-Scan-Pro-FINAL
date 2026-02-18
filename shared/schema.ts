@@ -11,6 +11,7 @@ export const users = pgTable("users", {
   email: text("email"),
   fullName: text("full_name"),
   sessionToken: text("session_token"),
+  deviceId: text("device_id"),
   isGuest: boolean("is_guest").default(false),
   isPaid: boolean("is_paid").default(false),
   scanCount: integer("scan_count").default(0),
