@@ -1,4 +1,4 @@
-import { View, Text, StyleSheet, Pressable, ScrollView, Platform, Alert, Linking } from "react-native";
+import { View, Text, StyleSheet, Pressable, ScrollView, Platform, Linking } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Feather } from "@expo/vector-icons";
 import { router } from "expo-router";
@@ -12,45 +12,16 @@ const TERMS_OF_SERVICE_URL = "https://example.com/terms";
 
 export default function SettingsScreen() {
   const insets = useSafeAreaInsets();
-  const { user, signOut, deleteAccount } = useAuth();
+  const { isPaid, scanCount, freeScansLeft } = useAuth();
   const webTopInset = Platform.OS === "web" ? 67 : 0;
   const webBottomInset = Platform.OS === "web" ? 34 : 0;
-
-  const handleSignOut = () => {
-    if (Platform.OS === "web") {
-      signOut();
-      return;
-    }
-    Alert.alert("Sign Out", "Are you sure you want to sign out?", [
-      { text: "Cancel", style: "cancel" },
-      { text: "Sign Out", style: "destructive", onPress: () => signOut() },
-    ]);
-  };
-
-  const handleDeleteAccount = () => {
-    if (Platform.OS === "web") {
-      if (confirm("Are you sure you want to delete your account? This action cannot be undone.")) {
-        deleteAccount();
-      }
-      return;
-    }
-    Alert.alert(
-      "Delete Account",
-      "This will permanently delete your account and all associated data. This action cannot be undone.",
-      [
-        { text: "Cancel", style: "cancel" },
-        { text: "Delete", style: "destructive", onPress: () => deleteAccount() },
-      ],
-    );
-  };
 
   const handleOpenLink = (url: string) => {
     Linking.openURL(url);
   };
 
-  const scansUsed = user?.scanCount ?? 0;
-  const scansRemaining = user?.isPaid ? "Unlimited" : `${Math.max(0, FREE_SCAN_LIMIT - scansUsed)} of ${FREE_SCAN_LIMIT}`;
-  const accountType = user?.isPaid ? "Pro" : user?.isGuest ? "Guest" : "Free";
+  const scansRemaining = isPaid ? "Unlimited" : `${freeScansLeft} of ${FREE_SCAN_LIMIT}`;
+  const accountType = isPaid ? "Pro" : "Free";
 
   return (
     <View style={styles.container}>
@@ -64,18 +35,18 @@ export default function SettingsScreen() {
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Account</Text>
+          <Text style={styles.sectionTitle}>Subscription</Text>
           <View style={styles.card}>
             <View style={styles.avatarRow}>
               <View style={styles.avatar}>
-                <Feather name="user" size={22} color={Colors.light.accent} />
+                <Feather name={isPaid ? "star" : "user"} size={22} color={Colors.light.accent} />
               </View>
               <View style={styles.avatarInfo}>
-                <Text style={styles.userName}>{user?.fullName || "Guest User"}</Text>
-                <Text style={styles.userEmail}>{user?.email || "No email"}</Text>
+                <Text style={styles.userName}>Seller Scan {accountType}</Text>
+                <Text style={styles.userEmail}>{isPaid ? "Unlimited access" : "Free tier"}</Text>
               </View>
-              <View style={[styles.badge, user?.isPaid && styles.badgePro]}>
-                <Text style={[styles.badgeText, user?.isPaid && styles.badgeTextPro]}>{accountType}</Text>
+              <View style={[styles.badge, isPaid && styles.badgePro]}>
+                <Text style={[styles.badgeText, isPaid && styles.badgeTextPro]}>{accountType}</Text>
               </View>
             </View>
 
@@ -87,14 +58,13 @@ export default function SettingsScreen() {
             </View>
             <View style={styles.statRow}>
               <Text style={styles.statLabel}>Total scans</Text>
-              <Text style={styles.statValue}>{scansUsed}</Text>
+              <Text style={styles.statValue}>{scanCount}</Text>
             </View>
           </View>
         </View>
 
-        {!user?.isPaid && (
+        {!isPaid && (
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Subscription</Text>
             <Pressable
               style={({ pressed }) => [styles.upgradeCard, pressed && { opacity: 0.9 }]}
               onPress={() => router.push("/paywall")}
@@ -108,26 +78,6 @@ export default function SettingsScreen() {
               </View>
               <Feather name="chevron-right" size={20} color="rgba(255,255,255,0.7)" />
             </Pressable>
-          </View>
-        )}
-
-        {user?.isGuest && (
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Create Account</Text>
-            <View style={styles.card}>
-              <Text style={styles.createAccountText}>
-                Sign up with Apple to keep your data across devices and unlock additional features.
-              </Text>
-              <Pressable
-                style={({ pressed }) => [styles.appleSignUpButton, pressed && { opacity: 0.9 }]}
-                onPress={() => {
-                  signOut();
-                }}
-              >
-                <Feather name="user-plus" size={16} color="#FFFFFF" />
-                <Text style={styles.appleSignUpText}>Sign Up with Apple</Text>
-              </Pressable>
-            </View>
           </View>
         )}
 
@@ -185,52 +135,29 @@ export default function SettingsScreen() {
           </View>
         </View>
 
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Actions</Text>
-          <View style={styles.card}>
-            <Pressable
-              style={({ pressed }) => [styles.menuRow, user?.isGuest && styles.menuRowDisabled, !user?.isGuest && pressed && { backgroundColor: Colors.light.background }]}
-              onPress={() => {
-                if (user?.isGuest) {
-                  if (Platform.OS === "web") {
-                    alert("You need to create an account first before you can sign out.");
+        {isPaid && (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Manage Subscription</Text>
+            <View style={styles.card}>
+              <Pressable
+                style={({ pressed }) => [styles.menuRow, pressed && { backgroundColor: Colors.light.background }]}
+                onPress={() => {
+                  if (Platform.OS === "ios") {
+                    Linking.openURL("https://apps.apple.com/account/subscriptions");
                   } else {
-                    Alert.alert("No Account", "You need to create an account first before you can sign out.");
+                    Linking.openURL("https://play.google.com/store/account/subscriptions");
                   }
-                  return;
-                }
-                handleSignOut();
-              }}
-            >
-              <View style={styles.menuLeft}>
-                <Feather name="log-out" size={18} color={user?.isGuest ? Colors.light.textTertiary : Colors.light.textSecondary} />
-                <Text style={[styles.menuText, user?.isGuest && { color: Colors.light.textTertiary }]}>Sign Out</Text>
-              </View>
-              <Feather name="chevron-right" size={16} color={Colors.light.textTertiary} />
-            </Pressable>
-            <View style={styles.menuDivider} />
-            <Pressable
-              style={({ pressed }) => [styles.menuRow, user?.isGuest && styles.menuRowDisabled, !user?.isGuest && pressed && { backgroundColor: Colors.light.dangerDim }]}
-              onPress={() => {
-                if (user?.isGuest) {
-                  if (Platform.OS === "web") {
-                    alert("You need to create an account first before you can delete it.");
-                  } else {
-                    Alert.alert("No Account", "You need to create an account first before you can delete it.");
-                  }
-                  return;
-                }
-                handleDeleteAccount();
-              }}
-            >
-              <View style={styles.menuLeft}>
-                <Feather name="trash-2" size={18} color={user?.isGuest ? Colors.light.textTertiary : Colors.light.danger} />
-                <Text style={[styles.menuText, { color: user?.isGuest ? Colors.light.textTertiary : Colors.light.danger }]}>Delete Account</Text>
-              </View>
-              <Feather name="chevron-right" size={16} color={user?.isGuest ? Colors.light.textTertiary : Colors.light.danger} />
-            </Pressable>
+                }}
+              >
+                <View style={styles.menuLeft}>
+                  <Feather name="settings" size={18} color={Colors.light.textSecondary} />
+                  <Text style={styles.menuText}>Manage in App Store</Text>
+                </View>
+                <Feather name="external-link" size={16} color={Colors.light.textTertiary} />
+              </Pressable>
+            </View>
           </View>
-        </View>
+        )}
 
         <Text style={styles.versionText}>Seller Scan v1.0.0</Text>
       </ScrollView>
@@ -368,29 +295,6 @@ const styles = StyleSheet.create({
     color: "rgba(255,255,255,0.75)",
     marginTop: 2,
   },
-  createAccountText: {
-    fontSize: 14,
-    color: Colors.light.textSecondary,
-    lineHeight: 20,
-    padding: 16,
-    paddingBottom: 12,
-  },
-  appleSignUpButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 8,
-    backgroundColor: "#000000",
-    marginHorizontal: 16,
-    marginBottom: 16,
-    paddingVertical: 12,
-    borderRadius: 8,
-  },
-  appleSignUpText: {
-    fontSize: 15,
-    fontWeight: "600" as const,
-    color: "#FFFFFF",
-  },
   menuRow: {
     flexDirection: "row",
     alignItems: "center",
@@ -406,9 +310,6 @@ const styles = StyleSheet.create({
   menuText: {
     fontSize: 15,
     color: Colors.light.text,
-  },
-  menuRowDisabled: {
-    opacity: 0.5,
   },
   supportEmail: {
     fontSize: 12,
