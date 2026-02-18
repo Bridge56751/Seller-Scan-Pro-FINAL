@@ -3,6 +3,7 @@ import * as SecureStore from "expo-secure-store";
 import { Platform } from "react-native";
 import { getApiUrl } from "./query-client";
 import { fetch } from "expo/fetch";
+import { getDeviceId } from "./device-id";
 
 const SESSION_KEY = "session_token";
 
@@ -107,10 +108,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   async function signInAsGuest() {
     const baseUrl = getApiUrl();
     const url = new URL("/api/auth/guest", baseUrl);
+    const deviceId = await getDeviceId();
 
     const res = await fetch(url.toString(), {
       method: "POST",
       headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ deviceId }),
     });
 
     if (!res.ok) {
@@ -162,10 +165,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     const baseUrl = getApiUrl();
     const url = new URL("/api/auth/record-scan", baseUrl);
+    const deviceId = await getDeviceId();
 
     const res = await fetch(url.toString(), {
       method: "POST",
-      headers: { Authorization: `Bearer ${token}` },
+      headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ deviceId }),
     });
 
     if (!res.ok) return { allowed: false, freeScansLeft: 0 };

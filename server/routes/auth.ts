@@ -51,6 +51,7 @@ router.post("/api/auth/apple", async (req: Request, res: Response) => {
 
 router.post("/api/auth/guest", async (req: Request, res: Response) => {
   try {
+    const { deviceId } = req.body || {};
     const guestId = `guest-${randomUUID()}`;
 
     const user = await storage.createUser({
@@ -62,7 +63,15 @@ router.post("/api/auth/guest", async (req: Request, res: Response) => {
     const sessionToken = randomUUID();
     await storage.updateSessionToken(user.id, sessionToken);
 
-    console.log(`[Auth] Guest user created: ${user.id}`);
+    let deviceScanCount = 0;
+    if (deviceId) {
+      deviceScanCount = await storage.getDeviceScanCount(deviceId);
+    }
+
+    const effectiveScansUsed = Math.max(user.scanCount ?? 0, deviceScanCount);
+    const freeScansLeft = Math.max(0, FREE_SCAN_LIMIT - effectiveScansUsed);
+
+    console.log(`[Auth] Guest user created: ${user.id}, device: ${deviceId || "unknown"}, deviceScans: ${deviceScanCount}`);
 
     return res.json({
       user: {
@@ -71,8 +80,8 @@ router.post("/api/auth/guest", async (req: Request, res: Response) => {
         fullName: "Guest",
         isGuest: true,
         isPaid: false,
-        scanCount: 0,
-        freeScansLeft: FREE_SCAN_LIMIT,
+        scanCount: effectiveScansUsed,
+        freeScansLeft,
       },
       sessionToken,
     });
@@ -148,16 +157,30 @@ router.post("/api/auth/record-scan", async (req: Request, res: Response) => {
       return res.json({ allowed: true, scanCount: user.scanCount, freeScansLeft: 0, isPaid: true });
     }
 
-    const currentCount = user.scanCount ?? 0;
-    if (currentCount >= FREE_SCAN_LIMIT) {
-      return res.json({ allowed: false, scanCount: currentCount, freeScansLeft: 0, isPaid: false });
+    const { deviceId } = req.body || {};
+
+    let deviceScanCount = 0;
+    if (deviceId) {
+      deviceScanCount = await storage.getDeviceScanCount(deviceId);
     }
 
-    const newCount = await storage.incrementScanCount(user.id);
+    const effectiveCount = Math.max(user.scanCount ?? 0, deviceScanCount);
+
+    if (effectiveCount >= FREE_SCAN_LIMIT) {
+      return res.json({ allowed: false, scanCount: effectiveCount, freeScansLeft: 0, isPaid: false });
+    }
+
+    const newUserCount = await storage.incrementScanCount(user.id);
+    let newDeviceCount = deviceScanCount;
+    if (deviceId) {
+      newDeviceCount = await storage.incrementDeviceScanCount(deviceId);
+    }
+
+    const newEffective = Math.max(newUserCount, newDeviceCount);
     return res.json({
       allowed: true,
-      scanCount: newCount,
-      freeScansLeft: Math.max(0, FREE_SCAN_LIMIT - newCount),
+      scanCount: newEffective,
+      freeScansLeft: Math.max(0, FREE_SCAN_LIMIT - newEffective),
       isPaid: false,
     });
   } catch (error: any) {
