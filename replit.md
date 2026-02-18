@@ -4,7 +4,7 @@
 
 ScanProfit is a mobile-first product scanning and profit analysis app for Amazon sellers. Users can scan product barcodes (or search by ASIN/UPC), view detailed product data (pricing, BSR rankings, competitor offers, alerts), and calculate profitability for reselling on Amazon FBA/FBM. The app uses Expo (React Native) for the frontend and Express.js for the backend API server.
 
-The app integrates with **Rainforest API** for real-time Amazon product data (pricing, BSR, offers, alerts) and **Keepa API** for historical price/sales rank charts. Mock data (`lib/mock-data.ts`) still provides fallback interfaces and helper functions.
+The app uses **Keepa API** as the sole data source for all Amazon product data (pricing, BSR, offers, alerts) and historical price/sales rank charts. The Rainforest API has been fully removed. `lib/mock-data.ts` provides TypeScript interfaces and helper functions (calculateProfit, formatCurrency, etc.) but no longer serves as a data fallback.
 
 ## User Preferences
 
@@ -32,8 +32,8 @@ Preferred communication style: Simple, everyday language.
 
 - **Framework**: Express 5 running on Node.js
 - **Entry Point**: `server/index.ts` - Sets up CORS (supports Replit domains and localhost), JSON parsing, and serves static web builds in production
-- **Routes**: `server/routes.ts` - Empty scaffold. Active routes in `server/routes/rainforest.ts` (product lookup by ASIN/UPC/search) and `server/routes/keepa.ts` (historical charts). All prefixed with `/api`
-- **Services**: `server/services/rainforest.ts` (Rainforest API integration with product transforms), `server/services/keepa.ts` (Keepa API with price/rank history parsing)
+- **Routes**: `server/routes.ts` - Empty scaffold. All active routes in `server/routes/keepa.ts`: product lookup by ASIN (`/api/product/asin/:asin`), UPC (`/api/product/upc/:upc`), search (`/api/product/search/:query`), chart data (`/api/keepa/product/:asin`), token status (`/api/keepa/tokens`). All prefixed with `/api`
+- **Services**: `server/services/keepa.ts` (Keepa API integration - full product data, chart history, offers, search, UPC/barcode lookup, transformation to ProductData format)
 - **Storage**: `server/storage.ts` - In-memory storage implementation (`MemStorage`) with a `IStorage` interface. Currently only handles user CRUD operations
 - **Build**: Server is bundled with esbuild for production (`server_dist/`)
 
@@ -41,7 +41,7 @@ Preferred communication style: Simple, everyday language.
 
 - **Schema**: Defined in `shared/schema.ts` using Drizzle ORM with PostgreSQL dialect. Currently only has a `users` table (id, username, password). Uses `drizzle-zod` for validation schemas
 - **Database**: PostgreSQL configured via `DATABASE_URL` environment variable. Drizzle Kit handles migrations (`drizzle.config.ts` outputs to `./migrations`)
-- **Mock Data**: All product data currently comes from `lib/mock-data.ts` which exports interfaces, mock product databases, helper functions (`calculateProfit`, `formatCurrency`, `formatBSR`, `estimateSalesPerDay`), and lookup functions (`lookupByAsin`, `lookupByBarcode`, `searchProducts`)
+- **Mock Data**: `lib/mock-data.ts` exports TypeScript interfaces (ProductData, PricePoint, RankPoint, Competitor, Alert) and helper functions (`calculateProfit`, `formatCurrency`, `formatBSR`, `estimateSalesPerDay`). Product data now comes entirely from Keepa API
 - **Local Storage**: Scan history is persisted on-device using `AsyncStorage` (`lib/scan-history.ts`), capped at 100 items
 
 ### API Communication
@@ -62,6 +62,5 @@ Preferred communication style: Simple, everyday language.
 - **AsyncStorage**: `@react-native-async-storage/async-storage` for on-device persistence of scan history
 - **TanStack React Query**: Server state management and caching
 - **Replit Environment**: The app is designed to run on Replit, using `REPLIT_DEV_DOMAIN`, `REPLIT_DOMAINS`, and `REPLIT_INTERNAL_APP_DOMAIN` environment variables for URL configuration and CORS
-- **Rainforest API**: Real-time Amazon product data (pricing, BSR, offers, alerts). Server-side cache: 30min for products, 10min for not-found. Env var: `RAINFOREST_API_KEY`
-- **Keepa API**: Historical price and sales rank charts (180 days). Server-side cache: 24hr per ASIN. Budget: ~20 tokens/min, 1 token per product lookup. Env var: `KEEPA_API_KEY`
-- **Caching Strategy**: Rainforest data cached 30min server-side + client-side product cache (`lib/product-cache.ts`). Keepa chart data cached 24hr server-side. Critical for supporting 1,000 users on limited API budgets
+- **Keepa API**: Sole data source for all Amazon product data (pricing, BSR, offers, alerts, images, UPC) and historical price/sales rank charts (180 days). Budget: ~20 tokens/min (€49/month plan), ~3 tokens per full product lookup (1 base + 2 for offers). Env var: `KEEPA_API_KEY`
+- **Caching Strategy**: Product+chart data cached 30min server-side (single unified cache), not-found cached 10min, search results cached 15min, plus client-side product cache (`lib/product-cache.ts`). Critical for supporting 1,000 users on limited API token budget
