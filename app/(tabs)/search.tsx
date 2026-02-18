@@ -154,11 +154,11 @@ const styles = StyleSheet.create({
   brandTitle: {
     fontSize: 18,
     fontWeight: "700" as const,
-    color: Colors.light.text,
+    color: "#FFFFFF",
     paddingHorizontal: 14,
-    paddingTop: 8,
-    paddingBottom: 6,
-    backgroundColor: Colors.light.surface,
+    paddingTop: 10,
+    paddingBottom: 10,
+    backgroundColor: Colors.light.accent,
   },
   headerArea: {
     backgroundColor: Colors.light.surface,

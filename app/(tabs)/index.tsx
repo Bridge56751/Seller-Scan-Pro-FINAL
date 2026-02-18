@@ -233,7 +233,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     paddingHorizontal: 16,
     paddingBottom: 10,
-    backgroundColor: "rgba(0,0,0,0.5)",
+    backgroundColor: Colors.light.accent,
   },
   topLeft: {
     flexDirection: "row",

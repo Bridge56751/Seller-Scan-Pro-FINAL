@@ -135,7 +135,7 @@ export default function ProductDetailScreen() {
           }}
           style={({ pressed }) => [styles.backBtn, pressed && { opacity: 0.7 }]}
         >
-          <Feather name="arrow-left" size={20} color={Colors.light.text} />
+          <Feather name="arrow-left" size={20} color="#FFFFFF" />
         </Pressable>
         <Text style={styles.topBarTitle} numberOfLines={1}>Seller Scan</Text>
         <View style={{ width: 36 }} />
@@ -176,11 +176,9 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    backgroundColor: Colors.light.surface,
+    backgroundColor: Colors.light.accent,
     paddingHorizontal: 12,
     paddingBottom: 10,
-    borderBottomWidth: 1,
-    borderBottomColor: Colors.light.border,
   },
   backBtn: {
     width: 36,
@@ -190,9 +188,9 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   topBarTitle: {
-    fontSize: 15,
+    fontSize: 18,
     fontWeight: "700" as const,
-    color: Colors.light.text,
+    color: "#FFFFFF",
   },
   scroll: {
     flex: 1,
