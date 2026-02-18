@@ -17,11 +17,6 @@ interface AlertRowData {
 export function AlertsPanel({ product }: AlertsPanelProps) {
   const alertRows: AlertRowData[] = [
     {
-      label: "Eligibility",
-      status: product.isGated ? "red" : product.isRestricted ? "yellow" : "green",
-      detail: product.isGated ? "Approval required" : product.isRestricted ? "Restrictions apply" : "You can sell this product",
-    },
-    {
       label: "Hazmat",
       status: product.isHazmat ? "red" : "green",
       detail: product.isHazmat ? "Dangerous goods - review required" : "Not hazmat",
