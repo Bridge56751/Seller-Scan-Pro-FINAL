@@ -52,6 +52,42 @@ function OfferRow({ seller, product, costPrice, isLast }: { seller: Competitor; 
   );
 }
 
+function MarketShareBar({ product }: { product: ProductData }) {
+  const isAmazonSeller = product.buyBoxSeller === "ATVPDKIKX0DER" || product.buyBoxSeller === "Amazon.com";
+  const totalSellers = product.competitorCount || (product.fbaSellerCount + product.fbmSellerCount);
+  const amazonCount = isAmazonSeller ? 1 : 0;
+  const thirdPartyCount = Math.max(0, totalSellers - amazonCount);
+
+  if (totalSellers <= 0) return null;
+
+  const amazonPct = Math.round((amazonCount / totalSellers) * 100);
+  const thirdPartyPct = 100 - amazonPct;
+
+  return (
+    <View style={styles.marketShare}>
+      <Text style={styles.marketShareTitle}>Market Share</Text>
+      <View style={styles.marketBar}>
+        {amazonPct > 0 && (
+          <View style={[styles.marketSegment, { flex: amazonPct, backgroundColor: Colors.light.amazon, borderTopLeftRadius: 4, borderBottomLeftRadius: 4, borderTopRightRadius: thirdPartyPct === 0 ? 4 : 0, borderBottomRightRadius: thirdPartyPct === 0 ? 4 : 0 }]} />
+        )}
+        {thirdPartyPct > 0 && (
+          <View style={[styles.marketSegment, { flex: thirdPartyPct, backgroundColor: Colors.light.accent, borderTopRightRadius: 4, borderBottomRightRadius: 4, borderTopLeftRadius: amazonPct === 0 ? 4 : 0, borderBottomLeftRadius: amazonPct === 0 ? 4 : 0 }]} />
+        )}
+      </View>
+      <View style={styles.marketLegend}>
+        <View style={styles.legendItem}>
+          <View style={[styles.legendDot, { backgroundColor: Colors.light.amazon }]} />
+          <Text style={styles.legendText}>Amazon {amazonPct}%</Text>
+        </View>
+        <View style={styles.legendItem}>
+          <View style={[styles.legendDot, { backgroundColor: Colors.light.accent }]} />
+          <Text style={styles.legendText}>3rd Party {thirdPartyPct}%</Text>
+        </View>
+      </View>
+    </View>
+  );
+}
+
 export function OffersPanel({ product, costPrice }: OffersPanelProps) {
   const totalSellers = product.competitorCount || (product.fbaSellerCount + product.fbmSellerCount);
   const hasDetailedOffers = product.competitors && product.competitors.length > 0;
@@ -89,6 +125,8 @@ export function OffersPanel({ product, costPrice }: OffersPanelProps) {
           )}
         </View>
       )}
+
+      <MarketShareBar product={product} />
 
       {hasDetailedOffers && (
         <View style={styles.offersList}>
@@ -134,6 +172,48 @@ const styles = StyleSheet.create({
     fontSize: 10,
     fontWeight: "600" as const,
     marginTop: 2,
+  },
+  marketShare: {
+    backgroundColor: Colors.light.surfaceElevated,
+    borderRadius: 8,
+    padding: 10,
+    marginBottom: 12,
+  },
+  marketShareTitle: {
+    fontSize: 11,
+    fontWeight: "600" as const,
+    color: Colors.light.textSecondary,
+    marginBottom: 6,
+  },
+  marketBar: {
+    flexDirection: "row",
+    height: 10,
+    borderRadius: 4,
+    overflow: "hidden",
+    gap: 1,
+  },
+  marketSegment: {
+    height: 10,
+  },
+  marketLegend: {
+    flexDirection: "row",
+    gap: 14,
+    marginTop: 6,
+  },
+  legendItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+  },
+  legendDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+  },
+  legendText: {
+    fontSize: 11,
+    fontWeight: "600" as const,
+    color: Colors.light.textSecondary,
   },
   buyBoxRow: {
     flexDirection: "row",
