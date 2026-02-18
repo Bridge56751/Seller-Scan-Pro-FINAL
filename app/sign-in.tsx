@@ -8,8 +8,9 @@ import Colors from "@/constants/colors";
 
 export default function SignInScreen() {
   const insets = useSafeAreaInsets();
-  const { signIn } = useAuth();
+  const { signIn, signInAsGuest } = useAuth();
   const [isSigningIn, setIsSigningIn] = useState(false);
+  const [isGuestLoading, setIsGuestLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   async function handleAppleSignIn() {
@@ -38,13 +39,24 @@ export default function SignInScreen() {
       );
     } catch (e: any) {
       if (e.code === "ERR_REQUEST_CANCELED") {
-        // User cancelled
       } else {
         setError("Sign in failed. Please try again.");
         console.error("[Auth] Apple sign-in error:", e);
       }
     } finally {
       setIsSigningIn(false);
+    }
+  }
+
+  async function handleGuestSignIn() {
+    setError(null);
+    setIsGuestLoading(true);
+    try {
+      await signInAsGuest();
+    } catch {
+      setError("Could not continue as guest. Please try again.");
+    } finally {
+      setIsGuestLoading(false);
     }
   }
 
@@ -93,6 +105,25 @@ export default function SignInScreen() {
           </Pressable>
         )}
 
+        <View style={styles.dividerRow}>
+          <View style={styles.dividerLine} />
+          <Text style={styles.dividerText}>or</Text>
+          <View style={styles.dividerLine} />
+        </View>
+
+        <Pressable style={styles.guestButton} onPress={handleGuestSignIn} disabled={isGuestLoading}>
+          {isGuestLoading ? (
+            <ActivityIndicator color={Colors.light.accent} />
+          ) : (
+            <>
+              <Feather name="user" size={20} color={Colors.light.accent} />
+              <Text style={styles.guestButtonText}>Continue as Guest</Text>
+            </>
+          )}
+        </Pressable>
+
+        <Text style={styles.guestNote}>5 free scans included</Text>
+
         {error && <Text style={styles.errorText}>{error}</Text>}
 
         <Text style={styles.disclaimer}>
@@ -138,7 +169,7 @@ const styles = StyleSheet.create({
   },
   signInContainer: {
     alignItems: "center",
-    gap: 16,
+    gap: 12,
   },
   appleButton: {
     width: "100%",
@@ -158,6 +189,45 @@ const styles = StyleSheet.create({
     color: "#FFFFFF",
     fontSize: 16,
     fontWeight: "600" as const,
+  },
+  dividerRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    width: "100%",
+    gap: 12,
+    marginVertical: 4,
+  },
+  dividerLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: Colors.light.border,
+  },
+  dividerText: {
+    fontSize: 13,
+    color: Colors.light.textTertiary,
+    fontWeight: "500" as const,
+  },
+  guestButton: {
+    width: "100%",
+    height: 52,
+    backgroundColor: Colors.light.surface,
+    borderRadius: 12,
+    borderWidth: 1.5,
+    borderColor: Colors.light.accent,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 10,
+  },
+  guestButtonText: {
+    color: Colors.light.accent,
+    fontSize: 16,
+    fontWeight: "600" as const,
+  },
+  guestNote: {
+    fontSize: 12,
+    color: Colors.light.textTertiary,
+    marginTop: -4,
   },
   errorText: {
     color: Colors.light.danger,

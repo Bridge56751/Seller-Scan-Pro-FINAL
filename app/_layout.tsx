@@ -49,6 +49,7 @@ function RootLayoutNav() {
       <Stack.Screen name="sign-in" options={{ headerShown: false }} />
       <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
       <Stack.Screen name="product/[asin]" options={{ headerShown: false }} />
+      <Stack.Screen name="paywall" options={{ headerShown: false, presentation: "modal" }} />
     </Stack>
   );
 }

@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { pgTable, text, varchar, timestamp } from "drizzle-orm/pg-core";
+import { pgTable, text, varchar, timestamp, integer, boolean } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -11,6 +11,9 @@ export const users = pgTable("users", {
   email: text("email"),
   fullName: text("full_name"),
   sessionToken: text("session_token"),
+  isGuest: boolean("is_guest").default(false),
+  isPaid: boolean("is_paid").default(false),
+  scanCount: integer("scan_count").default(0),
   createdAt: timestamp("created_at").defaultNow(),
   lastLoginAt: timestamp("last_login_at").defaultNow(),
 });

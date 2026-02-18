@@ -10,6 +10,7 @@ import { lookupByAsin, calculateProfit, type ProductData } from "@/lib/mock-data
 import { lookupProductByASIN, fetchKeepaChartData, type KeepaChartData } from "@/lib/api";
 import { getCachedProduct } from "@/lib/product-cache";
 import { addToScanHistory } from "@/lib/scan-history";
+import { useAuth } from "@/lib/auth-context";
 import { BuyRatingPanel } from "@/components/BuyRatingPanel";
 import { QuickInfoPanel } from "@/components/QuickInfoPanel";
 import { AlertsPanel } from "@/components/AlertsPanel";
@@ -28,7 +29,10 @@ export default function ProductDetailScreen() {
   const [loading, setLoading] = useState(true);
   const [chartData, setChartData] = useState<KeepaChartData | null>(null);
   const [chartsLoading, setChartsLoading] = useState(false);
+  const [scanBlocked, setScanBlocked] = useState(false);
   const lastShakeRef = useRef(0);
+  const scanRecordedRef = useRef(false);
+  const { user, recordScan } = useAuth();
 
   useEffect(() => {
     if (Platform.OS === "web") return;
@@ -77,7 +81,18 @@ export default function ProductDetailScreen() {
   }, [asin]);
 
   useEffect(() => {
-    if (product) {
+    if (product && !scanRecordedRef.current) {
+      scanRecordedRef.current = true;
+
+      if (user && !user.isPaid) {
+        recordScan().then(({ allowed }) => {
+          if (!allowed) {
+            setScanBlocked(true);
+            router.replace("/paywall");
+          }
+        });
+      }
+
       const calc = calculateProfit(product, 0);
       addToScanHistory({
         id: Date.now().toString() + Math.random().toString(36).substr(2, 9),

@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useEffect, useMemo, ReactNode } from "react";
+import { createContext, useContext, useState, useEffect, useMemo, useCallback, ReactNode } from "react";
 import * as SecureStore from "expo-secure-store";
 import { Platform } from "react-native";
 import { getApiUrl } from "./query-client";
@@ -10,6 +10,10 @@ interface AuthUser {
   id: string;
   email: string | null;
   fullName: string | null;
+  isGuest: boolean;
+  isPaid: boolean;
+  scanCount: number;
+  freeScansLeft: number;
 }
 
 interface AuthContextValue {
@@ -17,7 +21,10 @@ interface AuthContextValue {
   isLoading: boolean;
   isAuthenticated: boolean;
   signIn: (appleUserId: string, email?: string, fullName?: string, identityToken?: string) => Promise<void>;
+  signInAsGuest: () => Promise<void>;
   signOut: () => Promise<void>;
+  recordScan: () => Promise<{ allowed: boolean; freeScansLeft: number }>;
+  refreshUser: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -96,6 +103,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(data.user);
   }
 
+  async function signInAsGuest() {
+    const baseUrl = getApiUrl();
+    const url = new URL("/api/auth/guest", baseUrl);
+
+    const res = await fetch(url.toString(), {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+    });
+
+    if (!res.ok) {
+      throw new Error("Guest sign in failed");
+    }
+
+    const data = await res.json();
+    await setStoredToken(data.sessionToken);
+    setUser(data.user);
+  }
+
   async function signOut() {
     try {
       const token = await getStoredToken();
@@ -113,15 +138,47 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }
 
+  const recordScan = useCallback(async (): Promise<{ allowed: boolean; freeScansLeft: number }> => {
+    const token = await getStoredToken();
+    if (!token) return { allowed: false, freeScansLeft: 0 };
+
+    const baseUrl = getApiUrl();
+    const url = new URL("/api/auth/record-scan", baseUrl);
+
+    const res = await fetch(url.toString(), {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token}` },
+    });
+
+    if (!res.ok) return { allowed: false, freeScansLeft: 0 };
+
+    const data = await res.json();
+
+    setUser((prev) =>
+      prev
+        ? { ...prev, scanCount: data.scanCount, freeScansLeft: data.freeScansLeft, isPaid: data.isPaid }
+        : prev,
+    );
+
+    return { allowed: data.allowed, freeScansLeft: data.freeScansLeft };
+  }, []);
+
+  const refreshUser = useCallback(async () => {
+    await checkSession();
+  }, []);
+
   const value = useMemo(
     () => ({
       user,
       isLoading,
       isAuthenticated: !!user,
       signIn,
+      signInAsGuest,
       signOut,
+      recordScan,
+      refreshUser,
     }),
-    [user, isLoading],
+    [user, isLoading, recordScan, refreshUser],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

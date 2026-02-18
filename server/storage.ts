@@ -1,4 +1,4 @@
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/neon-serverless";
 import ws from "ws";
 import { users, type User, type InsertUser } from "@shared/schema";
@@ -17,9 +17,12 @@ const db = drizzle({ client: pool });
 export interface IStorage {
   getUserByAppleId(appleUserId: string): Promise<User | undefined>;
   getUserBySessionToken(token: string): Promise<User | undefined>;
-  createUser(user: InsertUser): Promise<User>;
+  createUser(user: InsertUser, isGuest?: boolean): Promise<User>;
   updateSessionToken(userId: string, token: string): Promise<void>;
   updateLastLogin(userId: string): Promise<void>;
+  incrementScanCount(userId: string): Promise<number>;
+  getScanCount(userId: string): Promise<number>;
+  setUserPaid(userId: string): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -33,8 +36,8 @@ export class DatabaseStorage implements IStorage {
     return user;
   }
 
-  async createUser(insertUser: InsertUser): Promise<User> {
-    const [user] = await db.insert(users).values(insertUser).returning();
+  async createUser(insertUser: InsertUser, isGuest = false): Promise<User> {
+    const [user] = await db.insert(users).values({ ...insertUser, isGuest }).returning();
     return user;
   }
 
@@ -44,6 +47,24 @@ export class DatabaseStorage implements IStorage {
 
   async updateLastLogin(userId: string): Promise<void> {
     await db.update(users).set({ lastLoginAt: new Date() }).where(eq(users.id, userId));
+  }
+
+  async incrementScanCount(userId: string): Promise<number> {
+    const [result] = await db
+      .update(users)
+      .set({ scanCount: sql`${users.scanCount} + 1` })
+      .where(eq(users.id, userId))
+      .returning({ scanCount: users.scanCount });
+    return result?.scanCount ?? 0;
+  }
+
+  async getScanCount(userId: string): Promise<number> {
+    const [user] = await db.select({ scanCount: users.scanCount }).from(users).where(eq(users.id, userId));
+    return user?.scanCount ?? 0;
+  }
+
+  async setUserPaid(userId: string): Promise<void> {
+    await db.update(users).set({ isPaid: true }).where(eq(users.id, userId));
   }
 }
 
