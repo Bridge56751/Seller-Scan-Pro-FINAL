@@ -9,6 +9,8 @@ export default function PaywallScreen() {
   const insets = useSafeAreaInsets();
   const { user } = useAuth();
 
+  const scansUsedUp = user ? user.freeScansLeft <= 0 : false;
+
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
       <Pressable
@@ -26,12 +28,14 @@ export default function PaywallScreen() {
 
       <View style={styles.content}>
         <View style={styles.iconContainer}>
-          <Feather name="lock" size={40} color={Colors.light.accent} />
+          <Feather name={scansUsedUp ? "lock" : "star"} size={40} color={Colors.light.accent} />
         </View>
 
-        <Text style={styles.title}>Free Scans Used Up</Text>
+        <Text style={styles.title}>{scansUsedUp ? "Free Scans Used Up" : "Upgrade to Pro"}</Text>
         <Text style={styles.subtitle}>
-          You've used all 5 of your free product scans. Upgrade to Seller Scan Pro for unlimited scanning.
+          {scansUsedUp
+            ? "You've used all 5 of your free product scans. Upgrade to Seller Scan Pro for unlimited scanning."
+            : "Get the most out of Seller Scan with unlimited product scans and full access to every feature."}
         </Text>
 
         <View style={styles.featuresContainer}>
