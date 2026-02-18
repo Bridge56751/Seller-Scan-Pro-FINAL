@@ -6,7 +6,7 @@ import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import Colors from "@/constants/colors";
 import { lookupByAsin, calculateProfit, type ProductData } from "@/lib/mock-data";
-import { lookupProductByASIN } from "@/lib/api";
+import { lookupProductByASIN, fetchKeepaChartData, type KeepaChartData } from "@/lib/api";
 import { getCachedProduct } from "@/lib/product-cache";
 import { addToScanHistory } from "@/lib/scan-history";
 import { BuyRatingPanel } from "@/components/BuyRatingPanel";
@@ -24,6 +24,8 @@ export default function ProductDetailScreen() {
   const [costPrice, setCostPrice] = useState(0);
   const [product, setProduct] = useState<ProductData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [chartData, setChartData] = useState<KeepaChartData | null>(null);
+  const [chartsLoading, setChartsLoading] = useState(false);
 
   useEffect(() => {
     if (!asin) { setLoading(false); return; }
@@ -43,6 +45,15 @@ export default function ProductDetailScreen() {
       setProduct(p);
       setLoading(false);
     }).catch(() => setLoading(false));
+  }, [asin]);
+
+  useEffect(() => {
+    if (!asin) return;
+    setChartsLoading(true);
+    fetchKeepaChartData(asin).then((data) => {
+      setChartData(data);
+      setChartsLoading(false);
+    }).catch(() => setChartsLoading(false));
   }, [asin]);
 
   useEffect(() => {
@@ -123,7 +134,11 @@ export default function ProductDetailScreen() {
         <OffersPanel product={product} costPrice={costPrice} />
         <RanksPricesPanel product={product} />
         <ProfitCalculatorPanel product={product} costPrice={costPrice} />
-        <ChartsPanel priceHistory={product.priceHistory} rankHistory={product.rankHistory} />
+        <ChartsPanel
+          priceHistory={chartData?.priceHistory || []}
+          rankHistory={chartData?.rankHistory || []}
+          loading={chartsLoading}
+        />
       </ScrollView>
     </View>
   );

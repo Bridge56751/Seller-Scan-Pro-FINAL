@@ -1,8 +1,15 @@
 import { getApiUrl } from "./query-client";
-import type { ProductData } from "./mock-data";
+import type { ProductData, PricePoint, RankPoint } from "./mock-data";
 import { lookupByBarcode, lookupByAsin, searchProducts as mockSearch } from "./mock-data";
 
 const API_BASE = getApiUrl();
+
+export interface KeepaChartData {
+  priceHistory: PricePoint[];
+  rankHistory: RankPoint[];
+  tokensLeft?: number;
+  refillRate?: number;
+}
 
 async function fetchJson(path: string) {
   const url = new URL(path, API_BASE).toString();
@@ -64,5 +71,20 @@ export async function searchProductsAPI(query: string): Promise<ProductData[]> {
   } catch (err: any) {
     if (err.message?.includes("not configured")) return [];
     return [];
+  }
+}
+
+export async function fetchKeepaChartData(asin: string): Promise<KeepaChartData> {
+  try {
+    const data = await fetchJson(`/api/keepa/product/${encodeURIComponent(asin)}`);
+    if (data.notFound) return { priceHistory: [], rankHistory: [] };
+    return {
+      priceHistory: data.priceHistory || [],
+      rankHistory: data.rankHistory || [],
+      tokensLeft: data.tokensLeft,
+      refillRate: data.refillRate,
+    };
+  } catch {
+    return { priceHistory: [], rankHistory: [] };
   }
 }
