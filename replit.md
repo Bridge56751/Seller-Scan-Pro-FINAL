@@ -32,8 +32,8 @@ Preferred communication style: Simple, everyday language.
 
 - **Framework**: Express 5 running on Node.js
 - **Entry Point**: `server/index.ts` - Sets up CORS (supports Replit domains and localhost), JSON parsing, and serves static web builds in production
-- **Routes**: `server/routes.ts` - Empty scaffold. All active routes in `server/routes/keepa.ts`: product lookup by ASIN (`/api/product/asin/:asin`), UPC (`/api/product/upc/:upc`), search (`/api/product/search/:query`), chart data (`/api/keepa/product/:asin`), token status (`/api/keepa/tokens`). All prefixed with `/api`
-- **Services**: `server/services/keepa.ts` (Keepa API integration - full product data, chart history, offers, search, UPC/barcode lookup, transformation to ProductData format)
+- **Routes**: `server/routes.ts` - Empty scaffold. All active routes in `server/routes/keepa.ts`: product lookup by ASIN (`/api/product/asin/:asin`), UPC (`/api/product/upc/:upc`), search (`/api/product/search/:query`), chart data (`/api/keepa/product/:asin`), token status (`/api/keepa/tokens`). Offers route removed (API plan doesn't support it). All prefixed with `/api`
+- **Services**: `server/services/keepa.ts` (Keepa API integration - full product data, chart history, search, UPC/barcode lookup, transformation to ProductData format. Note: `fetchKeepaOffers` exists but current API plan doesn't support detailed seller listings)
 - **Storage**: `server/storage.ts` - In-memory storage implementation (`MemStorage`) with a `IStorage` interface. Currently only handles user CRUD operations
 - **Build**: Server is bundled with esbuild for production (`server_dist/`)
 
@@ -62,5 +62,5 @@ Preferred communication style: Simple, everyday language.
 - **AsyncStorage**: `@react-native-async-storage/async-storage` for on-device persistence of scan history
 - **TanStack React Query**: Server state management and caching
 - **Replit Environment**: The app is designed to run on Replit, using `REPLIT_DEV_DOMAIN`, `REPLIT_DOMAINS`, and `REPLIT_INTERNAL_APP_DOMAIN` environment variables for URL configuration and CORS
-- **Keepa API**: Sole data source for all Amazon product data (pricing, BSR, offers, alerts, images, UPC) and historical price/sales rank charts (180 days). Budget: ~20 tokens/min (€49/month plan), ~3 tokens per full product lookup (1 base + 2 for offers). Env var: `KEEPA_API_KEY`
+- **Keepa API**: Sole data source for all Amazon product data (pricing, BSR, alerts, images, UPC) and historical price/sales rank charts (180 days). Budget: ~20 tokens/min (€49/month plan), **1 token per product lookup** (optimized from 3). Detailed seller listings not available on current plan (`offersSuccessful: false`); seller counts come from stats data in base call. ~28,800 lookups/day capacity. Env var: `KEEPA_API_KEY`
 - **Caching Strategy**: Product+chart data cached 30min server-side (single unified cache), not-found cached 10min, search results cached 15min, plus client-side product cache (`lib/product-cache.ts`). Critical for supporting 1,000 users on limited API token budget
