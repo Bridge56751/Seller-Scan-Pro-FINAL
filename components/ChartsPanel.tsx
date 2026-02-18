@@ -42,27 +42,49 @@ export function ChartsPanel({ priceHistory, rankHistory, loading }: ChartsPanelP
   const activeData = mode === "price" ? filteredPrices : filteredRanks;
   const dataLen = activeData.length;
 
-  const xToIndex = useCallback((pageX: number, layoutX: number) => {
-    const localX = pageX - layoutX;
+  const localXToIndex = useCallback((localX: number) => {
     const clampedX = Math.max(padLeft, Math.min(localX, padLeft + drawW));
     const ratio = (clampedX - padLeft) / drawW;
     const idx = Math.round(ratio * Math.max(dataLen - 1, 0));
     return { x: clampedX, index: Math.max(0, Math.min(idx, dataLen - 1)) };
   }, [dataLen, padLeft, drawW]);
 
-  const chartLayoutRef = useRef({ x: 0, y: 0, width: 0, height: 0 });
+  const chartViewRef = useRef<View>(null);
+  const isScrubbing = useRef(false);
+  const grantLocationX = useRef(0);
+  const grantPageX = useRef(0);
 
   const panResponder = useMemo(() => PanResponder.create({
     onStartShouldSetPanResponder: () => dataLen > 0,
-    onMoveShouldSetPanResponder: () => dataLen > 0,
+    onMoveShouldSetPanResponder: (_, gestureState) => {
+      if (dataLen === 0) return false;
+      if (isScrubbing.current) return true;
+      const dx = Math.abs(gestureState.dx);
+      const dy = Math.abs(gestureState.dy);
+      return dx > 8 && dx > dy * 1.2;
+    },
+    onStartShouldSetPanResponderCapture: () => false,
+    onMoveShouldSetPanResponderCapture: (_, gestureState) => {
+      if (dataLen === 0) return false;
+      if (isScrubbing.current) return true;
+      const dx = Math.abs(gestureState.dx);
+      const dy = Math.abs(gestureState.dy);
+      return dx > 8 && dx > dy * 1.2;
+    },
     onPanResponderGrant: (evt) => {
-      const { x, index } = xToIndex(evt.nativeEvent.pageX, chartLayoutRef.current.x);
-      lastIndexRef.current = index;
-      setScrub({ x, index });
+      isScrubbing.current = true;
+      grantLocationX.current = evt.nativeEvent.locationX;
+      grantPageX.current = evt.nativeEvent.pageX;
+      const result = localXToIndex(evt.nativeEvent.locationX);
+      lastIndexRef.current = result.index;
+      setScrub(result);
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     },
     onPanResponderMove: (evt) => {
-      const { x, index } = xToIndex(evt.nativeEvent.pageX, chartLayoutRef.current.x);
+      const localX = evt.nativeEvent.locationX != null
+        ? evt.nativeEvent.locationX
+        : grantLocationX.current + (evt.nativeEvent.pageX - grantPageX.current);
+      const { x, index } = localXToIndex(localX);
       if (index !== lastIndexRef.current) {
         lastIndexRef.current = index;
         Haptics.selectionAsync();
@@ -70,14 +92,17 @@ export function ChartsPanel({ priceHistory, rankHistory, loading }: ChartsPanelP
       setScrub({ x, index });
     },
     onPanResponderRelease: () => {
+      isScrubbing.current = false;
       setScrub(null);
       lastIndexRef.current = -1;
     },
     onPanResponderTerminate: () => {
+      isScrubbing.current = false;
       setScrub(null);
       lastIndexRef.current = -1;
     },
-  }), [dataLen, xToIndex]);
+    onPanResponderTerminationRequest: () => !isScrubbing.current,
+  }), [dataLen, localXToIndex]);
 
   const scrubInfo = useMemo(() => {
     if (!scrub || dataLen === 0) return null;
@@ -235,12 +260,8 @@ export function ChartsPanel({ priceHistory, rankHistory, loading }: ChartsPanelP
       )}
 
       <View
+        ref={chartViewRef}
         style={styles.chartWrap}
-        onLayout={(e) => {
-          e.target.measureInWindow((x: number, y: number, width: number, height: number) => {
-            chartLayoutRef.current = { x, y, width, height };
-          });
-        }}
         {...panResponder.panHandlers}
       >
         {loading ? (
