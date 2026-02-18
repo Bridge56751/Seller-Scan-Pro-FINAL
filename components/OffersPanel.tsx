@@ -1,5 +1,5 @@
 import { StyleSheet, Text, View } from "react-native";
-import { MaterialCommunityIcons } from "@expo/vector-icons";
+import { MaterialCommunityIcons, Feather } from "@expo/vector-icons";
 import type { ProductData, Competitor } from "@/lib/mock-data";
 import { formatCurrency } from "@/lib/mock-data";
 import { CollapsiblePanel } from "./CollapsiblePanel";
@@ -52,38 +52,15 @@ function OfferRow({ seller, product, costPrice, isLast }: { seller: Competitor; 
   );
 }
 
-function MarketShareBar({ product }: { product: ProductData }) {
-  const isAmazonSeller = product.buyBoxSeller === "ATVPDKIKX0DER" || product.buyBoxSeller === "Amazon.com";
-  const totalSellers = product.competitorCount || (product.fbaSellerCount + product.fbmSellerCount);
-  const amazonCount = isAmazonSeller ? 1 : 0;
-  const thirdPartyCount = Math.max(0, totalSellers - amazonCount);
+function AmazonSellerWarning({ product }: { product: ProductData }) {
+  const isAmazonSeller = product.buyBoxSeller === "ATVPDKIKX0DER" || product.buyBoxSeller === "Amazon.com" || (product.amazonPrice !== null && product.amazonPrice > 0);
 
-  if (totalSellers <= 0) return null;
-
-  const amazonPct = Math.round((amazonCount / totalSellers) * 100);
-  const thirdPartyPct = 100 - amazonPct;
+  if (!isAmazonSeller) return null;
 
   return (
-    <View style={styles.marketShare}>
-      <Text style={styles.marketShareTitle}>Market Share</Text>
-      <View style={styles.marketBar}>
-        {amazonPct > 0 && (
-          <View style={[styles.marketSegment, { flex: amazonPct, backgroundColor: Colors.light.amazon, borderTopLeftRadius: 4, borderBottomLeftRadius: 4, borderTopRightRadius: thirdPartyPct === 0 ? 4 : 0, borderBottomRightRadius: thirdPartyPct === 0 ? 4 : 0 }]} />
-        )}
-        {thirdPartyPct > 0 && (
-          <View style={[styles.marketSegment, { flex: thirdPartyPct, backgroundColor: Colors.light.accent, borderTopRightRadius: 4, borderBottomRightRadius: 4, borderTopLeftRadius: amazonPct === 0 ? 4 : 0, borderBottomLeftRadius: amazonPct === 0 ? 4 : 0 }]} />
-        )}
-      </View>
-      <View style={styles.marketLegend}>
-        <View style={styles.legendItem}>
-          <View style={[styles.legendDot, { backgroundColor: Colors.light.amazon }]} />
-          <Text style={styles.legendText}>Amazon {amazonPct}%</Text>
-        </View>
-        <View style={styles.legendItem}>
-          <View style={[styles.legendDot, { backgroundColor: Colors.light.accent }]} />
-          <Text style={styles.legendText}>3rd Party {thirdPartyPct}%</Text>
-        </View>
-      </View>
+    <View style={styles.amazonWarning}>
+      <Feather name="alert-circle" size={14} color={Colors.light.red} />
+      <Text style={styles.amazonWarningText}>Amazon sells this product directly</Text>
     </View>
   );
 }
@@ -130,7 +107,7 @@ export function OffersPanel({ product, costPrice }: OffersPanelProps) {
         </View>
       )}
 
-      <MarketShareBar product={product} />
+      <AmazonSellerWarning product={product} />
 
       {hasDetailedOffers && (
         <View style={styles.offersList}>
@@ -177,47 +154,20 @@ const styles = StyleSheet.create({
     fontWeight: "600" as const,
     marginTop: 2,
   },
-  marketShare: {
-    backgroundColor: Colors.light.surfaceElevated,
-    borderRadius: 8,
-    padding: 10,
-    marginBottom: 12,
-  },
-  marketShareTitle: {
-    fontSize: 11,
-    fontWeight: "600" as const,
-    color: Colors.light.textSecondary,
-    marginBottom: 6,
-  },
-  marketBar: {
-    flexDirection: "row",
-    height: 10,
-    borderRadius: 4,
-    overflow: "hidden",
-    gap: 1,
-  },
-  marketSegment: {
-    height: 10,
-  },
-  marketLegend: {
-    flexDirection: "row",
-    gap: 14,
-    marginTop: 6,
-  },
-  legendItem: {
+  amazonWarning: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 4,
+    gap: 8,
+    backgroundColor: Colors.light.redBg,
+    borderRadius: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    marginBottom: 12,
   },
-  legendDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-  },
-  legendText: {
-    fontSize: 11,
+  amazonWarningText: {
+    fontSize: 12,
     fontWeight: "600" as const,
-    color: Colors.light.textSecondary,
+    color: Colors.light.red,
   },
   buyBoxRow: {
     flexDirection: "row",
