@@ -1,30 +1,40 @@
-import { View, Text, StyleSheet, Pressable } from "react-native";
+import { View, Text, StyleSheet, Pressable, Platform } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { router } from "expo-router";
 import { Feather } from "@expo/vector-icons";
 import Colors from "@/constants/colors";
 import { useAuth } from "@/lib/auth-context";
 
+function dismissPaywall() {
+  if (router.canGoBack()) {
+    router.back();
+  } else {
+    router.replace("/(tabs)");
+  }
+}
+
 export default function PaywallScreen() {
   const insets = useSafeAreaInsets();
   const { user } = useAuth();
+  const webTopInset = Platform.OS === "web" ? 67 : 0;
+  const topPadding = Math.max(insets.top, webTopInset);
 
   const scansUsedUp = user ? user.freeScansLeft <= 0 : false;
 
   return (
-    <View style={[styles.container, { paddingTop: insets.top }]}>
-      <Pressable
-        style={styles.closeButton}
-        onPress={() => {
-          if (router.canGoBack()) {
-            router.back();
-          } else {
-            router.replace("/(tabs)");
-          }
-        }}
-      >
-        <Feather name="x" size={24} color={Colors.light.text} />
-      </Pressable>
+    <View style={styles.container}>
+      <View style={[styles.header, { paddingTop: topPadding + 8 }]}>
+        <Pressable
+          style={styles.closeButton}
+          onPress={dismissPaywall}
+          hitSlop={{ top: 16, bottom: 16, left: 16, right: 16 }}
+          testID="paywall-close"
+        >
+          <View style={styles.closeCircle}>
+            <Feather name="x" size={18} color={Colors.light.text} />
+          </View>
+        </Pressable>
+      </View>
 
       <View style={styles.content}>
         <View style={styles.iconContainer}>
@@ -71,9 +81,22 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: Colors.light.surface,
   },
+  header: {
+    flexDirection: "row",
+    justifyContent: "flex-end",
+    paddingHorizontal: 16,
+    paddingBottom: 8,
+  },
   closeButton: {
-    alignSelf: "flex-end",
-    padding: 16,
+    padding: 4,
+  },
+  closeCircle: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: Colors.light.background,
+    justifyContent: "center",
+    alignItems: "center",
   },
   content: {
     flex: 1,
