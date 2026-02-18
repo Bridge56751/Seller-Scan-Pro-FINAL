@@ -2,7 +2,7 @@ import express from "express";
 import type { Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import keepaRouter from "./routes/keepa";
-import authRouter from "./routes/auth";
+import deviceRouter from "./routes/device";
 import * as fs from "fs";
 import * as path from "path";
 
@@ -232,7 +232,7 @@ function setupErrorHandler(app: express.Application) {
   setupBodyParsing(app);
   setupRequestLogging(app);
 
-  app.use(authRouter);
+  app.use(deviceRouter);
   app.use(keepaRouter);
 
   configureExpoAndLanding(app);
