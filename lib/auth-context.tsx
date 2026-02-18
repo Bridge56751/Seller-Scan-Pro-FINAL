@@ -1,209 +1,132 @@
 import { createContext, useContext, useState, useEffect, useMemo, useCallback, ReactNode } from "react";
-import * as SecureStore from "expo-secure-store";
 import { Platform } from "react-native";
 import { getApiUrl } from "./query-client";
 import { fetch } from "expo/fetch";
 import { getDeviceId } from "./device-id";
 
-const SESSION_KEY = "session_token";
+const FREE_SCAN_LIMIT = 5;
 
-interface AuthUser {
-  id: string;
-  email: string | null;
-  fullName: string | null;
-  isGuest: boolean;
+interface DeviceState {
+  deviceId: string;
   isPaid: boolean;
   scanCount: number;
   freeScansLeft: number;
 }
 
 interface AuthContextValue {
-  user: AuthUser | null;
+  device: DeviceState | null;
   isLoading: boolean;
-  isAuthenticated: boolean;
-  signIn: (appleUserId: string, email?: string, fullName?: string, identityToken?: string) => Promise<void>;
-  signInAsGuest: () => Promise<void>;
-  signOut: () => Promise<void>;
-  deleteAccount: () => Promise<void>;
+  isReady: boolean;
+  isPaid: boolean;
+  scanCount: number;
+  freeScansLeft: number;
   recordScan: () => Promise<{ allowed: boolean; freeScansLeft: number }>;
-  refreshUser: () => Promise<void>;
+  refreshDevice: () => Promise<void>;
+  setPaid: (paid: boolean) => void;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
-async function getStoredToken(): Promise<string | null> {
-  try {
-    return await SecureStore.getItemAsync(SESSION_KEY);
-  } catch {
-    return null;
-  }
-}
-
-async function setStoredToken(token: string): Promise<void> {
-  try {
-    await SecureStore.setItemAsync(SESSION_KEY, token);
-  } catch {}
-}
-
-async function removeStoredToken(): Promise<void> {
-  try {
-    await SecureStore.deleteItemAsync(SESSION_KEY);
-  } catch {}
-}
-
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<AuthUser | null>(null);
+  const [device, setDevice] = useState<DeviceState | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    checkSession();
+    initDevice();
   }, []);
 
-  async function checkSession() {
+  async function initDevice() {
     try {
-      const token = await getStoredToken();
-      if (!token) {
-        setIsLoading(false);
-        return;
-      }
-
+      const deviceId = await getDeviceId();
       const baseUrl = getApiUrl();
-      const url = new URL("/api/auth/me", baseUrl);
+      const url = new URL("/api/device/status", baseUrl);
+
       const res = await fetch(url.toString(), {
-        headers: { Authorization: `Bearer ${token}` },
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ deviceId }),
       });
 
       if (res.ok) {
         const data = await res.json();
-        setUser(data.user);
+        setDevice({
+          deviceId,
+          isPaid: data.isPaid ?? false,
+          scanCount: data.scanCount ?? 0,
+          freeScansLeft: data.freeScansLeft ?? FREE_SCAN_LIMIT,
+        });
       } else {
-        await removeStoredToken();
+        setDevice({
+          deviceId,
+          isPaid: false,
+          scanCount: 0,
+          freeScansLeft: FREE_SCAN_LIMIT,
+        });
       }
     } catch {
-      await removeStoredToken();
+      const deviceId = await getDeviceId();
+      setDevice({
+        deviceId,
+        isPaid: false,
+        scanCount: 0,
+        freeScansLeft: FREE_SCAN_LIMIT,
+      });
     } finally {
       setIsLoading(false);
     }
   }
 
-  async function signIn(appleUserId: string, email?: string, fullName?: string, identityToken?: string) {
-    const baseUrl = getApiUrl();
-    const url = new URL("/api/auth/apple", baseUrl);
-    const deviceId = await getDeviceId();
-
-    const res = await fetch(url.toString(), {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ appleUserId, email, fullName, identityToken, deviceId }),
-    });
-
-    if (!res.ok) {
-      throw new Error("Sign in failed");
-    }
-
-    const data = await res.json();
-    await setStoredToken(data.sessionToken);
-    setUser(data.user);
-  }
-
-  async function signInAsGuest() {
-    const baseUrl = getApiUrl();
-    const url = new URL("/api/auth/guest", baseUrl);
-    const deviceId = await getDeviceId();
-
-    const res = await fetch(url.toString(), {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ deviceId }),
-    });
-
-    if (!res.ok) {
-      throw new Error("Guest sign in failed");
-    }
-
-    const data = await res.json();
-    await setStoredToken(data.sessionToken);
-    setUser(data.user);
-  }
-
-  async function signOut() {
-    try {
-      const token = await getStoredToken();
-      if (token) {
-        const baseUrl = getApiUrl();
-        const url = new URL("/api/auth/logout", baseUrl);
-        await fetch(url.toString(), {
-          method: "POST",
-          headers: { Authorization: `Bearer ${token}` },
-        });
-      }
-    } catch {} finally {
-      await removeStoredToken();
-      setUser(null);
-    }
-  }
-
-  async function deleteAccount() {
-    try {
-      const token = await getStoredToken();
-      if (token) {
-        const baseUrl = getApiUrl();
-        const url = new URL("/api/auth/delete-account", baseUrl);
-        await fetch(url.toString(), {
-          method: "DELETE",
-          headers: { Authorization: `Bearer ${token}` },
-        });
-      }
-    } catch {} finally {
-      await removeStoredToken();
-      setUser(null);
-    }
-  }
-
   const recordScan = useCallback(async (): Promise<{ allowed: boolean; freeScansLeft: number }> => {
-    const token = await getStoredToken();
-    if (!token) return { allowed: false, freeScansLeft: 0 };
-
-    const baseUrl = getApiUrl();
-    const url = new URL("/api/auth/record-scan", baseUrl);
     const deviceId = await getDeviceId();
+    const baseUrl = getApiUrl();
+    const url = new URL("/api/device/record-scan", baseUrl);
 
-    const res = await fetch(url.toString(), {
-      method: "POST",
-      headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
-      body: JSON.stringify({ deviceId }),
-    });
+    try {
+      const res = await fetch(url.toString(), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ deviceId }),
+      });
 
-    if (!res.ok) return { allowed: false, freeScansLeft: 0 };
+      if (!res.ok) return { allowed: false, freeScansLeft: 0 };
 
-    const data = await res.json();
+      const data = await res.json();
 
-    setUser((prev) =>
-      prev
-        ? { ...prev, scanCount: data.scanCount, freeScansLeft: data.freeScansLeft, isPaid: data.isPaid }
-        : prev,
-    );
+      setDevice((prev) =>
+        prev
+          ? { ...prev, scanCount: data.scanCount, freeScansLeft: data.freeScansLeft, isPaid: data.isPaid ?? prev.isPaid }
+          : prev,
+      );
 
-    return { allowed: data.allowed, freeScansLeft: data.freeScansLeft };
+      return { allowed: data.allowed, freeScansLeft: data.freeScansLeft };
+    } catch {
+      return { allowed: false, freeScansLeft: 0 };
+    }
   }, []);
 
-  const refreshUser = useCallback(async () => {
-    await checkSession();
+  const refreshDevice = useCallback(async () => {
+    await initDevice();
+  }, []);
+
+  const setPaid = useCallback((paid: boolean) => {
+    setDevice((prev) =>
+      prev ? { ...prev, isPaid: paid, freeScansLeft: paid ? 0 : prev.freeScansLeft } : prev,
+    );
   }, []);
 
   const value = useMemo(
     () => ({
-      user,
+      device,
       isLoading,
-      isAuthenticated: !!user,
-      signIn,
-      signInAsGuest,
-      signOut,
-      deleteAccount,
+      isReady: !!device,
+      isPaid: device?.isPaid ?? false,
+      scanCount: device?.scanCount ?? 0,
+      freeScansLeft: device?.freeScansLeft ?? FREE_SCAN_LIMIT,
       recordScan,
-      refreshUser,
+      refreshDevice,
+      setPaid,
     }),
-    [user, isLoading, recordScan, refreshUser],
+    [device, isLoading, recordScan, refreshDevice, setPaid],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
