@@ -15,8 +15,9 @@ Preferred communication style: Simple, everyday language.
 ### Frontend (Expo / React Native)
 
 - **Framework**: Expo SDK 54 with React Native 0.81, using the new architecture (`newArchEnabled: true`)
-- **Routing**: `expo-router` with file-based routing. Auth gate in `app/_layout.tsx` redirects unauthenticated users to `app/sign-in.tsx`. Tab navigation lives in `app/(tabs)/` with three tabs: Scan (barcode camera), Search, and History. Product detail pages are at `app/product/[asin].tsx`
-- **Authentication**: Apple Sign In via `expo-apple-authentication` (iOS only). Auth state managed by `lib/auth-context.tsx` with session tokens stored in `expo-secure-store`. Web has a dev mode sign-in for testing
+- **Routing**: `expo-router` with file-based routing. Auth gate in `app/_layout.tsx` redirects unauthenticated users to `app/sign-in.tsx`. Tab navigation lives in `app/(tabs)/` with four tabs: Scan (barcode camera), Search, History, and Settings. Product detail pages are at `app/product/[asin].tsx`. Paywall is at `app/paywall.tsx` (modal)
+- **Authentication**: Apple Sign In via `expo-apple-authentication` (iOS only) + guest mode. Auth state managed by `lib/auth-context.tsx` with session tokens stored in `expo-secure-store`. Web has a dev mode sign-in for testing
+- **Anti-Abuse**: Device fingerprint via `lib/device-id.ts` stored in SecureStore (persists across app reinstalls on iOS). Device ID sent with guest sign-in and scan recording. Server tracks scans per device in `device_scans` table, preventing users from getting more free scans by deleting accounts or reinstalling the app
 - **State Management**: `@tanstack/react-query` for server state (configured in `lib/query-client.ts`), React `useState` for local UI state, and `AsyncStorage` for persisting scan history locally on-device
 - **UI**: Custom components with no external UI library. Light theme with a clean, professional color system defined in `constants/colors.ts`. Uses `expo-camera` for barcode scanning, `expo-haptics` for tactile feedback, `expo-image` for optimized image rendering, and `react-native-reanimated` for animations
 - **Fonts**: Inter font family (400, 500, 600, 700 weights) loaded via `@expo-google-fonts/inter`
