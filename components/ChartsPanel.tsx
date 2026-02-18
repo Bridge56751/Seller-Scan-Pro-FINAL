@@ -111,41 +111,41 @@ export function ChartsPanel({ priceHistory, rankHistory, loading }: ChartsPanelP
             <Text style={styles.loadingText}>No chart data available</Text>
           </View>
         ) : (
-        <Svg width={chartWidth} height={chartHeight}>
-          <Rect x={padLeft} y={padTop} width={drawW} height={drawH} fill="#FAFBFC" rx={2} />
-          {[0, 0.25, 0.5, 0.75, 1].map((f) => (
-            <Line key={f} x1={padLeft} y1={padTop + f * drawH} x2={padLeft + drawW} y2={padTop + f * drawH} stroke={Colors.light.border} strokeWidth={0.5} />
-          ))}
+          <Svg width={chartWidth} height={chartHeight}>
+            <Rect x={padLeft} y={padTop} width={drawW} height={drawH} fill="#FAFBFC" rx={2} />
+            {[0, 0.25, 0.5, 0.75, 1].map((f) => (
+              <Line key={f} x1={padLeft} y1={padTop + f * drawH} x2={padLeft + drawW} y2={padTop + f * drawH} stroke={Colors.light.border} strokeWidth={0.5} />
+            ))}
 
-          {mode === "price" && priceChartData && (
-            <>
-              <Path d={priceChartData.fbaPath} stroke={Colors.light.fba} strokeWidth={1.5} fill="none" opacity={0.6} />
-              <Path d={priceChartData.amazonPath} stroke={Colors.light.amazon} strokeWidth={1.5} fill="none" opacity={0.7} />
-              <Path d={priceChartData.buyBoxPath} stroke={Colors.light.accent} strokeWidth={2} fill="none" />
-              <SvgText x={padLeft - 4} y={padTop + 8} textAnchor="end" fontSize={9} fill={Colors.light.textTertiary}>
-                ${priceChartData.maxP.toFixed(0)}
-              </SvgText>
-              <SvgText x={padLeft - 4} y={padTop + drawH} textAnchor="end" fontSize={9} fill={Colors.light.textTertiary}>
-                ${priceChartData.minP.toFixed(0)}
-              </SvgText>
-            </>
-          )}
+            {mode === "price" && priceChartData && (
+              <>
+                <Path d={priceChartData.fbaPath} stroke={Colors.light.fba} strokeWidth={1.5} fill="none" opacity={0.6} />
+                <Path d={priceChartData.amazonPath} stroke={Colors.light.amazon} strokeWidth={1.5} fill="none" opacity={0.7} />
+                <Path d={priceChartData.buyBoxPath} stroke={Colors.light.accent} strokeWidth={2} fill="none" />
+                <SvgText x={padLeft - 4} y={padTop + 8} textAnchor="end" fontSize={9} fill={Colors.light.textTertiary}>
+                  ${priceChartData.maxP.toFixed(0)}
+                </SvgText>
+                <SvgText x={padLeft - 4} y={padTop + drawH} textAnchor="end" fontSize={9} fill={Colors.light.textTertiary}>
+                  ${priceChartData.minP.toFixed(0)}
+                </SvgText>
+              </>
+            )}
 
-          {mode === "rank" && rankChartData && (
-            <>
-              <Path d={rankChartData.path} stroke={Colors.light.accent} strokeWidth={2} fill="none" />
-              <SvgText x={padLeft - 4} y={padTop + 8} textAnchor="end" fontSize={8} fill={Colors.light.textTertiary}>
-                {Math.round(rankChartData.minR).toLocaleString()}
-              </SvgText>
-              <SvgText x={padLeft - 4} y={padTop + drawH} textAnchor="end" fontSize={8} fill={Colors.light.textTertiary}>
-                {Math.round(rankChartData.maxR).toLocaleString()}
-              </SvgText>
-            </>
-          )}
+            {mode === "rank" && rankChartData && (
+              <>
+                <Path d={rankChartData.path} stroke={Colors.light.accent} strokeWidth={2} fill="none" />
+                <SvgText x={padLeft - 4} y={padTop + 8} textAnchor="end" fontSize={8} fill={Colors.light.textTertiary}>
+                  {Math.round(rankChartData.minR).toLocaleString()}
+                </SvgText>
+                <SvgText x={padLeft - 4} y={padTop + drawH} textAnchor="end" fontSize={8} fill={Colors.light.textTertiary}>
+                  {Math.round(rankChartData.maxR).toLocaleString()}
+                </SvgText>
+              </>
+            )}
 
-          <SvgText x={padLeft} y={padTop + drawH + 14} fontSize={9} fill={Colors.light.textTertiary}>{rangeNum}d ago</SvgText>
-          <SvgText x={padLeft + drawW} y={padTop + drawH + 14} textAnchor="end" fontSize={9} fill={Colors.light.textTertiary}>Today</SvgText>
-        </Svg>
+            <SvgText x={padLeft} y={padTop + drawH + 14} fontSize={9} fill={Colors.light.textTertiary}>{rangeNum}d ago</SvgText>
+            <SvgText x={padLeft + drawW} y={padTop + drawH + 14} textAnchor="end" fontSize={9} fill={Colors.light.textTertiary}>Today</SvgText>
+          </Svg>
         )}
       </View>
 
