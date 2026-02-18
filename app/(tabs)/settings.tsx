@@ -132,6 +132,22 @@ export default function SettingsScreen() {
         )}
 
         <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Support</Text>
+          <View style={styles.card}>
+            <Pressable
+              style={({ pressed }) => [styles.menuRow, pressed && { backgroundColor: Colors.light.background }]}
+              onPress={() => Linking.openURL("mailto:sellerscanpro@gmail.com")}
+            >
+              <View style={styles.menuLeft}>
+                <Feather name="mail" size={18} color={Colors.light.textSecondary} />
+                <Text style={styles.menuText}>Contact Support</Text>
+              </View>
+              <Text style={styles.supportEmail}>sellerscanpro@gmail.com</Text>
+            </Pressable>
+          </View>
+        </View>
+
+        <View style={styles.section}>
           <Text style={styles.sectionTitle}>Legal</Text>
           <View style={styles.card}>
             <Pressable
@@ -359,6 +375,10 @@ const styles = StyleSheet.create({
   menuText: {
     fontSize: 15,
     color: Colors.light.text,
+  },
+  supportEmail: {
+    fontSize: 12,
+    color: Colors.light.textTertiary,
   },
   menuDivider: {
     height: 1,
