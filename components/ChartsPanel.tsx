@@ -1,4 +1,4 @@
-import { StyleSheet, Text, View, Pressable } from "react-native";
+import { StyleSheet, Text, View, Pressable, ActivityIndicator } from "react-native";
 import { useState, useMemo } from "react";
 import Svg, { Path, Line, Text as SvgText, Rect } from "react-native-svg";
 import type { PricePoint, RankPoint } from "@/lib/mock-data";
@@ -8,12 +8,13 @@ import Colors from "@/constants/colors";
 interface ChartsPanelProps {
   priceHistory: PricePoint[];
   rankHistory: RankPoint[];
+  loading?: boolean;
 }
 
 type ChartMode = "price" | "rank";
 type TimeRange = "30" | "90" | "180";
 
-export function ChartsPanel({ priceHistory, rankHistory }: ChartsPanelProps) {
+export function ChartsPanel({ priceHistory, rankHistory, loading }: ChartsPanelProps) {
   const [mode, setMode] = useState<ChartMode>("price");
   const [range, setRange] = useState<TimeRange>("90");
 
@@ -100,6 +101,16 @@ export function ChartsPanel({ priceHistory, rankHistory }: ChartsPanelProps) {
       </View>
 
       <View style={styles.chartWrap}>
+        {loading ? (
+          <View style={[styles.loadingWrap, { width: chartWidth, height: chartHeight }]}>
+            <ActivityIndicator size="small" color={Colors.light.accent} />
+            <Text style={styles.loadingText}>Loading chart data...</Text>
+          </View>
+        ) : priceHistory.length === 0 && rankHistory.length === 0 ? (
+          <View style={[styles.loadingWrap, { width: chartWidth, height: chartHeight }]}>
+            <Text style={styles.loadingText}>No chart data available</Text>
+          </View>
+        ) : (
         <Svg width={chartWidth} height={chartHeight}>
           <Rect x={padLeft} y={padTop} width={drawW} height={drawH} fill="#FAFBFC" rx={2} />
           {[0, 0.25, 0.5, 0.75, 1].map((f) => (
@@ -135,6 +146,7 @@ export function ChartsPanel({ priceHistory, rankHistory }: ChartsPanelProps) {
           <SvgText x={padLeft} y={padTop + drawH + 14} fontSize={9} fill={Colors.light.textTertiary}>{rangeNum}d ago</SvgText>
           <SvgText x={padLeft + drawW} y={padTop + drawH + 14} textAnchor="end" fontSize={9} fill={Colors.light.textTertiary}>Today</SvgText>
         </Svg>
+        )}
       </View>
 
       {mode === "price" && (
@@ -212,6 +224,16 @@ const styles = StyleSheet.create({
     borderColor: Colors.light.borderLight,
     borderRadius: 6,
     overflow: "hidden",
+  },
+  loadingWrap: {
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "#FAFBFC",
+    gap: 8,
+  },
+  loadingText: {
+    fontSize: 11,
+    color: Colors.light.textTertiary,
   },
   legend: {
     flexDirection: "row",
