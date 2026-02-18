@@ -144,6 +144,17 @@ export default function SettingsScreen() {
               </View>
               <Text style={styles.supportEmail}>sellerscanpro@gmail.com</Text>
             </Pressable>
+            <View style={styles.menuDivider} />
+            <Pressable
+              style={({ pressed }) => [styles.menuRow, pressed && { backgroundColor: Colors.light.background }]}
+              onPress={() => Linking.openURL("https://sellerscan.com")}
+            >
+              <View style={styles.menuLeft}>
+                <Feather name="globe" size={18} color={Colors.light.textSecondary} />
+                <Text style={styles.menuText}>Website</Text>
+              </View>
+              <Feather name="external-link" size={16} color={Colors.light.textTertiary} />
+            </Pressable>
           </View>
         </View>
 
@@ -174,32 +185,34 @@ export default function SettingsScreen() {
           </View>
         </View>
 
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Actions</Text>
-          <View style={styles.card}>
-            <Pressable
-              style={({ pressed }) => [styles.menuRow, pressed && { backgroundColor: Colors.light.background }]}
-              onPress={handleSignOut}
-            >
-              <View style={styles.menuLeft}>
-                <Feather name="log-out" size={18} color={Colors.light.textSecondary} />
-                <Text style={styles.menuText}>Sign Out</Text>
-              </View>
-              <Feather name="chevron-right" size={16} color={Colors.light.textTertiary} />
-            </Pressable>
-            <View style={styles.menuDivider} />
-            <Pressable
-              style={({ pressed }) => [styles.menuRow, pressed && { backgroundColor: Colors.light.dangerDim }]}
-              onPress={handleDeleteAccount}
-            >
-              <View style={styles.menuLeft}>
-                <Feather name="trash-2" size={18} color={Colors.light.danger} />
-                <Text style={[styles.menuText, { color: Colors.light.danger }]}>Delete Account</Text>
-              </View>
-              <Feather name="chevron-right" size={16} color={Colors.light.danger} />
-            </Pressable>
+        {!user?.isGuest && (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Actions</Text>
+            <View style={styles.card}>
+              <Pressable
+                style={({ pressed }) => [styles.menuRow, pressed && { backgroundColor: Colors.light.background }]}
+                onPress={handleSignOut}
+              >
+                <View style={styles.menuLeft}>
+                  <Feather name="log-out" size={18} color={Colors.light.textSecondary} />
+                  <Text style={styles.menuText}>Sign Out</Text>
+                </View>
+                <Feather name="chevron-right" size={16} color={Colors.light.textTertiary} />
+              </Pressable>
+              <View style={styles.menuDivider} />
+              <Pressable
+                style={({ pressed }) => [styles.menuRow, pressed && { backgroundColor: Colors.light.dangerDim }]}
+                onPress={handleDeleteAccount}
+              >
+                <View style={styles.menuLeft}>
+                  <Feather name="trash-2" size={18} color={Colors.light.danger} />
+                  <Text style={[styles.menuText, { color: Colors.light.danger }]}>Delete Account</Text>
+                </View>
+                <Feather name="chevron-right" size={16} color={Colors.light.danger} />
+              </Pressable>
+            </View>
           </View>
-        </View>
+        )}
 
         <Text style={styles.versionText}>Seller Scan v1.0.0</Text>
       </ScrollView>
