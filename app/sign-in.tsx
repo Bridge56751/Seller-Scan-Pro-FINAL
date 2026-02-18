@@ -1,6 +1,7 @@
 import { View, Text, StyleSheet, Platform, Pressable, ActivityIndicator } from "react-native";
 import * as AppleAuthentication from "expo-apple-authentication";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { Image } from "expo-image";
 import { Feather } from "@expo/vector-icons";
 import { useState } from "react";
 import { useAuth } from "@/lib/auth-context";
@@ -76,9 +77,11 @@ export default function SignInScreen() {
   return (
     <View style={[styles.container, { paddingTop: insets.top + 60 }]}>
       <View style={styles.logoContainer}>
-        <View style={styles.logoCircle}>
-          <Feather name="bar-chart-2" size={36} color="#FFFFFF" />
-        </View>
+        <Image
+          source={require("@/assets/images/logo.png")}
+          style={styles.logoImage}
+          contentFit="cover"
+        />
         <Text style={styles.appName}>Seller Scan</Text>
         <Text style={styles.tagline}>Smart product analysis for Amazon sellers</Text>
       </View>
@@ -146,13 +149,10 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginTop: 60,
   },
-  logoCircle: {
-    width: 80,
-    height: 80,
-    borderRadius: 20,
-    backgroundColor: Colors.light.accent,
-    justifyContent: "center",
-    alignItems: "center",
+  logoImage: {
+    width: 90,
+    height: 90,
+    borderRadius: 22,
     marginBottom: 20,
   },
   appName: {
