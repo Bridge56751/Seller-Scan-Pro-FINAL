@@ -33,7 +33,7 @@ export default function ProductDetailScreen() {
   const [scanCheckDone, setScanCheckDone] = useState(false);
   const lastShakeRef = useRef(0);
   const scanRecordedRef = useRef(false);
-  const { user, recordScan } = useAuth();
+  const { isPaid, isReady, recordScan } = useAuth();
 
   useEffect(() => {
     if (Platform.OS === "web") return;
@@ -53,18 +53,17 @@ export default function ProductDetailScreen() {
   }, []);
 
   useEffect(() => {
-    if (!asin) {
-      setScanCheckDone(true);
-      setLoading(false);
+    if (!asin || !isReady) {
+      if (!asin) { setScanCheckDone(true); setLoading(false); }
       return;
     }
 
-    if (user && user.isPaid) {
+    if (isPaid) {
       setScanCheckDone(true);
       return;
     }
 
-    if (user && !user.isPaid && !scanRecordedRef.current) {
+    if (!scanRecordedRef.current) {
       scanRecordedRef.current = true;
       recordScan().then(({ allowed }) => {
         if (!allowed) {
@@ -77,10 +76,8 @@ export default function ProductDetailScreen() {
         setScanBlocked(true);
         router.push("/paywall");
       });
-    } else if (!user) {
-      setScanCheckDone(true);
     }
-  }, [asin, user]);
+  }, [asin, isReady, isPaid]);
 
   useEffect(() => {
     if (!asin || !scanCheckDone || scanBlocked) { setLoading(false); return; }
