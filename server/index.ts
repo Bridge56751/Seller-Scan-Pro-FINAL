@@ -1,7 +1,6 @@
 import express from "express";
 import type { Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
-import rainforestRouter from "./routes/rainforest";
 import keepaRouter from "./routes/keepa";
 import * as fs from "fs";
 import * as path from "path";
@@ -232,7 +231,6 @@ function setupErrorHandler(app: express.Application) {
   setupBodyParsing(app);
   setupRequestLogging(app);
 
-  app.use(rainforestRouter);
   app.use(keepaRouter);
 
   configureExpoAndLanding(app);

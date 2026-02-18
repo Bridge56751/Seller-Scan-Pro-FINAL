@@ -1,6 +1,5 @@
 import { getApiUrl } from "./query-client";
 import type { ProductData, PricePoint, RankPoint } from "./mock-data";
-import { lookupByBarcode, lookupByAsin, searchProducts as mockSearch } from "./mock-data";
 
 const API_BASE = getApiUrl();
 
@@ -25,51 +24,37 @@ async function fetchJson(path: string) {
 }
 
 export async function lookupProductByUPC(upc: string): Promise<ProductData | null> {
-  const mock = lookupByBarcode(upc);
-  if (mock) return mock;
-
   try {
     const data = await fetchJson(`/api/product/upc/${encodeURIComponent(upc)}`);
     if (data.notFound) return null;
     if (data.product) return data.product;
     return null;
   } catch (err: any) {
-    if (err.message?.includes("not configured")) return null;
+    console.error("UPC lookup error:", err.message);
     return null;
   }
 }
 
 export async function lookupProductByASIN(asin: string): Promise<ProductData | null> {
-  const mock = lookupByAsin(asin);
-  if (mock) return mock;
-
   try {
     const data = await fetchJson(`/api/product/asin/${encodeURIComponent(asin)}`);
     if (data.notFound) return null;
     if (data.product) return data.product;
     return null;
   } catch (err: any) {
-    if (err.message?.includes("not configured")) return null;
+    console.error("ASIN lookup error:", err.message);
     return null;
   }
 }
 
 export async function searchProductsAPI(query: string): Promise<ProductData[]> {
-  const mockResults = mockSearch(query);
-  if (mockResults.length > 0) return mockResults;
-
-  const asinResult = lookupByAsin(query);
-  if (asinResult) return [asinResult];
-  const barcodeResult = lookupByBarcode(query);
-  if (barcodeResult) return [barcodeResult];
-
   try {
     const data = await fetchJson(`/api/product/search/${encodeURIComponent(query)}`);
     if (data.notFound) return [];
     if (data.products && Array.isArray(data.products)) return data.products;
     return [];
   } catch (err: any) {
-    if (err.message?.includes("not configured")) return [];
+    console.error("Search error:", err.message);
     return [];
   }
 }
