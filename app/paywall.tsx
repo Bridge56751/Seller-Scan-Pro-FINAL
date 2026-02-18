@@ -1,9 +1,12 @@
-import { View, Text, StyleSheet, Pressable, Platform } from "react-native";
+import { View, Text, StyleSheet, Pressable, Platform, ScrollView, Linking } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { router } from "expo-router";
 import { Feather } from "@expo/vector-icons";
 import Colors from "@/constants/colors";
 import { useAuth } from "@/lib/auth-context";
+
+const PRIVACY_URL = "https://example.com/privacy";
+const EULA_URL = "https://www.apple.com/legal/internet-services/itunes/dev/stdeula/";
 
 function dismissPaywall() {
   if (router.canGoBack()) {
@@ -36,31 +39,57 @@ export default function PaywallScreen() {
         </Pressable>
       </View>
 
-      <View style={styles.content}>
-        <View style={styles.iconContainer}>
-          <Feather name={scansUsedUp ? "lock" : "star"} size={40} color={Colors.light.accent} />
+      <ScrollView
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+      >
+        <View style={styles.content}>
+          <View style={styles.iconContainer}>
+            <Feather name={scansUsedUp ? "lock" : "star"} size={40} color={Colors.light.accent} />
+          </View>
+
+          <Text style={styles.title}>{scansUsedUp ? "Free Scans Used Up" : "Upgrade to Pro"}</Text>
+          <Text style={styles.subtitle}>
+            {scansUsedUp
+              ? "You've used all 5 of your free product scans. Upgrade to Seller Scan Pro for unlimited scanning."
+              : "Get the most out of Seller Scan with unlimited product scans and full access to every feature."}
+          </Text>
+
+          <View style={styles.featuresContainer}>
+            <FeatureRow icon="zap" text="Unlimited product scans" />
+            <FeatureRow icon="bar-chart-2" text="Full profit analysis" />
+            <FeatureRow icon="trending-up" text="Price & rank history charts" />
+            <FeatureRow icon="bell" text="Product alerts & warnings" />
+          </View>
+
+          <View style={styles.priceCard}>
+            <Text style={styles.priceCardTitle}>Seller Scan Pro</Text>
+            <View style={styles.priceRow}>
+              <Text style={styles.priceAmount}>$4.99</Text>
+              <Text style={styles.pricePeriod}>/month</Text>
+            </View>
+            <Text style={styles.priceDuration}>Monthly subscription</Text>
+          </View>
+
+          <Pressable style={styles.upgradeButton} onPress={() => {/* RevenueCat purchase flow */}}>
+            <Text style={styles.upgradeButtonText}>Subscribe Now</Text>
+          </Pressable>
+
+          <Text style={styles.renewalDisclosure}>
+            Payment will be charged to your Apple ID account at confirmation of purchase. Subscription automatically renews at $4.99/month unless canceled at least 24 hours before the end of the current billing period. Your account will be charged for renewal within 24 hours prior to the end of the current period. You can manage and cancel your subscription in your device's Settings {">"} Apple ID {">"} Subscriptions.
+          </Text>
+
+          <View style={styles.legalLinks}>
+            <Pressable onPress={() => Linking.openURL(PRIVACY_URL)}>
+              <Text style={styles.legalLinkText}>Privacy Policy</Text>
+            </Pressable>
+            <Text style={styles.legalSeparator}>|</Text>
+            <Pressable onPress={() => Linking.openURL(EULA_URL)}>
+              <Text style={styles.legalLinkText}>Terms of Use (EULA)</Text>
+            </Pressable>
+          </View>
         </View>
-
-        <Text style={styles.title}>{scansUsedUp ? "Free Scans Used Up" : "Upgrade to Pro"}</Text>
-        <Text style={styles.subtitle}>
-          {scansUsedUp
-            ? "You've used all 5 of your free product scans. Upgrade to Seller Scan Pro for unlimited scanning."
-            : "Get the most out of Seller Scan with unlimited product scans and full access to every feature."}
-        </Text>
-
-        <View style={styles.featuresContainer}>
-          <FeatureRow icon="zap" text="Unlimited product scans" />
-          <FeatureRow icon="bar-chart-2" text="Full profit analysis" />
-          <FeatureRow icon="trending-up" text="Price & rank history charts" />
-          <FeatureRow icon="bell" text="Product alerts & warnings" />
-        </View>
-
-        <Pressable style={styles.upgradeButton} onPress={() => {/* RevenueCat purchase flow */}}>
-          <Text style={styles.upgradeButtonText}>Upgrade to Pro — $4.99/mo</Text>
-        </Pressable>
-
-        <Text style={styles.priceNote}>Cancel anytime. Billed monthly.</Text>
-      </View>
+      </ScrollView>
     </View>
   );
 }
@@ -98,12 +127,14 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
   },
+  scrollContent: {
+    flexGrow: 1,
+    justifyContent: "center",
+  },
   content: {
-    flex: 1,
     paddingHorizontal: 32,
     alignItems: "center",
-    justifyContent: "center",
-    marginTop: -60,
+    paddingBottom: 40,
   },
   iconContainer: {
     width: 80,
@@ -126,13 +157,13 @@ const styles = StyleSheet.create({
     color: Colors.light.textSecondary,
     textAlign: "center",
     lineHeight: 22,
-    marginBottom: 32,
+    marginBottom: 28,
     paddingHorizontal: 10,
   },
   featuresContainer: {
     width: "100%",
     gap: 14,
-    marginBottom: 32,
+    marginBottom: 28,
   },
   featureRow: {
     flexDirection: "row",
@@ -152,6 +183,43 @@ const styles = StyleSheet.create({
     fontWeight: "500" as const,
     color: Colors.light.text,
   },
+  priceCard: {
+    width: "100%",
+    backgroundColor: Colors.light.background,
+    borderRadius: 12,
+    borderWidth: 2,
+    borderColor: Colors.light.accent,
+    paddingVertical: 16,
+    paddingHorizontal: 20,
+    alignItems: "center",
+    marginBottom: 20,
+  },
+  priceCardTitle: {
+    fontSize: 14,
+    fontWeight: "600" as const,
+    color: Colors.light.textSecondary,
+    marginBottom: 4,
+  },
+  priceRow: {
+    flexDirection: "row",
+    alignItems: "baseline",
+  },
+  priceAmount: {
+    fontSize: 32,
+    fontWeight: "700" as const,
+    color: Colors.light.text,
+  },
+  pricePeriod: {
+    fontSize: 16,
+    fontWeight: "500" as const,
+    color: Colors.light.textSecondary,
+    marginLeft: 2,
+  },
+  priceDuration: {
+    fontSize: 13,
+    color: Colors.light.textTertiary,
+    marginTop: 2,
+  },
   upgradeButton: {
     width: "100%",
     height: 52,
@@ -159,15 +227,33 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     justifyContent: "center",
     alignItems: "center",
+    marginBottom: 16,
   },
   upgradeButtonText: {
     color: "#FFFFFF",
     fontSize: 17,
     fontWeight: "700" as const,
   },
-  priceNote: {
+  renewalDisclosure: {
+    fontSize: 11,
+    color: Colors.light.textTertiary,
+    textAlign: "center",
+    lineHeight: 16,
+    paddingHorizontal: 4,
+    marginBottom: 16,
+  },
+  legalLinks: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  legalLinkText: {
+    fontSize: 12,
+    color: Colors.light.accent,
+    fontWeight: "500" as const,
+  },
+  legalSeparator: {
     fontSize: 12,
     color: Colors.light.textTertiary,
-    marginTop: 10,
   },
 });
