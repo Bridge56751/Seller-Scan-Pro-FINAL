@@ -17,8 +17,7 @@
       "supportsTablet": false,
       "bundleIdentifier": "com.scanprofit",
       "infoPlist": {
-        "NSCameraUsageDescription": "Seller Scan uses the camera to scan product barcodes (UPC, EAN) so you can instantly look up Amazon pricing, sales rank, and profitability data for each item.",
-        "NSPhotoLibraryUsageDescription": "Seller Scan accesses your photo library so you can select images of product barcodes to look up Amazon pricing and profitability information."
+        "NSCameraUsageDescription": "Seller Scan uses the camera to scan product barcodes (UPC, EAN) so you can instantly look up Amazon pricing, sales rank, and profitability data for each item."
       }
     },
     "android": {
