@@ -1,7 +1,5 @@
 import { sql } from "drizzle-orm";
 import { pgTable, text, varchar, timestamp, integer, boolean } from "drizzle-orm/pg-core";
-import { createInsertSchema } from "drizzle-zod";
-import { z } from "zod";
 
 export const users = pgTable("users", {
   id: varchar("id")
@@ -27,12 +25,3 @@ export const deviceScans = pgTable("device_scans", {
 });
 
 export type DeviceScan = typeof deviceScans.$inferSelect;
-
-export const insertUserSchema = createInsertSchema(users).pick({
-  appleUserId: true,
-  email: true,
-  fullName: true,
-});
-
-export type InsertUser = z.infer<typeof insertUserSchema>;
-export type User = typeof users.$inferSelect;

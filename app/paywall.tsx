@@ -1,4 +1,4 @@
-import { View, Text, StyleSheet, Pressable, Platform, ScrollView, Linking } from "react-native";
+import { View, Text, StyleSheet, Pressable, Platform, ScrollView, Linking, Alert } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { router } from "expo-router";
 import { Feather } from "@expo/vector-icons";
@@ -78,6 +78,19 @@ export default function PaywallScreen() {
           <Text style={styles.renewalDisclosure}>
             Payment will be charged to your Apple ID account at confirmation of purchase. Subscription automatically renews at $4.99/month unless canceled at least 24 hours before the end of the current billing period. Your account will be charged for renewal within 24 hours prior to the end of the current period. You can manage and cancel your subscription in your device's Settings {">"} Apple ID {">"} Subscriptions.
           </Text>
+
+          <Pressable
+            style={styles.restoreButton}
+            onPress={() => {
+              if (Platform.OS === "web") {
+                alert("Restore Purchases is only available on iOS.");
+              } else {
+                Alert.alert("Restore Purchases", "Checking for previous purchases...");
+              }
+            }}
+          >
+            <Text style={styles.restoreButtonText}>Restore Purchases</Text>
+          </Pressable>
 
           <View style={styles.legalLinks}>
             <Pressable onPress={() => Linking.openURL(PRIVACY_URL)}>
@@ -251,6 +264,16 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: Colors.light.accent,
     fontWeight: "500" as const,
+  },
+  restoreButton: {
+    paddingVertical: 10,
+    marginBottom: 12,
+  },
+  restoreButtonText: {
+    fontSize: 13,
+    color: Colors.light.accent,
+    fontWeight: "500" as const,
+    textAlign: "center" as const,
   },
   legalSeparator: {
     fontSize: 12,
