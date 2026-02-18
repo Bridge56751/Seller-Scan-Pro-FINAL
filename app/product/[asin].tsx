@@ -1,9 +1,10 @@
 import { StyleSheet, Text, View, ScrollView, Pressable, Platform } from "react-native";
 import { useLocalSearchParams, router } from "expo-router";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useRef, useCallback } from "react";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
+import { Accelerometer } from "expo-sensors";
 import Colors from "@/constants/colors";
 import { lookupByAsin, calculateProfit, type ProductData } from "@/lib/mock-data";
 import { lookupProductByASIN, fetchKeepaChartData, type KeepaChartData } from "@/lib/api";
@@ -26,6 +27,24 @@ export default function ProductDetailScreen() {
   const [loading, setLoading] = useState(true);
   const [chartData, setChartData] = useState<KeepaChartData | null>(null);
   const [chartsLoading, setChartsLoading] = useState(false);
+  const lastShakeRef = useRef(0);
+
+  useEffect(() => {
+    if (Platform.OS === "web") return;
+    Accelerometer.setUpdateInterval(100);
+    const sub = Accelerometer.addListener(({ x, y, z }) => {
+      const magnitude = Math.sqrt(x * x + y * y + z * z);
+      if (magnitude > 2.5) {
+        const now = Date.now();
+        if (now - lastShakeRef.current > 1500) {
+          lastShakeRef.current = now;
+          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+          router.back();
+        }
+      }
+    });
+    return () => sub.remove();
+  }, []);
 
   useEffect(() => {
     if (!asin) { setLoading(false); return; }
