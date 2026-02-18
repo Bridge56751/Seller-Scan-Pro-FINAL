@@ -18,11 +18,11 @@ function dismissPaywall() {
 
 export default function PaywallScreen() {
   const insets = useSafeAreaInsets();
-  const { user } = useAuth();
+  const { freeScansLeft } = useAuth();
   const webTopInset = Platform.OS === "web" ? 67 : 0;
   const topPadding = Math.max(insets.top, webTopInset);
 
-  const scansUsedUp = user ? user.freeScansLeft <= 0 : false;
+  const scansUsedUp = freeScansLeft <= 0;
 
   return (
     <View style={styles.container}>
