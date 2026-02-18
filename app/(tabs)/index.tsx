@@ -115,20 +115,23 @@ export default function ScanScreen() {
       )}
 
       <View style={styles.overlay}>
-        <View style={[styles.topBar, { paddingTop: insets.top + webTopInset + 6 }]}>
-          <View style={styles.topLeft}>
-            <MaterialCommunityIcons name="barcode-scan" size={22} color="#FFF" />
-            <Text style={styles.topTitle}>Seller Scan</Text>
+        <View>
+          <View style={[styles.topBarFill, { height: insets.top + webTopInset }]} />
+          <View style={styles.topBar}>
+            <View style={styles.topLeft}>
+              <MaterialCommunityIcons name="barcode-scan" size={22} color="#FFF" />
+              <Text style={styles.topTitle}>Seller Scan</Text>
+            </View>
+            <Pressable
+              onPress={() => {
+                setFlashOn(!flashOn);
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              }}
+              style={({ pressed }) => [styles.flashBtn, pressed && { opacity: 0.7 }]}
+            >
+              <Feather name={flashOn ? "zap" : "zap-off"} size={18} color="#FFF" />
+            </Pressable>
           </View>
-          <Pressable
-            onPress={() => {
-              setFlashOn(!flashOn);
-              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-            }}
-            style={({ pressed }) => [styles.flashBtn, pressed && { opacity: 0.7 }]}
-          >
-            <Feather name={flashOn ? "zap" : "zap-off"} size={18} color="#FFF" />
-          </Pressable>
         </View>
 
         <View style={styles.scanFrame}>
@@ -227,11 +230,15 @@ const styles = StyleSheet.create({
     ...StyleSheet.absoluteFillObject,
     justifyContent: "space-between",
   },
+  topBarFill: {
+    backgroundColor: Colors.light.accent,
+  },
   topBar: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
     paddingHorizontal: 16,
+    paddingTop: 6,
     paddingBottom: 10,
     backgroundColor: Colors.light.accent,
   },
