@@ -166,4 +166,28 @@ router.post("/api/auth/record-scan", async (req: Request, res: Response) => {
   }
 });
 
+router.delete("/api/auth/delete-account", async (req: Request, res: Response) => {
+  try {
+    const authHeader = req.headers.authorization;
+    if (!authHeader?.startsWith("Bearer ")) {
+      return res.status(401).json({ error: "Not authenticated" });
+    }
+
+    const token = authHeader.slice(7);
+    const user = await storage.getUserBySessionToken(token);
+
+    if (!user) {
+      return res.status(401).json({ error: "Invalid session" });
+    }
+
+    await storage.deleteUser(user.id);
+    console.log(`[Auth] User deleted: ${user.id}`);
+
+    return res.json({ success: true });
+  } catch (error: any) {
+    console.error("[Auth] Delete account error:", error.message);
+    return res.status(500).json({ error: "Failed to delete account" });
+  }
+});
+
 export default router;

@@ -23,6 +23,7 @@ interface AuthContextValue {
   signIn: (appleUserId: string, email?: string, fullName?: string, identityToken?: string) => Promise<void>;
   signInAsGuest: () => Promise<void>;
   signOut: () => Promise<void>;
+  deleteAccount: () => Promise<void>;
   recordScan: () => Promise<{ allowed: boolean; freeScansLeft: number }>;
   refreshUser: () => Promise<void>;
 }
@@ -138,6 +139,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }
 
+  async function deleteAccount() {
+    try {
+      const token = await getStoredToken();
+      if (token) {
+        const baseUrl = getApiUrl();
+        const url = new URL("/api/auth/delete-account", baseUrl);
+        await fetch(url.toString(), {
+          method: "DELETE",
+          headers: { Authorization: `Bearer ${token}` },
+        });
+      }
+    } catch {} finally {
+      await removeStoredToken();
+      setUser(null);
+    }
+  }
+
   const recordScan = useCallback(async (): Promise<{ allowed: boolean; freeScansLeft: number }> => {
     const token = await getStoredToken();
     if (!token) return { allowed: false, freeScansLeft: 0 };
@@ -175,6 +193,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       signIn,
       signInAsGuest,
       signOut,
+      deleteAccount,
       recordScan,
       refreshUser,
     }),

@@ -23,6 +23,7 @@ export interface IStorage {
   incrementScanCount(userId: string): Promise<number>;
   getScanCount(userId: string): Promise<number>;
   setUserPaid(userId: string): Promise<void>;
+  deleteUser(userId: string): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -65,6 +66,10 @@ export class DatabaseStorage implements IStorage {
 
   async setUserPaid(userId: string): Promise<void> {
     await db.update(users).set({ isPaid: true }).where(eq(users.id, userId));
+  }
+
+  async deleteUser(userId: string): Promise<void> {
+    await db.delete(users).where(eq(users.id, userId));
   }
 }
 
