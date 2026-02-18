@@ -42,7 +42,7 @@ export interface KeepaChartData {
 
 export async function fetchKeepaProductFull(asin: string): Promise<KeepaFullProduct | null> {
   const apiKey = getApiKey();
-  const url = `${KEEPA_BASE_URL}/product?key=${encodeURIComponent(apiKey)}&domain=1&asin=${encodeURIComponent(asin)}&history=1&days=180&stats=180&offers=20&rating=1&buybox=1`;
+  const url = `${KEEPA_BASE_URL}/product?key=${encodeURIComponent(apiKey)}&domain=1&asin=${encodeURIComponent(asin)}&history=1&days=180&stats=180&rating=1&buybox=1`;
 
   console.log(`[Keepa] Fetching full product data for ASIN: ${asin}`);
   const response = await fetch(url);
@@ -70,7 +70,7 @@ export async function fetchKeepaProductFull(asin: string): Promise<KeepaFullProd
 
 export async function fetchKeepaProductByCode(code: string): Promise<KeepaFullProduct | null> {
   const apiKey = getApiKey();
-  const url = `${KEEPA_BASE_URL}/product?key=${encodeURIComponent(apiKey)}&domain=1&code=${encodeURIComponent(code)}&history=1&days=180&stats=180&offers=20&rating=1&buybox=1`;
+  const url = `${KEEPA_BASE_URL}/product?key=${encodeURIComponent(apiKey)}&domain=1&code=${encodeURIComponent(code)}&history=1&days=180&stats=180&rating=1&buybox=1`;
 
   console.log(`[Keepa] Fetching product by UPC/EAN: ${code}`);
   const response = await fetch(url);
@@ -94,6 +94,45 @@ export async function fetchKeepaProductByCode(code: string): Promise<KeepaFullPr
   const { priceHistory, rankHistory } = extractChartData(kp);
 
   return { product, priceHistory, rankHistory, tokensLeft, refillRate };
+}
+
+export interface KeepaOffersResult {
+  competitors: Competitor[];
+  fbaSellerCount: number;
+  fbmSellerCount: number;
+  tokensLeft: number;
+}
+
+export async function fetchKeepaOffers(asin: string): Promise<KeepaOffersResult> {
+  const apiKey = getApiKey();
+  const url = `${KEEPA_BASE_URL}/product?key=${encodeURIComponent(apiKey)}&domain=1&asin=${encodeURIComponent(asin)}&offers=20&history=1&days=1&stats=1`;
+
+  console.log(`[Keepa] Fetching offers for ASIN: ${asin} (2 tokens)`);
+  const response = await fetch(url);
+  if (!response.ok) {
+    const body = await response.text();
+    console.error(`Keepa offers error (${response.status}): ${body}`);
+    throw new Error(`Keepa offers error (${response.status})`);
+  }
+
+  const data = await response.json();
+  const tokensLeft = data.tokensLeft || 0;
+  console.log(`[Keepa] Offers fetched, tokens remaining: ${tokensLeft}`);
+
+  if (!data.products || data.products.length === 0) {
+    return { competitors: [], fbaSellerCount: 0, fbmSellerCount: 0, tokensLeft };
+  }
+
+  const kp = data.products[0];
+  const competitors = buildCompetitors(kp);
+  let fbaSellerCount = 0;
+  let fbmSellerCount = 0;
+  for (const c of competitors) {
+    if (c.isFBA) fbaSellerCount++;
+    else fbmSellerCount++;
+  }
+
+  return { competitors, fbaSellerCount, fbmSellerCount, tokensLeft };
 }
 
 export async function searchKeepaProducts(term: string): Promise<{ products: ProductData[]; tokensLeft: number }> {

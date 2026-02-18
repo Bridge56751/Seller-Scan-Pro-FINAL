@@ -1,8 +1,7 @@
 import { StyleSheet, Text, View } from "react-native";
-import { useMemo } from "react";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import type { ProductData, Competitor } from "@/lib/mock-data";
-import { formatCurrency, calculateProfit } from "@/lib/mock-data";
+import { formatCurrency } from "@/lib/mock-data";
 import { CollapsiblePanel } from "./CollapsiblePanel";
 import Colors from "@/constants/colors";
 
@@ -54,7 +53,8 @@ function OfferRow({ seller, product, costPrice, isLast }: { seller: Competitor; 
 }
 
 export function OffersPanel({ product, costPrice }: OffersPanelProps) {
-  const totalSellers = product.fbaSellerCount + product.fbmSellerCount;
+  const totalSellers = product.competitorCount || (product.fbaSellerCount + product.fbmSellerCount);
+  const hasDetailedOffers = product.competitors && product.competitors.length > 0;
 
   return (
     <CollapsiblePanel
@@ -64,34 +64,49 @@ export function OffersPanel({ product, costPrice }: OffersPanelProps) {
     >
       <View style={styles.summaryRow}>
         <View style={styles.summaryItem}>
-          <Text style={styles.summaryNum}>{product.fbaSellerCount}</Text>
-          <Text style={[styles.summaryLabel, { color: Colors.light.fba }]}>FBA</Text>
-        </View>
-        <View style={styles.summaryItem}>
-          <Text style={styles.summaryNum}>{product.fbmSellerCount}</Text>
-          <Text style={[styles.summaryLabel, { color: Colors.light.fbm }]}>FBM</Text>
+          <Text style={styles.summaryNum}>{totalSellers}</Text>
+          <Text style={[styles.summaryLabel, { color: Colors.light.tint }]}>Total</Text>
         </View>
         <View style={styles.summaryItem}>
           <Text style={styles.summaryNum}>{formatCurrency(product.buyBoxPrice)}</Text>
           <Text style={[styles.summaryLabel, { color: Colors.light.buyBox }]}>Buy Box</Text>
         </View>
+        <View style={styles.summaryItem}>
+          <Text style={styles.summaryNum}>{product.buyBoxSeller === "ATVPDKIKX0DER" || product.buyBoxSeller === "Amazon.com" ? "Amazon" : "3P"}</Text>
+          <Text style={[styles.summaryLabel, { color: Colors.light.textTertiary }]}>BB Owner</Text>
+        </View>
       </View>
 
-      <View style={styles.offersList}>
-        <View style={styles.offersHeader}>
-          <Text style={styles.offersHeaderText}>Seller</Text>
-          <Text style={styles.offersHeaderText}>Price {costPrice > 0 ? "/ Your Profit" : ""}</Text>
+      {product.buyBoxIsFBA !== undefined && (
+        <View style={styles.buyBoxRow}>
+          <View style={[styles.fulfillmentTag, { backgroundColor: product.buyBoxIsFBA ? "rgba(124, 58, 237, 0.08)" : "rgba(8, 145, 178, 0.08)" }]}>
+            <Text style={[styles.fulfillmentText, { color: product.buyBoxIsFBA ? Colors.light.fba : Colors.light.fbm }]}>
+              Buy Box: {product.buyBoxIsFBA ? "FBA" : "FBM"}
+            </Text>
+          </View>
+          {product.buyBoxSeller && product.buyBoxSeller !== "Unknown" && (
+            <Text style={styles.buyBoxSellerName} numberOfLines={1}>{product.buyBoxSeller}</Text>
+          )}
         </View>
-        {product.competitors.map((seller, i) => (
-          <OfferRow
-            key={i}
-            seller={seller}
-            product={product}
-            costPrice={costPrice}
-            isLast={i === product.competitors.length - 1}
-          />
-        ))}
-      </View>
+      )}
+
+      {hasDetailedOffers && (
+        <View style={styles.offersList}>
+          <View style={styles.offersHeader}>
+            <Text style={styles.offersHeaderText}>Seller</Text>
+            <Text style={styles.offersHeaderText}>Price {costPrice > 0 ? "/ Your Profit" : ""}</Text>
+          </View>
+          {product.competitors.map((seller, i) => (
+            <OfferRow
+              key={i}
+              seller={seller}
+              product={product}
+              costPrice={costPrice}
+              isLast={i === product.competitors.length - 1}
+            />
+          ))}
+        </View>
+      )}
     </CollapsiblePanel>
   );
 }
@@ -119,6 +134,17 @@ const styles = StyleSheet.create({
     fontSize: 10,
     fontWeight: "600" as const,
     marginTop: 2,
+  },
+  buyBoxRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    marginBottom: 8,
+  },
+  buyBoxSellerName: {
+    fontSize: 12,
+    color: Colors.light.textSecondary,
+    flex: 1,
   },
   offersList: {},
   offersHeader: {
