@@ -1,4 +1,4 @@
-import { View, Text, StyleSheet, Pressable, ScrollView, Platform, Linking } from "react-native";
+import { View, Text, StyleSheet, Pressable, ScrollView, Platform, Linking, Alert } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Feather } from "@expo/vector-icons";
 import { router } from "expo-router";
@@ -135,29 +135,48 @@ export default function SettingsScreen() {
           </View>
         </View>
 
-        {isPaid && (
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Manage Subscription</Text>
-            <View style={styles.card}>
-              <Pressable
-                style={({ pressed }) => [styles.menuRow, pressed && { backgroundColor: Colors.light.background }]}
-                onPress={() => {
-                  if (Platform.OS === "ios") {
-                    Linking.openURL("https://apps.apple.com/account/subscriptions");
-                  } else {
-                    Linking.openURL("https://play.google.com/store/account/subscriptions");
-                  }
-                }}
-              >
-                <View style={styles.menuLeft}>
-                  <Feather name="settings" size={18} color={Colors.light.textSecondary} />
-                  <Text style={styles.menuText}>Manage in App Store</Text>
-                </View>
-                <Feather name="external-link" size={16} color={Colors.light.textTertiary} />
-              </Pressable>
-            </View>
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>{isPaid ? "Manage Subscription" : "Purchases"}</Text>
+          <View style={styles.card}>
+            <Pressable
+              style={({ pressed }) => [styles.menuRow, pressed && { backgroundColor: Colors.light.background }]}
+              onPress={() => {
+                if (Platform.OS === "web") {
+                  alert("Restore Purchases is only available on iOS.");
+                } else {
+                  Alert.alert("Restore Purchases", "Checking for previous purchases...");
+                }
+              }}
+            >
+              <View style={styles.menuLeft}>
+                <Feather name="refresh-cw" size={18} color={Colors.light.textSecondary} />
+                <Text style={styles.menuText}>Restore Purchases</Text>
+              </View>
+              <Feather name="chevron-right" size={16} color={Colors.light.textTertiary} />
+            </Pressable>
+            {isPaid && (
+              <>
+                <View style={styles.menuDivider} />
+                <Pressable
+                  style={({ pressed }) => [styles.menuRow, pressed && { backgroundColor: Colors.light.background }]}
+                  onPress={() => {
+                    if (Platform.OS === "ios") {
+                      Linking.openURL("https://apps.apple.com/account/subscriptions");
+                    } else {
+                      Linking.openURL("https://play.google.com/store/account/subscriptions");
+                    }
+                  }}
+                >
+                  <View style={styles.menuLeft}>
+                    <Feather name="settings" size={18} color={Colors.light.textSecondary} />
+                    <Text style={styles.menuText}>Manage in App Store</Text>
+                  </View>
+                  <Feather name="external-link" size={16} color={Colors.light.textTertiary} />
+                </Pressable>
+              </>
+            )}
           </View>
-        )}
+        </View>
 
         <Text style={styles.versionText}>Seller Scan v1.0.0</Text>
       </ScrollView>
