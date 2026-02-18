@@ -57,9 +57,9 @@ export default function PaywallScreen() {
 
           <View style={styles.featuresContainer}>
             <FeatureRow icon="zap" text="Unlimited product scans" />
-            <FeatureRow icon="bar-chart-2" text="Full profit analysis" />
-            <FeatureRow icon="trending-up" text="Price & rank history charts" />
-            <FeatureRow icon="bell" text="Product alerts & warnings" />
+            <FeatureRow icon="dollar-sign" text="Instant profit & ROI calculator" />
+            <FeatureRow icon="trending-up" text="Price & sales rank history" />
+            <FeatureRow icon="users" text="Competitor & Buy Box analysis" />
           </View>
 
           <View style={styles.priceCard}>
