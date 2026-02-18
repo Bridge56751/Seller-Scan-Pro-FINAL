@@ -11,11 +11,14 @@ interface QuickInfoPanelProps {
   product: ProductData;
   costPrice: number;
   onCostChange: (cost: number) => void;
+  salePrice: number;
+  onSalePriceChange: (price: number) => void;
 }
 
-export function QuickInfoPanel({ product, costPrice, onCostChange }: QuickInfoPanelProps) {
+export function QuickInfoPanel({ product, costPrice, onCostChange, salePrice, onSalePriceChange }: QuickInfoPanelProps) {
   const [costInput, setCostInput] = useState(costPrice > 0 ? costPrice.toString() : "");
-  const calc = useMemo(() => calculateProfit(product, costPrice), [product, costPrice]);
+  const [salePriceInput, setSalePriceInput] = useState(salePrice > 0 ? salePrice.toFixed(2) : "");
+  const calc = useMemo(() => calculateProfit(product, costPrice, salePrice), [product, costPrice, salePrice]);
   const isProfitable = calc.profit > 0 && costPrice > 0;
   const salesPerMonth = estimateSalesPerDay(product.categoryRank, product.category) * 30;
 
@@ -25,9 +28,11 @@ export function QuickInfoPanel({ product, costPrice, onCostChange }: QuickInfoPa
     onCostChange(isNaN(val) ? 0 : val);
   };
 
-  const eligibilityColor = product.isGated ? Colors.light.red : product.isRestricted ? Colors.light.yellow : Colors.light.green;
-  const eligibilityBg = product.isGated ? Colors.light.redBg : product.isRestricted ? Colors.light.yellowBg : Colors.light.greenBg;
-  const eligibilityText = product.isGated ? "GATED" : product.isRestricted ? "RESTRICTED" : "ELIGIBLE";
+  const handleSalePriceChange = (text: string) => {
+    setSalePriceInput(text);
+    const val = parseFloat(text);
+    onSalePriceChange(isNaN(val) ? 0 : val);
+  };
 
   return (
     <CollapsiblePanel title="Quick Info" icon="zap">
@@ -51,13 +56,6 @@ export function QuickInfoPanel({ product, costPrice, onCostChange }: QuickInfoPa
 
       <View style={styles.divider} />
 
-      <View style={styles.eligibilityRow}>
-        <View style={[styles.eligibilityBadge, { backgroundColor: eligibilityBg }]}>
-          <View style={[styles.dot, { backgroundColor: eligibilityColor }]} />
-          <Text style={[styles.eligibilityText, { color: eligibilityColor }]}>{eligibilityText}</Text>
-        </View>
-      </View>
-
       <View style={styles.inputRow}>
         <View style={styles.inputGroup}>
           <Text style={styles.inputLabel}>Cost Price</Text>
@@ -76,9 +74,17 @@ export function QuickInfoPanel({ product, costPrice, onCostChange }: QuickInfoPa
         </View>
         <View style={styles.inputGroup}>
           <Text style={styles.inputLabel}>Sale Price</Text>
-          <View style={[styles.inputWrap, styles.inputDisabled]}>
+          <View style={styles.inputWrap}>
             <Text style={styles.currencySign}>$</Text>
-            <Text style={styles.inputValue}>{product.buyBoxPrice.toFixed(2)}</Text>
+            <TextInput
+              style={styles.input}
+              value={salePriceInput}
+              onChangeText={handleSalePriceChange}
+              placeholder={product.buyBoxPrice.toFixed(2)}
+              placeholderTextColor={Colors.light.textTertiary}
+              keyboardType="decimal-pad"
+              returnKeyType="done"
+            />
           </View>
         </View>
       </View>
@@ -177,28 +183,6 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.light.border,
     marginVertical: 8,
   },
-  eligibilityRow: {
-    marginBottom: 10,
-  },
-  eligibilityBadge: {
-    flexDirection: "row",
-    alignItems: "center",
-    alignSelf: "flex-start",
-    gap: 6,
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 4,
-  },
-  dot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-  },
-  eligibilityText: {
-    fontSize: 11,
-    fontWeight: "700" as const,
-    letterSpacing: 0.5,
-  },
   inputRow: {
     flexDirection: "row",
     gap: 10,
@@ -223,9 +207,6 @@ const styles = StyleSheet.create({
     height: 38,
     backgroundColor: "#FFFFFF",
   },
-  inputDisabled: {
-    backgroundColor: Colors.light.surfaceElevated,
-  },
   currencySign: {
     fontSize: 14,
     color: Colors.light.textTertiary,
@@ -237,11 +218,6 @@ const styles = StyleSheet.create({
     fontWeight: "600" as const,
     color: Colors.light.text,
     padding: 0,
-  },
-  inputValue: {
-    fontSize: 14,
-    fontWeight: "600" as const,
-    color: Colors.light.text,
   },
   maxCostBanner: {
     flexDirection: "row",

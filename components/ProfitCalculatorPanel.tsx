@@ -1,5 +1,5 @@
-import { StyleSheet, Text, View } from "react-native";
-import { useMemo } from "react";
+import { StyleSheet, Text, View, TextInput } from "react-native";
+import { useState, useMemo } from "react";
 import type { ProductData } from "@/lib/mock-data";
 import { calculateProfit, formatCurrency } from "@/lib/mock-data";
 import { CollapsiblePanel } from "./CollapsiblePanel";
@@ -8,11 +8,20 @@ import Colors from "@/constants/colors";
 interface ProfitCalculatorPanelProps {
   product: ProductData;
   costPrice: number;
+  salePrice: number;
+  onSalePriceChange: (price: number) => void;
 }
 
-export function ProfitCalculatorPanel({ product, costPrice }: ProfitCalculatorPanelProps) {
-  const calc = useMemo(() => calculateProfit(product, costPrice), [product, costPrice]);
+export function ProfitCalculatorPanel({ product, costPrice, salePrice, onSalePriceChange }: ProfitCalculatorPanelProps) {
+  const [salePriceInput, setSalePriceInput] = useState(salePrice > 0 ? salePrice.toFixed(2) : "");
+  const calc = useMemo(() => calculateProfit(product, costPrice, salePrice), [product, costPrice, salePrice]);
   const isProfitable = calc.profit > 0 && costPrice > 0;
+
+  const handleSalePriceChange = (text: string) => {
+    setSalePriceInput(text);
+    const val = parseFloat(text);
+    onSalePriceChange(isNaN(val) ? 0 : val);
+  };
 
   return (
     <CollapsiblePanel
@@ -49,8 +58,19 @@ export function ProfitCalculatorPanel({ product, costPrice }: ProfitCalculatorPa
         <Text style={styles.breakdownTitle}>Breakdown</Text>
 
         <View style={styles.breakdownRow}>
-          <Text style={styles.breakdownLabel}>Sale Price (Buy Box)</Text>
-          <Text style={styles.breakdownValue}>{formatCurrency(product.buyBoxPrice)}</Text>
+          <Text style={styles.breakdownLabel}>Sale Price</Text>
+          <View style={styles.salePriceInputWrap}>
+            <Text style={styles.salePriceCurrency}>$</Text>
+            <TextInput
+              style={styles.salePriceInput}
+              value={salePriceInput}
+              onChangeText={handleSalePriceChange}
+              placeholder={product.buyBoxPrice.toFixed(2)}
+              placeholderTextColor={Colors.light.textTertiary}
+              keyboardType="decimal-pad"
+              returnKeyType="done"
+            />
+          </View>
         </View>
         <View style={styles.breakdownRow}>
           <Text style={styles.breakdownLabel}>Your Cost</Text>
@@ -61,7 +81,7 @@ export function ProfitCalculatorPanel({ product, costPrice }: ProfitCalculatorPa
         <Text style={styles.feesSectionTitle}>Amazon Fees</Text>
 
         <View style={styles.breakdownRow}>
-          <Text style={styles.feeLabel}>Referral Fee ({((product.referralFee / product.buyBoxPrice) * 100).toFixed(0)}%)</Text>
+          <Text style={styles.feeLabel}>Referral Fee ({salePrice > 0 ? ((product.referralFee / salePrice) * 100).toFixed(0) : 0}%)</Text>
           <Text style={styles.feeValue}>-{formatCurrency(product.referralFee)}</Text>
         </View>
         <View style={styles.breakdownRow}>
@@ -132,6 +152,7 @@ const styles = StyleSheet.create({
   breakdownRow: {
     flexDirection: "row",
     justifyContent: "space-between",
+    alignItems: "center",
     paddingVertical: 4,
   },
   breakdownLabel: {
@@ -142,6 +163,30 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: "600" as const,
     color: Colors.light.text,
+  },
+  salePriceInputWrap: {
+    flexDirection: "row",
+    alignItems: "center",
+    borderWidth: 1,
+    borderColor: Colors.light.border,
+    borderRadius: 5,
+    paddingHorizontal: 8,
+    height: 30,
+    backgroundColor: "#FFFFFF",
+    minWidth: 90,
+  },
+  salePriceCurrency: {
+    fontSize: 13,
+    color: Colors.light.textTertiary,
+    marginRight: 2,
+  },
+  salePriceInput: {
+    flex: 1,
+    fontSize: 13,
+    fontWeight: "600" as const,
+    color: Colors.light.text,
+    padding: 0,
+    textAlign: "right" as const,
   },
   feeDivider: {
     height: 1,

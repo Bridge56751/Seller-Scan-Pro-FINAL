@@ -8,9 +8,10 @@ import type { ProductData } from "@/lib/mock-data";
 interface BuyRatingPanelProps {
   product: ProductData;
   costPrice: number;
+  salePrice?: number;
 }
 
-function calculateBuyRating(product: ProductData, costPrice: number) {
+function calculateBuyRating(product: ProductData, costPrice: number, salePrice?: number) {
   let score = 0;
   const factors: { label: string; points: number; status: "good" | "warn" | "bad" }[] = [];
 
@@ -66,8 +67,9 @@ function calculateBuyRating(product: ProductData, costPrice: number) {
     score = Math.max(0, score - alertPenalty);
   }
 
-  if (costPrice > 0 && product.buyBoxPrice > 0) {
-    const profit = product.buyBoxPrice - costPrice - product.totalFees;
+  const effectiveSalePrice = salePrice !== undefined ? salePrice : product.buyBoxPrice;
+  if (costPrice > 0 && effectiveSalePrice > 0) {
+    const profit = effectiveSalePrice - costPrice - product.totalFees;
     const roi = (profit / costPrice) * 100;
     if (roi >= 100) {
       score += 22;
@@ -113,8 +115,8 @@ function calculateBuyRating(product: ProductData, costPrice: number) {
   return { score, factors, verdict, verdictColor, verdictBg };
 }
 
-export function BuyRatingPanel({ product, costPrice }: BuyRatingPanelProps) {
-  const rating = useMemo(() => calculateBuyRating(product, costPrice), [product, costPrice]);
+export function BuyRatingPanel({ product, costPrice, salePrice }: BuyRatingPanelProps) {
+  const rating = useMemo(() => calculateBuyRating(product, costPrice, salePrice), [product, costPrice, salePrice]);
 
   const barWidth = Math.round((rating.score / 100) * 100);
 

@@ -332,14 +332,14 @@ export function searchProducts(query: string): ProductData[] {
   );
 }
 
-export function calculateProfit(product: ProductData, costPrice: number): {
+export function calculateProfit(product: ProductData, costPrice: number, customSalePrice?: number): {
   profit: number;
   roi: number;
   margin: number;
   maxCost: number;
   breakeven: number;
 } {
-  const salePrice = product.buyBoxPrice;
+  const salePrice = customSalePrice !== undefined ? customSalePrice : product.buyBoxPrice;
   const profit = salePrice - costPrice - product.totalFees;
   const roi = costPrice > 0 ? (profit / costPrice) * 100 : 0;
   const margin = salePrice > 0 ? (profit / salePrice) * 100 : 0;

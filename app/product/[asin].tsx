@@ -23,6 +23,7 @@ export default function ProductDetailScreen() {
   const insets = useSafeAreaInsets();
   const webTopInset = Platform.OS === "web" ? 67 : 0;
   const [costPrice, setCostPrice] = useState(0);
+  const [salePrice, setSalePrice] = useState<number | null>(null);
   const [product, setProduct] = useState<ProductData | null>(null);
   const [loading, setLoading] = useState(true);
   const [chartData, setChartData] = useState<KeepaChartData | null>(null);
@@ -147,8 +148,8 @@ export default function ProductDetailScreen() {
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
       >
-        <QuickInfoPanel product={product} costPrice={costPrice} onCostChange={setCostPrice} />
-        <BuyRatingPanel product={product} costPrice={costPrice} />
+        <QuickInfoPanel product={product} costPrice={costPrice} onCostChange={setCostPrice} salePrice={salePrice ?? product.buyBoxPrice} onSalePriceChange={setSalePrice} />
+        <BuyRatingPanel product={product} costPrice={costPrice} salePrice={salePrice ?? product.buyBoxPrice} />
         <AlertsPanel product={product} />
         <OffersPanel product={product} costPrice={costPrice} />
         <RanksPricesPanel
@@ -156,7 +157,7 @@ export default function ProductDetailScreen() {
           priceHistory={chartData?.priceHistory || []}
           rankHistory={chartData?.rankHistory || []}
         />
-        <ProfitCalculatorPanel product={product} costPrice={costPrice} />
+        <ProfitCalculatorPanel product={product} costPrice={costPrice} salePrice={salePrice ?? product.buyBoxPrice} onSalePriceChange={setSalePrice} />
         <ChartsPanel
           priceHistory={chartData?.priceHistory || []}
           rankHistory={chartData?.rankHistory || []}
