@@ -350,6 +350,8 @@ function transformKeepaProduct(kp: any): ProductData {
     isGated: false,
     estimatedMonthlySales,
     competitorCount: (newOfferCount >= 0 ? newOfferCount : 0) + (usedOfferCount >= 0 ? usedOfferCount : 0),
+    newOfferCount: newOfferCount >= 0 ? newOfferCount : 0,
+    usedOfferCount: usedOfferCount >= 0 ? usedOfferCount : 0,
     fbaSellerCount,
     fbmSellerCount,
     priceHistory: [],

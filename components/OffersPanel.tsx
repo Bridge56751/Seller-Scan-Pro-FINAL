@@ -104,12 +104,16 @@ export function OffersPanel({ product, costPrice }: OffersPanelProps) {
           <Text style={[styles.summaryLabel, { color: Colors.light.tint }]}>Total</Text>
         </View>
         <View style={styles.summaryItem}>
-          <Text style={styles.summaryNum}>{formatCurrency(product.buyBoxPrice)}</Text>
-          <Text style={[styles.summaryLabel, { color: Colors.light.buyBox }]}>Buy Box</Text>
+          <Text style={styles.summaryNum}>{product.newOfferCount}</Text>
+          <Text style={[styles.summaryLabel, { color: Colors.light.profit }]}>New</Text>
         </View>
         <View style={styles.summaryItem}>
-          <Text style={styles.summaryNum}>{product.buyBoxSeller === "ATVPDKIKX0DER" || product.buyBoxSeller === "Amazon.com" ? "Amazon" : "3P"}</Text>
-          <Text style={[styles.summaryLabel, { color: Colors.light.textTertiary }]}>BB Owner</Text>
+          <Text style={styles.summaryNum}>{product.usedOfferCount}</Text>
+          <Text style={[styles.summaryLabel, { color: Colors.light.warning }]}>Used</Text>
+        </View>
+        <View style={styles.summaryItem}>
+          <Text style={styles.summaryNum}>{formatCurrency(product.buyBoxPrice)}</Text>
+          <Text style={[styles.summaryLabel, { color: Colors.light.buyBox }]}>Buy Box</Text>
         </View>
       </View>
 

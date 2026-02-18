@@ -30,6 +30,8 @@ export interface ProductData {
   isGated: boolean;
   estimatedMonthlySales: number;
   competitorCount: number;
+  newOfferCount: number;
+  usedOfferCount: number;
   fbaSellerCount: number;
   fbmSellerCount: number;
   priceHistory: PricePoint[];
@@ -113,6 +115,8 @@ const MOCK_PRODUCTS: Record<string, ProductData> = {
     isGated: false,
     estimatedMonthlySales: 45200,
     competitorCount: 28,
+    newOfferCount: 28,
+    usedOfferCount: 0,
     fbaSellerCount: 12,
     fbmSellerCount: 16,
     priceHistory: generatePriceHistory(189.99, 249.99, 90),
@@ -158,6 +162,8 @@ const MOCK_PRODUCTS: Record<string, ProductData> = {
     isGated: false,
     estimatedMonthlySales: 32100,
     competitorCount: 45,
+    newOfferCount: 40,
+    usedOfferCount: 5,
     fbaSellerCount: 18,
     fbmSellerCount: 27,
     priceHistory: generatePriceHistory(54.99, 69.99, 90),
@@ -201,6 +207,8 @@ const MOCK_PRODUCTS: Record<string, ProductData> = {
     isGated: false,
     estimatedMonthlySales: 4200,
     competitorCount: 15,
+    newOfferCount: 12,
+    usedOfferCount: 3,
     fbaSellerCount: 6,
     fbmSellerCount: 9,
     priceHistory: generatePriceHistory(42.99, 49.99, 90),
@@ -245,6 +253,8 @@ const MOCK_PRODUCTS: Record<string, ProductData> = {
     isGated: true,
     estimatedMonthlySales: 6800,
     competitorCount: 8,
+    newOfferCount: 6,
+    usedOfferCount: 2,
     fbaSellerCount: 4,
     fbmSellerCount: 4,
     priceHistory: generatePriceHistory(279.00, 349.00, 90),
