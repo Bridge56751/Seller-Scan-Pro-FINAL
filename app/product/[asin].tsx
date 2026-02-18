@@ -69,13 +69,13 @@ export default function ProductDetailScreen() {
       recordScan().then(({ allowed }) => {
         if (!allowed) {
           setScanBlocked(true);
-          router.replace("/paywall");
+          router.push("/paywall");
         } else {
           setScanCheckDone(true);
         }
       }).catch(() => {
         setScanBlocked(true);
-        router.replace("/paywall");
+        router.push("/paywall");
       });
     } else if (!user) {
       setScanCheckDone(true);

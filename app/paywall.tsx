@@ -11,7 +11,16 @@ export default function PaywallScreen() {
 
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
-      <Pressable style={styles.closeButton} onPress={() => router.back()}>
+      <Pressable
+        style={styles.closeButton}
+        onPress={() => {
+          if (router.canGoBack()) {
+            router.back();
+          } else {
+            router.replace("/(tabs)");
+          }
+        }}
+      >
         <Feather name="x" size={24} color={Colors.light.text} />
       </Pressable>
 
@@ -33,10 +42,10 @@ export default function PaywallScreen() {
         </View>
 
         <Pressable style={styles.upgradeButton} onPress={() => {/* RevenueCat purchase flow */}}>
-          <Text style={styles.upgradeButtonText}>Upgrade to Pro</Text>
+          <Text style={styles.upgradeButtonText}>Upgrade to Pro — $4.99/mo</Text>
         </Pressable>
 
-        <Text style={styles.priceNote}>Coming soon</Text>
+        <Text style={styles.priceNote}>Cancel anytime. Billed monthly.</Text>
       </View>
     </View>
   );
