@@ -1,17 +1,19 @@
 import { StyleSheet, Text, View, Pressable } from "react-native";
 import { useState, useMemo } from "react";
-import type { ProductData } from "@/lib/mock-data";
+import type { ProductData, PricePoint, RankPoint } from "@/lib/mock-data";
 import { formatCurrency, formatBSR, estimateSalesPerDay } from "@/lib/mock-data";
 import { CollapsiblePanel } from "./CollapsiblePanel";
 import Colors from "@/constants/colors";
 
 interface RanksPricesPanelProps {
   product: ProductData;
+  priceHistory?: PricePoint[];
+  rankHistory?: RankPoint[];
 }
 
 type TimeRange = "current" | "30" | "90" | "180";
 
-export function RanksPricesPanel({ product }: RanksPricesPanelProps) {
+export function RanksPricesPanel({ product, priceHistory = [], rankHistory = [] }: RanksPricesPanelProps) {
   const [range, setRange] = useState<TimeRange>("current");
 
   const rangeData = useMemo(() => {
@@ -25,13 +27,15 @@ export function RanksPricesPanel({ product }: RanksPricesPanelProps) {
       };
     }
     const days = parseInt(range);
-    const rankSlice = product.rankHistory.slice(-days);
-    const priceSlice = product.priceHistory.slice(-days);
+    const rankSlice = rankHistory.slice(-days);
+    const priceSlice = priceHistory.slice(-days);
     const avgRank = rankSlice.length > 0 ? Math.round(rankSlice.reduce((a, b) => a + b.rank, 0) / rankSlice.length) : product.categoryRank;
-    const avgBuyBox = priceSlice.length > 0 ? Math.round((priceSlice.reduce((a, b) => a + b.buyBox, 0) / priceSlice.length) * 100) / 100 : product.buyBoxPrice;
-    const amazonPrices = priceSlice.map(p => p.amazon).filter((p): p is number => p !== null);
-    const avgAmazon = amazonPrices.length > 0 ? Math.round((amazonPrices.reduce((a, b) => a + b, 0) / amazonPrices.length) * 100) / 100 : null;
-    const avgNew = priceSlice.length > 0 ? Math.round((priceSlice.reduce((a, b) => a + b.newPrice, 0) / priceSlice.length) * 100) / 100 : product.lowestNewPrice;
+    const buyBoxPrices = priceSlice.map(p => p.buyBox).filter(p => p > 0);
+    const avgBuyBox = buyBoxPrices.length > 0 ? Math.round((buyBoxPrices.reduce((a, b) => a + b, 0) / buyBoxPrices.length) * 100) / 100 : product.buyBoxPrice;
+    const amazonPrices = priceSlice.map(p => p.amazon).filter((p): p is number => p !== null && p > 0);
+    const avgAmazon = amazonPrices.length > 0 ? Math.round((amazonPrices.reduce((a, b) => a + b, 0) / amazonPrices.length) * 100) / 100 : product.amazonPrice;
+    const newPrices = priceSlice.map(p => p.newPrice).filter(p => p > 0);
+    const avgNew = newPrices.length > 0 ? Math.round((newPrices.reduce((a, b) => a + b, 0) / newPrices.length) * 100) / 100 : product.lowestNewPrice;
 
     return {
       bsr: avgRank,
@@ -40,7 +44,7 @@ export function RanksPricesPanel({ product }: RanksPricesPanelProps) {
       lowestFBA: avgNew,
       lowestFBM: avgNew + 2,
     };
-  }, [range, product]);
+  }, [range, product, priceHistory, rankHistory]);
 
   const salesPerDay = estimateSalesPerDay(rangeData.bsr, product.category);
 

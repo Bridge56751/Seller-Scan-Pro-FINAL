@@ -151,7 +151,11 @@ export default function ProductDetailScreen() {
         <BuyRatingPanel product={product} costPrice={costPrice} />
         <AlertsPanel product={product} />
         <OffersPanel product={product} costPrice={costPrice} />
-        <RanksPricesPanel product={product} />
+        <RanksPricesPanel
+          product={product}
+          priceHistory={chartData?.priceHistory || []}
+          rankHistory={chartData?.rankHistory || []}
+        />
         <ProfitCalculatorPanel product={product} costPrice={costPrice} />
         <ChartsPanel
           priceHistory={chartData?.priceHistory || []}
