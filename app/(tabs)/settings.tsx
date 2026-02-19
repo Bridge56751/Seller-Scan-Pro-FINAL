@@ -7,7 +7,7 @@ import { useAuth } from "@/lib/auth-context";
 
 const FREE_SCAN_LIMIT = 5;
 
-const PRIVACY_POLICY_URL = "https://sellerscanpro.com/privacy-policy";
+const PRIVACY_POLICY_URL = "https://sellerscan.replit.app/privacy.html";
 const TERMS_OF_SERVICE_URL = "https://www.apple.com/legal/internet-services/itunes/dev/stdeula/";
 
 export default function SettingsScreen() {
@@ -86,13 +86,13 @@ export default function SettingsScreen() {
           <View style={styles.card}>
             <Pressable
               style={({ pressed }) => [styles.menuRow, pressed && { backgroundColor: Colors.light.background }]}
-              onPress={() => Linking.openURL("mailto:sellerscanpro@gmail.com")}
+              onPress={() => Linking.openURL("https://sellerscan.replit.app/support.html")}
             >
               <View style={styles.menuLeft}>
-                <Feather name="mail" size={18} color={Colors.light.textSecondary} />
+                <Feather name="globe" size={18} color={Colors.light.textSecondary} />
                 <Text style={styles.menuText}>Contact Support</Text>
               </View>
-              <Text style={styles.supportEmail}>sellerscanpro@gmail.com</Text>
+              <Feather name="external-link" size={16} color={Colors.light.textTertiary} />
             </Pressable>
             <View style={styles.menuDivider} />
             <Pressable
