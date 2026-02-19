@@ -5,7 +5,7 @@ import { Feather } from "@expo/vector-icons";
 import Colors from "@/constants/colors";
 import { useAuth } from "@/lib/auth-context";
 
-const PRIVACY_URL = "https://sellerscan.replit.app/privacy.html";
+const PRIVACY_URL = "https://sellerscanpro.com/privacy.html";
 const EULA_URL = "https://www.apple.com/legal/internet-services/itunes/dev/stdeula/";
 
 function dismissPaywall() {
