@@ -8,7 +8,7 @@ import { useAuth } from "@/lib/auth-context";
 const FREE_SCAN_LIMIT = 5;
 
 const PRIVACY_POLICY_URL = "https://sellerscanpro.com/privacy-policy";
-const TERMS_OF_SERVICE_URL = "https://example.com/terms";
+const TERMS_OF_SERVICE_URL = "https://www.apple.com/legal/internet-services/itunes/dev/stdeula/";
 
 export default function SettingsScreen() {
   const insets = useSafeAreaInsets();
