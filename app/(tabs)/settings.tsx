@@ -7,7 +7,7 @@ import { useAuth } from "@/lib/auth-context";
 
 const FREE_SCAN_LIMIT = 5;
 
-const PRIVACY_POLICY_URL = "https://example.com/privacy";
+const PRIVACY_POLICY_URL = "https://sellerscanpro.com/privacy-policy";
 const TERMS_OF_SERVICE_URL = "https://example.com/terms";
 
 export default function SettingsScreen() {
