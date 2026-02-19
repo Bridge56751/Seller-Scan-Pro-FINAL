@@ -9,7 +9,7 @@ async function loadPurchasesModule() {
   if (Purchases) return Purchases;
   try {
     const mod = await import("react-native-purchases");
-    Purchases = mod.default || mod.Purchases;
+    Purchases = mod.default;
     return Purchases;
   } catch {
     return null;

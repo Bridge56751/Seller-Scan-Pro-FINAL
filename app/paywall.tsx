@@ -1,7 +1,8 @@
-import { View, Text, StyleSheet, Pressable, Platform, ScrollView, Linking, Alert } from "react-native";
+import { View, Text, StyleSheet, Pressable, Platform, ScrollView, Linking, Alert, ActivityIndicator } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { router } from "expo-router";
 import { Feather } from "@expo/vector-icons";
+import { useState } from "react";
 import Colors from "@/constants/colors";
 import { useAuth } from "@/lib/auth-context";
 
@@ -18,11 +19,68 @@ function dismissPaywall() {
 
 export default function PaywallScreen() {
   const insets = useSafeAreaInsets();
-  const { freeScansLeft } = useAuth();
+  const { freeScansLeft, purchaseSubscription, restorePurchases, setPaid, rcReady } = useAuth();
   const webTopInset = Platform.OS === "web" ? 67 : 0;
   const topPadding = Math.max(insets.top, webTopInset);
+  const [purchasing, setPurchasing] = useState(false);
+  const [restoring, setRestoring] = useState(false);
 
   const scansUsedUp = freeScansLeft <= 0;
+
+  const handlePurchase = async () => {
+    if (purchasing) return;
+    setPurchasing(true);
+    try {
+      const result = await purchaseSubscription();
+      if (result.success) {
+        setPaid(true);
+        if (Platform.OS === "web") {
+          alert("Welcome to Seller Scan Pro! You now have unlimited scans.");
+        } else {
+          Alert.alert("Welcome to Pro!", "You now have unlimited product scans.", [
+            { text: "OK", onPress: dismissPaywall },
+          ]);
+        }
+      } else if (result.error && result.error !== "cancelled") {
+        if (Platform.OS === "web") {
+          alert(result.error);
+        } else {
+          Alert.alert("Purchase Error", result.error);
+        }
+      }
+    } finally {
+      setPurchasing(false);
+    }
+  };
+
+  const handleRestore = async () => {
+    if (restoring) return;
+    setRestoring(true);
+    try {
+      const result = await restorePurchases();
+      if (result.isPro) {
+        setPaid(true);
+        if (Platform.OS === "web") {
+          alert("Your Pro subscription has been restored!");
+        } else {
+          Alert.alert("Restored!", "Your Pro subscription has been restored.", [
+            { text: "OK", onPress: dismissPaywall },
+          ]);
+        }
+      } else {
+        if (Platform.OS === "web") {
+          alert("No active subscription found. If you believe this is an error, please contact support.");
+        } else {
+          Alert.alert(
+            "No Subscription Found",
+            "No active subscription was found for this device. If you believe this is an error, please contact sellerscanpro@gmail.com.",
+          );
+        }
+      }
+    } finally {
+      setRestoring(false);
+    }
+  };
 
   return (
     <View style={styles.container}>
@@ -71,8 +129,16 @@ export default function PaywallScreen() {
             <Text style={styles.priceDuration}>Monthly subscription</Text>
           </View>
 
-          <Pressable style={styles.upgradeButton} onPress={() => {/* RevenueCat purchase flow */}}>
-            <Text style={styles.upgradeButtonText}>Subscribe Now</Text>
+          <Pressable
+            style={[styles.upgradeButton, purchasing && styles.upgradeButtonDisabled]}
+            onPress={handlePurchase}
+            disabled={purchasing}
+          >
+            {purchasing ? (
+              <ActivityIndicator color="#FFFFFF" size="small" />
+            ) : (
+              <Text style={styles.upgradeButtonText}>Subscribe Now</Text>
+            )}
           </Pressable>
 
           <Text style={styles.renewalDisclosure}>
@@ -81,15 +147,14 @@ export default function PaywallScreen() {
 
           <Pressable
             style={styles.restoreButton}
-            onPress={() => {
-              if (Platform.OS === "web") {
-                alert("Restore Purchases is only available on iOS.");
-              } else {
-                Alert.alert("Restore Purchases", "Checking for previous purchases...");
-              }
-            }}
+            onPress={handleRestore}
+            disabled={restoring}
           >
-            <Text style={styles.restoreButtonText}>Restore Purchases</Text>
+            {restoring ? (
+              <ActivityIndicator color={Colors.light.accent} size="small" />
+            ) : (
+              <Text style={styles.restoreButtonText}>Restore Purchases</Text>
+            )}
           </Pressable>
 
           <View style={styles.legalLinks}>
@@ -241,6 +306,9 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     marginBottom: 16,
+  },
+  upgradeButtonDisabled: {
+    opacity: 0.7,
   },
   upgradeButtonText: {
     color: "#FFFFFF",

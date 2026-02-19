@@ -3,6 +3,7 @@ import { Platform } from "react-native";
 import { getApiUrl } from "./query-client";
 import { fetch } from "expo/fetch";
 import { getDeviceId } from "./device-id";
+import { configureRevenueCat, checkSubscriptionStatus, restorePurchases as rcRestorePurchases, purchaseSubscription as rcPurchaseSubscription } from "./revenuecat";
 
 const FREE_SCAN_LIMIT = 5;
 
@@ -23,6 +24,9 @@ interface AuthContextValue {
   recordScan: () => Promise<{ allowed: boolean; freeScansLeft: number }>;
   refreshDevice: () => Promise<void>;
   setPaid: (paid: boolean) => void;
+  purchaseSubscription: () => Promise<{ success: boolean; error?: string }>;
+  restorePurchases: () => Promise<{ success: boolean; isPro: boolean; error?: string }>;
+  rcReady: boolean;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -30,10 +34,24 @@ const AuthContext = createContext<AuthContextValue | null>(null);
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [device, setDevice] = useState<DeviceState | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [rcReady, setRcReady] = useState(false);
 
   useEffect(() => {
     initDevice();
+    initRevenueCat();
   }, []);
+
+  async function initRevenueCat() {
+    const configured = await configureRevenueCat();
+    setRcReady(configured);
+
+    if (configured) {
+      const isPro = await checkSubscriptionStatus();
+      if (isPro) {
+        setDevice((prev) => (prev ? { ...prev, isPaid: true, freeScansLeft: 0 } : prev));
+      }
+    }
+  }
 
   async function initDevice() {
     try {
@@ -106,12 +124,34 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const refreshDevice = useCallback(async () => {
     await initDevice();
-  }, []);
+    if (rcReady) {
+      const isPro = await checkSubscriptionStatus();
+      if (isPro) {
+        setDevice((prev) => (prev ? { ...prev, isPaid: true, freeScansLeft: 0 } : prev));
+      }
+    }
+  }, [rcReady]);
 
   const setPaid = useCallback((paid: boolean) => {
     setDevice((prev) =>
       prev ? { ...prev, isPaid: paid, freeScansLeft: paid ? 0 : prev.freeScansLeft } : prev,
     );
+  }, []);
+
+  const purchaseSubscription = useCallback(async (): Promise<{ success: boolean; error?: string }> => {
+    const result = await rcPurchaseSubscription();
+    if (result.success) {
+      setDevice((prev) => (prev ? { ...prev, isPaid: true, freeScansLeft: 0 } : prev));
+    }
+    return result;
+  }, []);
+
+  const restorePurchases = useCallback(async (): Promise<{ success: boolean; isPro: boolean; error?: string }> => {
+    const result = await rcRestorePurchases();
+    if (result.isPro) {
+      setDevice((prev) => (prev ? { ...prev, isPaid: true, freeScansLeft: 0 } : prev));
+    }
+    return result;
   }, []);
 
   const value = useMemo(
@@ -125,8 +165,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       recordScan,
       refreshDevice,
       setPaid,
+      purchaseSubscription,
+      restorePurchases,
+      rcReady,
     }),
-    [device, isLoading, recordScan, refreshDevice, setPaid],
+    [device, isLoading, recordScan, refreshDevice, setPaid, purchaseSubscription, restorePurchases, rcReady],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

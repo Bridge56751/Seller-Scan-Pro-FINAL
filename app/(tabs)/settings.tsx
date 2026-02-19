@@ -1,7 +1,8 @@
-import { View, Text, StyleSheet, Pressable, ScrollView, Platform, Linking, Alert } from "react-native";
+import { View, Text, StyleSheet, Pressable, ScrollView, Platform, Linking, Alert, ActivityIndicator } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Feather } from "@expo/vector-icons";
 import { router } from "expo-router";
+import { useState } from "react";
 import Colors from "@/constants/colors";
 import { useAuth } from "@/lib/auth-context";
 
@@ -12,7 +13,8 @@ const TERMS_OF_SERVICE_URL = "https://www.apple.com/legal/internet-services/itun
 
 export default function SettingsScreen() {
   const insets = useSafeAreaInsets();
-  const { isPaid, scanCount, freeScansLeft } = useAuth();
+  const { isPaid, scanCount, freeScansLeft, restorePurchases, setPaid } = useAuth();
+  const [restoring, setRestoring] = useState(false);
   const webTopInset = Platform.OS === "web" ? 67 : 0;
   const webBottomInset = Platform.OS === "web" ? 34 : 0;
 
@@ -151,17 +153,41 @@ export default function SettingsScreen() {
           <View style={styles.card}>
             <Pressable
               style={({ pressed }) => [styles.menuRow, pressed && { backgroundColor: Colors.light.background }]}
-              onPress={() => {
-                if (Platform.OS === "web") {
-                  alert("Restore Purchases is only available on iOS.");
-                } else {
-                  Alert.alert("Restore Purchases", "Checking for previous purchases...");
+              onPress={async () => {
+                if (restoring) return;
+                setRestoring(true);
+                try {
+                  const result = await restorePurchases();
+                  if (result.isPro) {
+                    setPaid(true);
+                    if (Platform.OS === "web") {
+                      alert("Your Pro subscription has been restored!");
+                    } else {
+                      Alert.alert("Restored!", "Your Pro subscription has been restored.");
+                    }
+                  } else {
+                    if (Platform.OS === "web") {
+                      alert("No active subscription found.");
+                    } else {
+                      Alert.alert(
+                        "No Subscription Found",
+                        "No active subscription was found for this device. If you believe this is an error, please contact sellerscanpro@gmail.com.",
+                      );
+                    }
+                  }
+                } finally {
+                  setRestoring(false);
                 }
               }}
+              disabled={restoring}
             >
               <View style={styles.menuLeft}>
-                <Feather name="refresh-cw" size={18} color={Colors.light.textSecondary} />
-                <Text style={styles.menuText}>Restore Purchases</Text>
+                {restoring ? (
+                  <ActivityIndicator size={18} color={Colors.light.textSecondary} />
+                ) : (
+                  <Feather name="refresh-cw" size={18} color={Colors.light.textSecondary} />
+                )}
+                <Text style={styles.menuText}>{restoring ? "Restoring..." : "Restore Purchases"}</Text>
               </View>
               <Feather name="chevron-right" size={16} color={Colors.light.textTertiary} />
             </Pressable>
