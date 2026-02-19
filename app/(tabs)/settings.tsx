@@ -86,11 +86,22 @@ export default function SettingsScreen() {
           <View style={styles.card}>
             <Pressable
               style={({ pressed }) => [styles.menuRow, pressed && { backgroundColor: Colors.light.background }]}
+              onPress={() => Linking.openURL("mailto:sellerscanpro@gmail.com")}
+            >
+              <View style={styles.menuLeft}>
+                <Feather name="mail" size={18} color={Colors.light.textSecondary} />
+                <Text style={styles.menuText}>Email Support</Text>
+              </View>
+              <Text style={styles.supportEmail}>sellerscanpro@gmail.com</Text>
+            </Pressable>
+            <View style={styles.menuDivider} />
+            <Pressable
+              style={({ pressed }) => [styles.menuRow, pressed && { backgroundColor: Colors.light.background }]}
               onPress={() => Linking.openURL("https://sellerscanpro.com/support.html")}
             >
               <View style={styles.menuLeft}>
                 <Feather name="globe" size={18} color={Colors.light.textSecondary} />
-                <Text style={styles.menuText}>Contact Support</Text>
+                <Text style={styles.menuText}>Support Page</Text>
               </View>
               <Feather name="external-link" size={16} color={Colors.light.textTertiary} />
             </Pressable>
