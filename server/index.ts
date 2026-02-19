@@ -235,6 +235,11 @@ function setupErrorHandler(app: express.Application) {
   app.use(deviceRouter);
   app.use(keepaRouter);
 
+  app.get("/api/config/revenuecat", (_req, res) => {
+    const apiKey = process.env.REVENUECAT_API_KEY || "";
+    res.json({ apiKey });
+  });
+
   configureExpoAndLanding(app);
 
   const server = await registerRoutes(app);
