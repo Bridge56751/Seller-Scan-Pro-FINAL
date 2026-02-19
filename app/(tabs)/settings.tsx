@@ -97,7 +97,7 @@ export default function SettingsScreen() {
             <View style={styles.menuDivider} />
             <Pressable
               style={({ pressed }) => [styles.menuRow, pressed && { backgroundColor: Colors.light.background }]}
-              onPress={() => Linking.openURL("https://sellerscan.com")}
+              onPress={() => Linking.openURL("https://sellerscanpro.com")}
             >
               <View style={styles.menuLeft}>
                 <Feather name="globe" size={18} color={Colors.light.textSecondary} />
