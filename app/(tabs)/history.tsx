@@ -85,11 +85,12 @@ export default function HistoryScreen() {
       <View style={styles.header}>
         <Text style={styles.headerTitle}>History</Text>
         <Text style={styles.headerCount}>{history.length} items</Text>
-        {history.length > 0 && (
-          <Pressable onPress={handleClear} style={({ pressed }) => [styles.clearBtn, pressed && { opacity: 0.7 }]}>
-            <Feather name="trash-2" size={16} color={Colors.light.danger} />
-          </Pressable>
-        )}
+        <Pressable
+          onPress={history.length > 0 ? handleClear : undefined}
+          style={({ pressed }) => [styles.clearBtn, history.length === 0 && { opacity: 0.35 }, pressed && history.length > 0 && { opacity: 0.7 }]}
+        >
+          <Feather name="trash-2" size={16} color={Colors.light.danger} />
+        </Pressable>
       </View>
 
       {history.length === 0 && !loading ? (
