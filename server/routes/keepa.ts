@@ -14,8 +14,19 @@ const notFoundCache = new Map<string, number>();
 const PRODUCT_CACHE_TTL = 30 * 60 * 1000;
 const NOT_FOUND_TTL = 10 * 60 * 1000;
 const SEARCH_CACHE_TTL = 15 * 60 * 1000;
+const MAX_PRODUCT_CACHE = 5000;
+const MAX_NOT_FOUND_CACHE = 2000;
+const MAX_SEARCH_CACHE = 500;
 
 const searchCache = new Map<string, { data: any; timestamp: number }>();
+
+function evictOldest<T>(map: Map<string, T>, maxSize: number) {
+  if (map.size <= maxSize) return;
+  const keysToDelete = Array.from(map.keys()).slice(0, map.size - maxSize);
+  for (const key of keysToDelete) {
+    map.delete(key);
+  }
+}
 
 const TOKENS_PER_MINUTE = 18;
 const WINDOW_MS = 60 * 1000;
@@ -107,6 +118,7 @@ function getCachedProduct(key: string): KeepaFullProduct | null {
 
 function setCacheProduct(key: string, data: KeepaFullProduct) {
   productCache.set(key, { data, timestamp: Date.now() });
+  evictOldest(productCache, MAX_PRODUCT_CACHE);
 }
 
 function isNotFoundCached(key: string): boolean {
@@ -120,6 +132,7 @@ function isNotFoundCached(key: string): boolean {
 
 function setNotFoundCache(key: string) {
   notFoundCache.set(key, Date.now());
+  evictOldest(notFoundCache, MAX_NOT_FOUND_CACHE);
 }
 
 router.get("/api/product/asin/:asin", async (req: Request, res: Response) => {
@@ -219,6 +232,7 @@ router.get("/api/product/search/:query", async (req: Request, res: Response) => 
 
     const { products } = await searchKeepaProducts(query);
     searchCache.set(cacheKey, { data: products, timestamp: Date.now() });
+    evictOldest(searchCache, MAX_SEARCH_CACHE);
     return res.json({ products });
   } catch (error: any) {
     if (error.message?.includes("queued too long")) {
@@ -284,12 +298,18 @@ router.get("/api/keepa/tokens", async (_req: Request, res: Response) => {
       return res.status(500).json({ error: "KEEPA_API_KEY is not configured" });
     }
     const status = await getKeepaTokenStatus();
+    pruneTimestamps();
     return res.json({
       ...status,
       rateLimiter: {
         tokensUsedLastMinute: apiCallTimestamps.length,
         availableSlots: getAvailableTokens(),
         queuedRequests: waitQueue.length,
+      },
+      cache: {
+        products: productCache.size,
+        notFound: notFoundCache.size,
+        searches: searchCache.size,
       },
     });
   } catch (error: any) {
