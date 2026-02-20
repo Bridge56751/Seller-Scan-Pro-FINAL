@@ -25,7 +25,7 @@ interface AuthContextValue {
   refreshDevice: () => Promise<void>;
   setPaid: (paid: boolean) => void;
   purchaseSubscription: () => Promise<{ success: boolean; error?: string }>;
-  restorePurchases: () => Promise<{ success: boolean; isPro: boolean; error?: string }>;
+  restorePurchases: () => Promise<{ success: boolean; isPro: boolean; error?: string; debug?: string }>;
   rcReady: boolean;
 }
 

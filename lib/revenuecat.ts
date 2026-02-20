@@ -94,18 +94,25 @@ export async function purchaseSubscription(): Promise<{ success: boolean; error?
   }
 }
 
-export async function restorePurchases(): Promise<{ success: boolean; isPro: boolean; error?: string }> {
+export async function restorePurchases(): Promise<{ success: boolean; isPro: boolean; error?: string; debug?: string }> {
   const RC = await loadPurchasesModule();
   if (!RC || !isConfigured) {
-    return { success: false, isPro: false, error: "RevenueCat not configured" };
+    return { success: false, isPro: false, error: "RevenueCat not configured", debug: `RC loaded: ${!!RC}, configured: ${isConfigured}` };
   }
 
   try {
     const customerInfo = await RC.restorePurchases();
+    const allEntitlements = customerInfo.entitlements?.all ? Object.keys(customerInfo.entitlements.all) : [];
+    const activeEntitlements = customerInfo.entitlements?.active ? Object.keys(customerInfo.entitlements.active) : [];
+    const activeSubscriptions = customerInfo.activeSubscriptions || [];
+
+    const debugInfo = `Active entitlements: [${activeEntitlements.join(", ")}] | All entitlements: [${allEntitlements.join(", ")}] | Active subs: [${activeSubscriptions.join(", ")}]`;
+    console.log("[RevenueCat Restore Debug]", debugInfo);
+
     const isPro = !!customerInfo.entitlements.active["Seller Scan Pro"] || !!customerInfo.entitlements.active["200"] || !!customerInfo.entitlements.active["pro"] || !!customerInfo.entitlements.active["Pro"];
-    return { success: true, isPro };
+    return { success: true, isPro, debug: debugInfo };
   } catch (e: any) {
-    return { success: false, isPro: false, error: e.message || "Restore failed" };
+    return { success: false, isPro: false, error: e.message || "Restore failed", debug: `Exception: ${e.message}` };
   }
 }
 

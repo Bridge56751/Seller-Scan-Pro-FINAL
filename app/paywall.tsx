@@ -68,12 +68,14 @@ export default function PaywallScreen() {
           ]);
         }
       } else {
+        const debugMsg = result.debug ? `\n\nDebug: ${result.debug}` : "";
+        const errorMsg = result.error ? `\n\nError: ${result.error}` : "";
         if (Platform.OS === "web") {
-          alert("No active subscription found. If you believe this is an error, please contact support.");
+          alert(`No active subscription found.${errorMsg}${debugMsg}`);
         } else {
           Alert.alert(
             "No Subscription Found",
-            "No active subscription was found for this device. If you believe this is an error, please contact sellerscanpro@gmail.com.",
+            `No active subscription was found for this device. If you believe this is an error, please contact sellerscanpro@gmail.com.${errorMsg}${debugMsg}`,
           );
         }
       }
