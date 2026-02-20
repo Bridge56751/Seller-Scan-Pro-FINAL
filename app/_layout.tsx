@@ -56,7 +56,7 @@ export default function RootLayout() {
         <GestureHandlerRootView>
           <KeyboardProvider>
             <AuthProvider>
-              <StatusBar style="dark" />
+              <StatusBar style="light" />
               <RootLayoutNav />
             </AuthProvider>
           </KeyboardProvider>
