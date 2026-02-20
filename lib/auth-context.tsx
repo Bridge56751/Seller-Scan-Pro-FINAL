@@ -37,25 +37,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [rcReady, setRcReady] = useState(false);
 
   useEffect(() => {
-    initDevice();
-    initRevenueCat();
+    initApp();
   }, []);
 
-  async function initRevenueCat() {
-    const configured = await configureRevenueCat();
-    setRcReady(configured);
+  async function initApp() {
+    let deviceId: string;
+    let deviceData: { isPaid: boolean; scanCount: number; freeScansLeft: number } = {
+      isPaid: false,
+      scanCount: 0,
+      freeScansLeft: FREE_SCAN_LIMIT,
+    };
 
-    if (configured) {
-      const isPro = await checkSubscriptionStatus();
-      if (isPro) {
-        setDevice((prev) => (prev ? { ...prev, isPaid: true, freeScansLeft: 0 } : prev));
-      }
-    }
-  }
-
-  async function initDevice() {
     try {
-      const deviceId = await getDeviceId();
+      deviceId = await getDeviceId();
       const baseUrl = getApiUrl();
       const url = new URL("/api/device/status", baseUrl);
 
@@ -67,31 +61,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       if (res.ok) {
         const data = await res.json();
-        setDevice({
-          deviceId,
+        deviceData = {
           isPaid: data.isPaid ?? false,
           scanCount: data.scanCount ?? 0,
           freeScansLeft: data.freeScansLeft ?? FREE_SCAN_LIMIT,
-        });
-      } else {
-        setDevice({
-          deviceId,
-          isPaid: false,
-          scanCount: 0,
-          freeScansLeft: FREE_SCAN_LIMIT,
-        });
+        };
       }
     } catch {
-      const deviceId = await getDeviceId();
-      setDevice({
-        deviceId,
-        isPaid: false,
-        scanCount: 0,
-        freeScansLeft: FREE_SCAN_LIMIT,
-      });
-    } finally {
-      setIsLoading(false);
+      deviceId = await getDeviceId();
     }
+
+    const configured = await configureRevenueCat();
+    setRcReady(configured);
+
+    if (configured) {
+      const isPro = await checkSubscriptionStatus();
+      if (isPro) {
+        deviceData.isPaid = true;
+        deviceData.freeScansLeft = 0;
+      }
+    }
+
+    setDevice({ deviceId: deviceId!, ...deviceData });
+    setIsLoading(false);
   }
 
   const recordScan = useCallback(async (): Promise<{ allowed: boolean; freeScansLeft: number }> => {
@@ -123,14 +115,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const refreshDevice = useCallback(async () => {
-    await initDevice();
-    if (rcReady) {
-      const isPro = await checkSubscriptionStatus();
-      if (isPro) {
-        setDevice((prev) => (prev ? { ...prev, isPaid: true, freeScansLeft: 0 } : prev));
-      }
-    }
-  }, [rcReady]);
+    await initApp();
+  }, []);
 
   const setPaid = useCallback((paid: boolean) => {
     setDevice((prev) =>
