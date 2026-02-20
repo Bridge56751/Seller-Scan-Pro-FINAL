@@ -58,7 +58,7 @@ export async function checkSubscriptionStatus(): Promise<boolean> {
   try {
     const customerInfo = await RC.getCustomerInfo();
     const entitlements = customerInfo.entitlements.active;
-    return !!entitlements["200"] || !!entitlements["pro"] || !!entitlements["Pro"];
+    return !!entitlements["Seller Scan Pro"] || !!entitlements["200"] || !!entitlements["pro"] || !!entitlements["Pro"];
   } catch {
     return false;
   }
@@ -84,7 +84,7 @@ export async function purchaseSubscription(): Promise<{ success: boolean; error?
     }
 
     const { customerInfo } = await RC.purchasePackage(monthly);
-    const isPro = !!customerInfo.entitlements.active["200"] || !!customerInfo.entitlements.active["pro"] || !!customerInfo.entitlements.active["Pro"];
+    const isPro = !!customerInfo.entitlements.active["Seller Scan Pro"] || !!customerInfo.entitlements.active["200"] || !!customerInfo.entitlements.active["pro"] || !!customerInfo.entitlements.active["Pro"];
     return { success: isPro };
   } catch (e: any) {
     if (e.userCancelled) {
@@ -102,7 +102,7 @@ export async function restorePurchases(): Promise<{ success: boolean; isPro: boo
 
   try {
     const customerInfo = await RC.restorePurchases();
-    const isPro = !!customerInfo.entitlements.active["200"] || !!customerInfo.entitlements.active["pro"] || !!customerInfo.entitlements.active["Pro"];
+    const isPro = !!customerInfo.entitlements.active["Seller Scan Pro"] || !!customerInfo.entitlements.active["200"] || !!customerInfo.entitlements.active["pro"] || !!customerInfo.entitlements.active["Pro"];
     return { success: true, isPro };
   } catch (e: any) {
     return { success: false, isPro: false, error: e.message || "Restore failed" };
