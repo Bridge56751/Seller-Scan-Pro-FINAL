@@ -1,0 +1,22 @@
+{
+  "cli": {
+    "version": ">= 3.0.0"
+  },
+  "build": {
+    "production": {
+      "ios": {
+        "buildNumber": "4"
+      },
+      "env": {
+        "EXPO_PUBLIC_DOMAIN": "seller-scan-pro-final.replit.app"
+      }
+    }
+  },
+  "submit": {
+    "production": {
+      "ios": {
+        "ascAppId": ""
+      }
+    }
+  }
+}

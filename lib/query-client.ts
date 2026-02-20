@@ -9,7 +9,8 @@ export function getApiUrl(): string {
   let host = process.env.EXPO_PUBLIC_DOMAIN;
 
   if (!host) {
-    throw new Error("EXPO_PUBLIC_DOMAIN is not set");
+    console.warn("EXPO_PUBLIC_DOMAIN is not set, using fallback");
+    host = "seller-scan-pro-final.replit.app";
   }
 
   let url = new URL(`https://${host}`);
