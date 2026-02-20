@@ -166,14 +166,12 @@ export default function SettingsScreen() {
                       Alert.alert("Restored!", "Your Pro subscription has been restored.");
                     }
                   } else {
-                    const debugMsg = result.debug ? `\n\nDebug: ${result.debug}` : "";
-                    const errorMsg = result.error ? `\n\nError: ${result.error}` : "";
                     if (Platform.OS === "web") {
-                      alert(`No active subscription found.${errorMsg}${debugMsg}`);
+                      alert("No active subscription found.");
                     } else {
                       Alert.alert(
                         "No Subscription Found",
-                        `No active subscription was found for this device. If you believe this is an error, please contact sellerscanpro@gmail.com.${errorMsg}${debugMsg}`,
+                        "No active subscription was found for this device. If you believe this is an error, please contact sellerscanpro@gmail.com.",
                       );
                     }
                   }

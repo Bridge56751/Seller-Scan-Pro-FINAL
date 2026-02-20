@@ -25,7 +25,7 @@ interface AuthContextValue {
   refreshDevice: () => Promise<void>;
   setPaid: (paid: boolean) => void;
   purchaseSubscription: () => Promise<{ success: boolean; error?: string }>;
-  restorePurchases: () => Promise<{ success: boolean; isPro: boolean; error?: string; debug?: string }>;
+  restorePurchases: () => Promise<{ success: boolean; isPro: boolean; error?: string }>;
   rcReady: boolean;
 }
 
@@ -132,7 +132,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return result;
   }, []);
 
-  const restorePurchases = useCallback(async (): Promise<{ success: boolean; isPro: boolean; error?: string; debug?: string }> => {
+  const restorePurchases = useCallback(async (): Promise<{ success: boolean; isPro: boolean; error?: string }> => {
     const result = await rcRestorePurchases();
     if (result.isPro) {
       setDevice((prev) => (prev ? { ...prev, isPaid: true, freeScansLeft: 0 } : prev));

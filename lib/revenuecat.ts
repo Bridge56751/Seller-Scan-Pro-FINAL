@@ -104,26 +104,18 @@ export async function purchaseSubscription(): Promise<{ success: boolean; error?
   }
 }
 
-export async function restorePurchases(): Promise<{ success: boolean; isPro: boolean; error?: string; debug?: string }> {
+export async function restorePurchases(): Promise<{ success: boolean; isPro: boolean; error?: string }> {
   const RC = await loadPurchasesModule();
   if (!RC || !isConfigured) {
-    return { success: false, isPro: false, error: "RevenueCat not configured", debug: `RC loaded: ${!!RC}, configured: ${isConfigured}` };
+    return { success: false, isPro: false, error: "RevenueCat not configured" };
   }
 
   try {
-    const appUserId = await RC.getAppUserID();
     const customerInfo = await RC.restorePurchases();
-    const allEntitlements = customerInfo.entitlements?.all ? Object.keys(customerInfo.entitlements.all) : [];
-    const activeEntitlements = customerInfo.entitlements?.active ? Object.keys(customerInfo.entitlements.active) : [];
-    const activeSubscriptions = customerInfo.activeSubscriptions || [];
-
-    const debugInfo = `User: ${appUserId} | Active: [${activeEntitlements.join(", ")}] | All: [${allEntitlements.join(", ")}] | Subs: [${activeSubscriptions.join(", ")}]`;
-    console.log("[RevenueCat Restore Debug]", debugInfo);
-
     const isPro = hasProAccess(customerInfo);
-    return { success: true, isPro, debug: debugInfo };
+    return { success: true, isPro };
   } catch (e: any) {
-    return { success: false, isPro: false, error: e.message || "Restore failed", debug: `Exception: ${e.message}` };
+    return { success: false, isPro: false, error: e.message || "Restore failed" };
   }
 }
 
