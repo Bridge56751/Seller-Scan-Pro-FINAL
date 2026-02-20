@@ -132,7 +132,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return result;
   }, []);
 
-  const restorePurchases = useCallback(async (): Promise<{ success: boolean; isPro: boolean; error?: string }> => {
+  const restorePurchases = useCallback(async (): Promise<{ success: boolean; isPro: boolean; error?: string; debug?: string }> => {
     const result = await rcRestorePurchases();
     if (result.isPro) {
       setDevice((prev) => (prev ? { ...prev, isPaid: true, freeScansLeft: 0 } : prev));
