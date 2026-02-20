@@ -80,7 +80,10 @@ export default function ProductDetailScreen() {
   }, [asin, isReady, isPaid]);
 
   useEffect(() => {
-    if (!asin || !scanCheckDone || scanBlocked) { setLoading(false); return; }
+    if (!asin) { setLoading(false); return; }
+    if (scanBlocked) { setLoading(false); return; }
+    if (!scanCheckDone) return;
+    setLoading(true);
     const mock = lookupByAsin(asin);
     if (mock) {
       setProduct(mock);
