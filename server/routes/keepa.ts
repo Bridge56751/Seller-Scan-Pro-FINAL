@@ -17,6 +17,84 @@ const SEARCH_CACHE_TTL = 15 * 60 * 1000;
 
 const searchCache = new Map<string, { data: any; timestamp: number }>();
 
+const TOKENS_PER_MINUTE = 18;
+const WINDOW_MS = 60 * 1000;
+const MAX_WAIT_MS = 15000;
+const apiCallTimestamps: number[] = [];
+const waitQueue: Array<{ resolve: () => void; reject: (err: Error) => void }> = [];
+let drainTimer: ReturnType<typeof setTimeout> | null = null;
+
+function pruneTimestamps() {
+  const cutoff = Date.now() - WINDOW_MS;
+  while (apiCallTimestamps.length > 0 && apiCallTimestamps[0] < cutoff) {
+    apiCallTimestamps.shift();
+  }
+}
+
+function getAvailableTokens(): number {
+  pruneTimestamps();
+  return Math.max(0, TOKENS_PER_MINUTE - apiCallTimestamps.length);
+}
+
+function recordApiCall() {
+  apiCallTimestamps.push(Date.now());
+}
+
+function drainQueue() {
+  if (waitQueue.length === 0) {
+    drainTimer = null;
+    return;
+  }
+
+  if (getAvailableTokens() > 0) {
+    const next = waitQueue.shift();
+    if (next) {
+      recordApiCall();
+      next.resolve();
+    }
+  }
+
+  if (waitQueue.length > 0) {
+    const oldestCall = apiCallTimestamps[0];
+    const waitTime = oldestCall ? (oldestCall + WINDOW_MS - Date.now() + 100) : 1000;
+    drainTimer = setTimeout(drainQueue, Math.max(100, Math.min(waitTime, 5000)));
+  } else {
+    drainTimer = null;
+  }
+}
+
+async function acquireToken(): Promise<void> {
+  if (getAvailableTokens() > 0) {
+    recordApiCall();
+    return;
+  }
+
+  return new Promise<void>((resolve, reject) => {
+    const timeout = setTimeout(() => {
+      const idx = waitQueue.findIndex((w) => w.resolve === resolve);
+      if (idx >= 0) waitQueue.splice(idx, 1);
+      reject(new Error("Request queued too long, please try again in a moment"));
+    }, MAX_WAIT_MS);
+
+    waitQueue.push({
+      resolve: () => {
+        clearTimeout(timeout);
+        resolve();
+      },
+      reject: (err: Error) => {
+        clearTimeout(timeout);
+        reject(err);
+      },
+    });
+
+    if (!drainTimer) {
+      const oldestCall = apiCallTimestamps[0];
+      const waitTime = oldestCall ? (oldestCall + WINDOW_MS - Date.now() + 100) : 1000;
+      drainTimer = setTimeout(drainQueue, Math.max(100, Math.min(waitTime, 5000)));
+    }
+  });
+}
+
 function getCachedProduct(key: string): KeepaFullProduct | null {
   const entry = productCache.get(key);
   if (entry && Date.now() - entry.timestamp < PRODUCT_CACHE_TTL) {
@@ -62,6 +140,8 @@ router.get("/api/product/asin/:asin", async (req: Request, res: Response) => {
       return res.status(404).json({ error: "Product not found", product: null });
     }
 
+    await acquireToken();
+
     const result = await fetchKeepaProductFull(asin);
     if (!result) {
       setNotFoundCache(cacheKey);
@@ -71,6 +151,10 @@ router.get("/api/product/asin/:asin", async (req: Request, res: Response) => {
     setCacheProduct(cacheKey, result);
     return res.json({ product: result.product });
   } catch (error: any) {
+    if (error.message?.includes("queued too long")) {
+      console.warn("[Keepa Rate Limit] Request queued too long for ASIN lookup");
+      return res.status(429).json({ error: "Server is busy, please try again in a moment" });
+    }
     console.error("Error fetching product by ASIN:", error.message);
     return res.status(500).json({ error: error.message || "Failed to fetch product data" });
   }
@@ -94,6 +178,8 @@ router.get("/api/product/upc/:upc", async (req: Request, res: Response) => {
       return res.status(404).json({ error: "Product not found", product: null });
     }
 
+    await acquireToken();
+
     const result = await fetchKeepaProductByCode(upc);
     if (!result) {
       setNotFoundCache(cacheKey);
@@ -106,6 +192,10 @@ router.get("/api/product/upc/:upc", async (req: Request, res: Response) => {
 
     return res.json({ product: result.product });
   } catch (error: any) {
+    if (error.message?.includes("queued too long")) {
+      console.warn("[Keepa Rate Limit] Request queued too long for UPC lookup");
+      return res.status(429).json({ error: "Server is busy, please try again in a moment" });
+    }
     console.error("Error fetching product by UPC:", error.message);
     return res.status(500).json({ error: error.message || "Failed to fetch product data" });
   }
@@ -125,10 +215,16 @@ router.get("/api/product/search/:query", async (req: Request, res: Response) => 
       return res.json({ products: cachedSearch.data });
     }
 
+    await acquireToken();
+
     const { products } = await searchKeepaProducts(query);
     searchCache.set(cacheKey, { data: products, timestamp: Date.now() });
     return res.json({ products });
   } catch (error: any) {
+    if (error.message?.includes("queued too long")) {
+      console.warn("[Keepa Rate Limit] Request queued too long for search");
+      return res.status(429).json({ error: "Server is busy, please try again in a moment" });
+    }
     console.error("Error searching products:", error.message);
     return res.status(500).json({ error: error.message || "Failed to search products" });
   }
@@ -157,6 +253,8 @@ router.get("/api/keepa/product/:asin", async (req: Request, res: Response) => {
       return res.json({ priceHistory: [], rankHistory: [] });
     }
 
+    await acquireToken();
+
     const result = await fetchKeepaProductFull(asin);
     if (!result) {
       setNotFoundCache(cacheKey);
@@ -171,6 +269,10 @@ router.get("/api/keepa/product/:asin", async (req: Request, res: Response) => {
       refillRate: result.refillRate,
     });
   } catch (error: any) {
+    if (error.message?.includes("queued too long")) {
+      console.warn("[Keepa Rate Limit] Request queued too long for chart data");
+      return res.status(429).json({ error: "Server is busy, please try again in a moment" });
+    }
     console.error("[Keepa] Error fetching product:", error.message);
     return res.status(500).json({ error: error.message || "Failed to fetch Keepa data" });
   }
@@ -182,7 +284,14 @@ router.get("/api/keepa/tokens", async (_req: Request, res: Response) => {
       return res.status(500).json({ error: "KEEPA_API_KEY is not configured" });
     }
     const status = await getKeepaTokenStatus();
-    return res.json(status);
+    return res.json({
+      ...status,
+      rateLimiter: {
+        tokensUsedLastMinute: apiCallTimestamps.length,
+        availableSlots: getAvailableTokens(),
+        queuedRequests: waitQueue.length,
+      },
+    });
   } catch (error: any) {
     return res.status(500).json({ error: error.message });
   }
