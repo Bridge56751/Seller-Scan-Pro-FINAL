@@ -83,9 +83,18 @@ function calculateBuyRating(product: ProductData, costPrice: number, salePrice?:
     } else if (roi > 0) {
       score += 5;
       factors.push({ label: "ROI Low", points: 5, status: "warn" });
+    } else if (roi > -20) {
+      const penalty = 15;
+      score = Math.max(0, score - penalty);
+      factors.push({ label: "Negative ROI", points: -penalty, status: "bad" });
+    } else if (roi > -50) {
+      const penalty = 30;
+      score = Math.max(0, score - penalty);
+      factors.push({ label: "Losing Money", points: -penalty, status: "bad" });
     } else {
-      score += 0;
-      factors.push({ label: "Negative ROI", points: 0, status: "bad" });
+      const penalty = 50;
+      score = Math.max(0, score - penalty);
+      factors.push({ label: "Major Loss", points: -penalty, status: "bad" });
     }
   }
 
