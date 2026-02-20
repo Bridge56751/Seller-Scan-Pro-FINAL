@@ -101,12 +101,13 @@ export async function restorePurchases(): Promise<{ success: boolean; isPro: boo
   }
 
   try {
+    const appUserId = await RC.getAppUserID();
     const customerInfo = await RC.restorePurchases();
     const allEntitlements = customerInfo.entitlements?.all ? Object.keys(customerInfo.entitlements.all) : [];
     const activeEntitlements = customerInfo.entitlements?.active ? Object.keys(customerInfo.entitlements.active) : [];
     const activeSubscriptions = customerInfo.activeSubscriptions || [];
 
-    const debugInfo = `Active entitlements: [${activeEntitlements.join(", ")}] | All entitlements: [${allEntitlements.join(", ")}] | Active subs: [${activeSubscriptions.join(", ")}]`;
+    const debugInfo = `User: ${appUserId} | Active: [${activeEntitlements.join(", ")}] | All: [${allEntitlements.join(", ")}] | Subs: [${activeSubscriptions.join(", ")}]`;
     console.log("[RevenueCat Restore Debug]", debugInfo);
 
     const isPro = !!customerInfo.entitlements.active["Seller Scan Pro"] || !!customerInfo.entitlements.active["200"] || !!customerInfo.entitlements.active["pro"] || !!customerInfo.entitlements.active["Pro"];
