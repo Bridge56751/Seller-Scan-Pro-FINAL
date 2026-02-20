@@ -51,14 +51,25 @@ export async function configureRevenueCat(): Promise<boolean> {
   }
 }
 
+function hasProAccess(customerInfo: any): boolean {
+  const entitlements = customerInfo.entitlements?.active || {};
+  if (entitlements["Seller Scan Pro"] || entitlements["200"] || entitlements["pro"] || entitlements["Pro"]) {
+    return true;
+  }
+  const activeSubs: string[] = customerInfo.activeSubscriptions || [];
+  if (activeSubs.length > 0) {
+    return true;
+  }
+  return false;
+}
+
 export async function checkSubscriptionStatus(): Promise<boolean> {
   const RC = await loadPurchasesModule();
   if (!RC || !isConfigured) return false;
 
   try {
     const customerInfo = await RC.getCustomerInfo();
-    const entitlements = customerInfo.entitlements.active;
-    return !!entitlements["Seller Scan Pro"] || !!entitlements["200"] || !!entitlements["pro"] || !!entitlements["Pro"];
+    return hasProAccess(customerInfo);
   } catch {
     return false;
   }
@@ -84,8 +95,7 @@ export async function purchaseSubscription(): Promise<{ success: boolean; error?
     }
 
     const { customerInfo } = await RC.purchasePackage(monthly);
-    const isPro = !!customerInfo.entitlements.active["Seller Scan Pro"] || !!customerInfo.entitlements.active["200"] || !!customerInfo.entitlements.active["pro"] || !!customerInfo.entitlements.active["Pro"];
-    return { success: isPro };
+    return { success: hasProAccess(customerInfo) };
   } catch (e: any) {
     if (e.userCancelled) {
       return { success: false, error: "cancelled" };
@@ -110,7 +120,7 @@ export async function restorePurchases(): Promise<{ success: boolean; isPro: boo
     const debugInfo = `User: ${appUserId} | Active: [${activeEntitlements.join(", ")}] | All: [${allEntitlements.join(", ")}] | Subs: [${activeSubscriptions.join(", ")}]`;
     console.log("[RevenueCat Restore Debug]", debugInfo);
 
-    const isPro = !!customerInfo.entitlements.active["Seller Scan Pro"] || !!customerInfo.entitlements.active["200"] || !!customerInfo.entitlements.active["pro"] || !!customerInfo.entitlements.active["Pro"];
+    const isPro = hasProAccess(customerInfo);
     return { success: true, isPro, debug: debugInfo };
   } catch (e: any) {
     return { success: false, isPro: false, error: e.message || "Restore failed", debug: `Exception: ${e.message}` };
