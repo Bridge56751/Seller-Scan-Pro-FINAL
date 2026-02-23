@@ -84,15 +84,20 @@ export default function ScanScreen() {
       <View style={[styles.container, { paddingTop: insets.top + webTopInset }]}>
         <View style={styles.centerContent}>
           <View style={styles.permIcon}>
-            <Feather name="camera-off" size={36} color={Colors.light.textTertiary} />
+            <Feather name="camera" size={36} color={Colors.light.primary} />
           </View>
-          <Text style={styles.permTitle}>Camera Access Required</Text>
+          <Text style={styles.permTitle}>Scan Barcodes to Find Deals</Text>
           <Text style={styles.permText}>
-            Enable camera to scan product barcodes for instant pricing analysis.
+            Seller Scan uses your camera to read product barcodes (UPC and EAN codes) while you shop. Each scan instantly pulls up Amazon pricing, sales rank, and profit estimates so you can decide whether an item is worth reselling — all in seconds.
+          </Text>
+          <Text style={styles.permSubText}>
+            Your camera is only used for barcode scanning. No photos or videos are saved or shared.
           </Text>
           <Pressable onPress={requestPermission} style={({ pressed }) => [styles.permBtn, pressed && { opacity: 0.85 }]}>
-            <Feather name="camera" size={16} color="#FFF" />
             <Text style={styles.permBtnText}>Continue</Text>
+          </Pressable>
+          <Pressable onPress={() => router.navigate("/(tabs)/search")} style={({ pressed }) => [styles.permSkip, pressed && { opacity: 0.6 }]}>
+            <Text style={styles.permSkipText}>Not Now</Text>
           </Pressable>
         </View>
       </View>
@@ -209,22 +214,39 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: Colors.light.textSecondary,
     textAlign: "center",
-    lineHeight: 20,
-    marginBottom: 24,
+    lineHeight: 21,
+    marginBottom: 12,
+    paddingHorizontal: 16,
+  },
+  permSubText: {
+    fontSize: 13,
+    color: Colors.light.textTertiary,
+    textAlign: "center",
+    lineHeight: 18,
+    marginBottom: 28,
+    paddingHorizontal: 24,
   },
   permBtn: {
-    flexDirection: "row",
     alignItems: "center",
-    gap: 8,
     backgroundColor: Colors.light.accent,
-    paddingHorizontal: 24,
-    paddingVertical: 12,
-    borderRadius: 10,
+    paddingHorizontal: 32,
+    paddingVertical: 14,
+    borderRadius: 12,
+    marginBottom: 12,
   },
   permBtnText: {
-    fontSize: 15,
+    fontSize: 16,
     fontWeight: "700" as const,
     color: "#FFF",
+  },
+  permSkip: {
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+  },
+  permSkipText: {
+    fontSize: 14,
+    color: Colors.light.textSecondary,
+    fontWeight: "500" as const,
   },
   overlay: {
     ...StyleSheet.absoluteFillObject,
