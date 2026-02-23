@@ -92,7 +92,7 @@ export default function ScanScreen() {
           </Text>
           <Pressable onPress={requestPermission} style={({ pressed }) => [styles.permBtn, pressed && { opacity: 0.85 }]}>
             <Feather name="camera" size={16} color="#FFF" />
-            <Text style={styles.permBtnText}>Enable Camera</Text>
+            <Text style={styles.permBtnText}>Continue</Text>
           </Pressable>
         </View>
       </View>
