@@ -1,4 +1,4 @@
-import { StyleSheet, Text, View, Pressable, Platform } from "react-native";
+import { StyleSheet, Text, View, Pressable, Platform, Linking } from "react-native";
 import { useState, useRef, useCallback } from "react";
 import { CameraView, useCameraPermissions, BarcodeScanningResult } from "expo-camera";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -80,25 +80,44 @@ export default function ScanScreen() {
   }
 
   if (!permission.granted) {
+    const wasDenied = permission.status === "denied" && !permission.canAskAgain;
+
     return (
       <View style={[styles.container, { paddingTop: insets.top + webTopInset }]}>
         <View style={styles.centerContent}>
           <View style={styles.permIcon}>
-            <Feather name="camera" size={36} color={Colors.light.primary} />
+            <Feather name={wasDenied ? "camera-off" : "camera"} size={36} color={wasDenied ? Colors.light.textTertiary : Colors.light.primary} />
           </View>
-          <Text style={styles.permTitle}>Scan Barcodes to Find Deals</Text>
+          <Text style={styles.permTitle}>{wasDenied ? "Camera Access Needed" : "Scan Barcodes to Find Deals"}</Text>
           <Text style={styles.permText}>
-            Seller Scan uses your camera to read product barcodes (UPC and EAN codes) while you shop. Each scan instantly pulls up Amazon pricing, sales rank, and profit estimates so you can decide whether an item is worth reselling — all in seconds.
+            {wasDenied
+              ? "Camera access was previously declined. To scan product barcodes, you can enable it in your device settings. You can also search for products manually using the Search tab."
+              : "Seller Scan uses your camera to read product barcodes (UPC and EAN codes) while you shop. Each scan instantly pulls up Amazon pricing, sales rank, and profit estimates so you can decide whether an item is worth reselling — all in seconds."}
           </Text>
-          <Text style={styles.permSubText}>
-            Your camera is only used for barcode scanning. No photos or videos are saved or shared.
-          </Text>
-          <Pressable onPress={requestPermission} style={({ pressed }) => [styles.permBtn, pressed && { opacity: 0.85 }]}>
-            <Text style={styles.permBtnText}>Continue</Text>
-          </Pressable>
-          <Pressable onPress={() => router.navigate("/(tabs)/search")} style={({ pressed }) => [styles.permSkip, pressed && { opacity: 0.6 }]}>
-            <Text style={styles.permSkipText}>Not Now</Text>
-          </Pressable>
+          {!wasDenied && (
+            <Text style={styles.permSubText}>
+              Your camera is only used for barcode scanning. No photos or videos are saved or shared.
+            </Text>
+          )}
+          {wasDenied ? (
+            <>
+              <Pressable onPress={() => Linking.openSettings()} style={({ pressed }) => [styles.permBtn, pressed && { opacity: 0.85 }]}>
+                <Text style={styles.permBtnText}>Open Settings</Text>
+              </Pressable>
+              <Pressable onPress={() => router.navigate("/(tabs)/search")} style={({ pressed }) => [styles.permSkip, pressed && { opacity: 0.6 }]}>
+                <Text style={styles.permSkipText}>Search Manually Instead</Text>
+              </Pressable>
+            </>
+          ) : (
+            <>
+              <Pressable onPress={requestPermission} style={({ pressed }) => [styles.permBtn, pressed && { opacity: 0.85 }]}>
+                <Text style={styles.permBtnText}>Continue</Text>
+              </Pressable>
+              <Pressable onPress={() => router.navigate("/(tabs)/search")} style={({ pressed }) => [styles.permSkip, pressed && { opacity: 0.6 }]}>
+                <Text style={styles.permSkipText}>Not Now</Text>
+              </Pressable>
+            </>
+          )}
         </View>
       </View>
     );
