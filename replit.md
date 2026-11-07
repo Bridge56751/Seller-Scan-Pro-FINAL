@@ -6,6 +6,10 @@ The new product direction is a shopper-focused price comparison app: identify go
 
 **Why:** The user changed course to AI/API-assisted photo scanning for shoppers finding the cheapest marketplace, and explicitly wants to keep the UI they like.
 
+Keep the shopper experience narrowly focused: someone sees an item (for example, a water bottle), photographs it, learns what it is, and finds the cheapest listed marketplace offer with a link to buy. No shipping calculations, seller-profit tools, or extra shopping-management features. Preserve the UI; do not expand the flow into a detailed shopping questionnaire.
+
+**Why:** The user explicitly corrected the scope: “just scan find and find the cheapest marketplace,” not shipping or everything else.
+
 Geographic goal: support all countries, primarily the US. Build country-aware comparisons with US defaults; clearly disclose unavailable regional coverage rather than presenting US listings as local offers. This is a product goal, not a claim that any selected provider covers every country.
 
 Provider setup is now approved using a dedicated SearchApi key stored server-side as SEARCHAPI_API_KEY. Leave the user's other app, its existing key, and account-wide settings untouched. The user is not concerned about shared usage limits; their concern is breaking the other integration.
