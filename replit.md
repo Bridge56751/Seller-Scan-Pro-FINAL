@@ -2,9 +2,9 @@
 
 ## Current scope override
 
-The new product direction is native-camera photo identification (not barcodes), with market prices and estimated profit. Preserve the existing UI's visual style and mobile layout; the user explicitly said “BUT LEAVE THE UI.” Marketplace and data-provider selection are not yet settled. Do not invent prices or reconnect removed providers without agreement.
+The new product direction is a shopper-focused price comparison app: identify goods using native-camera photos (not barcodes), then help shoppers find the cheapest marketplace to buy them. This supersedes the earlier seller-profit direction. Preserve the existing UI's visual style and mobile layout; the user explicitly said “BUT LEAVE THE UI.” Marketplace, region, and data-provider selection are not yet settled. Do not invent prices or reconnect removed providers without agreement.
 
-**Why:** The user changed course to AI/API-assisted photo scanning and explicitly wants to keep the UI they like.
+**Why:** The user changed course to AI/API-assisted photo scanning for shoppers finding the cheapest marketplace, and explicitly wants to keep the UI they like.
 
 The user requested removal of Keepa, Amazon-hosted product images, and unpkg, with product-data features disabled rather than replaced. Do not reconnect these providers or substitute mock data. Scanning, search, product details/charts, and the purchase paywall now show an unavailable notice; saved history and subscription management remain available. Legacy product endpoints return HTTP 503 without external calls. The landing page uses a direct Expo Go link instead of a QR library. Provider descriptions below are historical and do not describe currently enabled functionality.
 
