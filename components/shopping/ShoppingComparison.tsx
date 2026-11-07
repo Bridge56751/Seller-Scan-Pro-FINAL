@@ -63,15 +63,15 @@ export default function ShoppingComparison({ country, initialProduct = "", onBus
       onPress={() => { setConfirmed(!confirmed); setResult(null); }} style={[styles.card, confirmed && styles.selected]}>
       <Text style={styles.label}>{confirmed ? "Confirmed" : "Tap to confirm"}: I checked the model, size, color, quantity, and condition.</Text>
     </Pressable>
-    <Text style={styles.text}>Prices come from Google Shopping via SearchApi. Coverage is not exhaustive. Shipping, tax, membership conditions, and retailer availability must be checked before buying.</Text>
+    <Text style={styles.text}>Find the lowest listed product price among the stores we find. Confirm the final price on the store’s website.</Text>
     {error && <Text accessibilityRole="alert" style={styles.error}>{error}</Text>}
     <Pressable accessibilityRole="button" disabled={busy || !parsed.success || !countryInfo(country)}
       style={[styles.button, (busy || !parsed.success || !countryInfo(country)) && styles.disabled]} onPress={compare}>
-      {busy ? <ActivityIndicator color="#fff" /> : <Text style={styles.buttonText}>{result ? "Refresh Prices" : "Compare Prices"}</Text>}
+      {busy ? <ActivityIndicator color="#fff" /> : <Text style={styles.buttonText}>{result ? "Refresh Prices" : "Find the Lowest Price"}</Text>}
     </Pressable>
     {result && <View style={styles.section}>
       <Text style={styles.title}>Shopping results · {countryInfo(result.country)?.[1]}</Text>
-      <Text style={styles.text}>Retrieved {new Date(result.fetchedAt).toLocaleString()}. Prices can change. Matching-title offers in {result.currency} are sorted by item price, excluding shipping and tax—not total checkout cost. Other or conditional listings are unranked. A title match does not guarantee an exact variant.</Text>
+      <Text style={styles.text}>Updated {new Date(result.fetchedAt).toLocaleString()}. Matching offers in {result.currency} are sorted by listed product price, not checkout total. Check the exact item before buying.</Text>
       {result.offers.filter(offer => offer.titleMatches).length === 0 && <Text accessibilityRole="alert" style={styles.text}>No priced listings matched these product details. Try correcting the model or variant. We will not show a different product as a cheaper alternative.</Text>}
       {result.offers.filter(offer => offer.titleMatches).map((offer, index) => {
         const ranked = offer.titleMatches && !offer.restricted && offer.currency === result.currency && offer.amount !== null;
@@ -80,7 +80,6 @@ export default function ShoppingComparison({ country, initialProduct = "", onBus
           <Text style={styles.text}>{offer.title}</Text>
           <Text style={styles.title}>{offer.priceText}{offer.currency ? ` ${offer.currency}` : " · currency not supplied"}</Text>
           <Text style={styles.text}>{ranked ? (index === 0 ? "Lowest listed item price among matching titles returned" : "Title matches your details") : "Unranked — verify variant, currency, or offer conditions"}</Text>
-          <Text style={styles.text}>{offer.delivery} · Tax not included in comparison</Text>
           <Text style={styles.text}>Condition: {offer.condition}{offer.restricted ? " · Bundle, conditional, or installment offer; verify full cost and contents" : ""}</Text>
           <Pressable accessibilityRole="link" onPress={() => openOffer(offer.url)}>
             <Text style={styles.link}>View Listing</Text>

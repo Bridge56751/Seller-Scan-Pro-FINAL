@@ -16,7 +16,7 @@ export default function CountrySelector({ value, onChange, disabled = false }: {
     <Pressable accessibilityRole="button" disabled={disabled} style={styles.card} onPress={() => setOpen(true)}>
       <Text style={styles.label}>{info?.[1] || `Unavailable region (${value || "not selected"})`} · Change</Text>
     </Pressable>
-    <Text style={styles.text}>US is the default. Coverage varies by country and retailer; local delivery and availability are not guaranteed. We never substitute US offers for an unsupported country.</Text>
+    <Text style={styles.text}>Find stores and prices for your country. Coverage varies by region.</Text>
     {!info && <Text style={styles.error}>Shopping comparisons are unavailable for this country. Choose a supported shopping destination to continue.</Text>}
     <Modal visible={open} onRequestClose={() => setOpen(false)} animationType="slide">
       <SafeAreaView style={{ flex: 1, padding: 24, backgroundColor: Colors.light.background, gap: 16 }}>

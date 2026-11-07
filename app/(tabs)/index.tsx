@@ -84,7 +84,7 @@ export default function ScanScreen() {
         <Text style={styles.text}>
           Taking a photo does not upload it. Sharing happens only after you agree below. This app does not save photos to your photo library.
         </Text>
-        <Text style={styles.text}>Comparing US shopping listings. Delivery and availability vary by retailer.</Text>
+        <Text style={styles.text}>Find out what it is and where to buy it for less.</Text>
         {isWeb ? (
           <Text style={styles.text}>
             The native camera is available in the iPhone and Android app, not this browser preview.
