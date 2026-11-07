@@ -1,5 +1,4 @@
 import { StyleSheet, Text, View, Pressable, Platform } from "react-native";
-import { Image } from "expo-image";
 import { Feather } from "@expo/vector-icons";
 import type { ScanHistoryItem } from "@/lib/mock-data";
 import { formatCurrency, formatBSR } from "@/lib/mock-data";
@@ -27,7 +26,7 @@ export function ScanHistoryCard({ item, onPress, onDelete }: ScanHistoryCardProp
       style={({ pressed }) => [styles.container, pressed && styles.pressed]}
     >
       <View style={styles.imageWrap}>
-        <Image source={{ uri: item.imageUrl }} style={styles.image} contentFit="contain" />
+        <Feather name="package" size={28} color={Colors.light.textTertiary} />
       </View>
       <View style={styles.content}>
         <Text style={styles.title} numberOfLines={2}>{item.title}</Text>

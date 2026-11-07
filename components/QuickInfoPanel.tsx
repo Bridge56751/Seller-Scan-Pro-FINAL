@@ -1,7 +1,6 @@
 import { StyleSheet, Text, View, TextInput, Pressable, Linking } from "react-native";
 import { useState, useMemo } from "react";
 import { Feather, MaterialCommunityIcons, Ionicons } from "@expo/vector-icons";
-import { Image } from "expo-image";
 import type { ProductData } from "@/lib/mock-data";
 import { calculateProfit, formatCurrency, formatBSR, estimateSalesPerDay } from "@/lib/mock-data";
 import { CollapsiblePanel } from "./CollapsiblePanel";
@@ -38,7 +37,7 @@ export function QuickInfoPanel({ product, costPrice, onCostChange, salePrice, on
     <CollapsiblePanel title="Quick Info" icon="zap">
       <View style={styles.productRow}>
         <View style={styles.imageWrap}>
-          <Image source={{ uri: product.imageUrl }} style={styles.image} contentFit="contain" />
+          <Feather name="package" size={28} color={Colors.light.textTertiary} />
         </View>
         <View style={styles.productInfo}>
           <Text style={styles.productTitle} numberOfLines={2}>{product.title}</Text>

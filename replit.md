@@ -1,5 +1,11 @@
 # Seller Scan - Replit Agent Guide
 
+## Current scope override
+
+The user requested removal of Keepa, Amazon-hosted product images, and unpkg, with product-data features disabled rather than replaced. Do not reconnect these providers or substitute mock data. Scanning, search, product details/charts, and the purchase paywall now show an unavailable notice; saved history and subscription management remain available. Legacy product endpoints return HTTP 503 without external calls. The landing page uses a direct Expo Go link instead of a QR library. Provider descriptions below are historical and do not describe currently enabled functionality.
+
+**Why:** The user explicitly chose to disable product-data features for now when removing these services. Removing code does not cancel provider billing or existing Apple subscriptions.
+
 ## Overview
 
 Seller Scan is a mobile-first product scanning and profit analysis app for Amazon sellers. Users can scan product barcodes (or search by ASIN/UPC), view detailed product data (pricing, BSR rankings, competitor offers, alerts), and calculate profitability for reselling on Amazon FBA/FBM. The app uses Expo (React Native) for the frontend and Express.js for the backend API server.

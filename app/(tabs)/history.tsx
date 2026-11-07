@@ -2,7 +2,6 @@ import { StyleSheet, Text, View, FlatList, Pressable, Alert, Platform } from "re
 import { useState, useCallback } from "react";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { router, useFocusEffect } from "expo-router";
-import { Image } from "expo-image";
 import { Feather, Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import Colors from "@/constants/colors";
@@ -28,7 +27,7 @@ function HistoryRow({ item, onPress, onDelete }: { item: ScanHistoryItem; onPres
       style={({ pressed }) => [styles.historyRow, pressed && { opacity: 0.9 }]}
     >
       <View style={styles.rowImageWrap}>
-        <Image source={{ uri: item.imageUrl }} style={styles.rowImage} contentFit="contain" />
+        <Feather name="package" size={28} color={Colors.light.textTertiary} />
       </View>
       <View style={styles.rowContent}>
         <Text style={styles.rowTitle} numberOfLines={1}>{item.title}</Text>

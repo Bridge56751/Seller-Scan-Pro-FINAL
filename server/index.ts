@@ -1,7 +1,6 @@
 import express from "express";
 import type { Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
-import keepaRouter from "./routes/keepa";
 import deviceRouter from "./routes/device";
 import * as fs from "fs";
 import * as path from "path";
@@ -233,7 +232,13 @@ function setupErrorHandler(app: express.Application) {
   setupRequestLogging(app);
 
   app.use(deviceRouter);
-  app.use(keepaRouter);
+  // Explicit response for older installed builds; never call the retired provider.
+  app.use(["/api/product", "/api/keepa"], (_req, res) => {
+    res.status(503).json({
+      code: "PRODUCT_DATA_DISABLED",
+      error: "Product scanning, search, pricing, sales ranks, and charts are disabled for now.",
+    });
+  });
 
   app.get("/api/config/revenuecat", (_req, res) => {
     const apiKey = process.env.REVENUECAT_API_KEY || "";

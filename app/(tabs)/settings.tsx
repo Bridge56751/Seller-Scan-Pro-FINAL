@@ -22,7 +22,7 @@ export default function SettingsScreen() {
     Linking.openURL(url);
   };
 
-  const scansRemaining = isPaid ? "Unlimited" : `${freeScansLeft} of ${FREE_SCAN_LIMIT}`;
+  const scansRemaining = "Currently disabled";
   const accountType = isPaid ? "Pro" : "Free";
 
   return (
@@ -45,7 +45,7 @@ export default function SettingsScreen() {
               </View>
               <View style={styles.avatarInfo}>
                 <Text style={styles.userName}>Seller Scan {accountType}</Text>
-                <Text style={styles.userEmail}>{isPaid ? "Unlimited access" : "Free tier"}</Text>
+                <Text style={styles.userEmail}>Product-data features are disabled</Text>
               </View>
               <View style={[styles.badge, isPaid && styles.badgePro]}>
                 <Text style={[styles.badgeText, isPaid && styles.badgeTextPro]}>{accountType}</Text>
@@ -74,8 +74,8 @@ export default function SettingsScreen() {
               <View style={styles.upgradeLeft}>
                 <Feather name="zap" size={20} color="#FFFFFF" />
                 <View style={styles.upgradeTextContainer}>
-                  <Text style={styles.upgradeTitle}>Upgrade to Pro</Text>
-                  <Text style={styles.upgradeSubtitle}>Unlimited scans & full features</Text>
+                  <Text style={styles.upgradeTitle}>Product Data Unavailable</Text>
+                  <Text style={styles.upgradeSubtitle}>New subscriptions are paused</Text>
                 </View>
               </View>
               <Feather name="chevron-right" size={20} color="rgba(255,255,255,0.7)" />

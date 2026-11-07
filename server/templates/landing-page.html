@@ -381,10 +381,9 @@
           <div class="step qr-section">
             <div class="step-header">
               <div class="step-number">2</div>
-              <h2 class="step-title">Scan QR Code</h2>
+              <h2 class="step-title">Open on Your Phone</h2>
             </div>
-            <p class="step-description">Use your phone's camera or Expo Go</p>
-            <div class="qr-code" id="qr-code"></div>
+            <p class="step-description">Visit this page on your phone, then open the app in Expo Go.</p>
             <a href="exps://EXPS_URL_PLACEHOLDER" class="open-button"
               >Open in Expo Go</a
             >
@@ -393,7 +392,6 @@
       </div>
     </div>
 
-    <script src="https://unpkg.com/qr-code-styling@1.6.0/lib/qr-code-styling.js"></script>
     <script>
       (function () {
         const ua = navigator.userAgent;
@@ -419,30 +417,6 @@
           appStoreBtn.className = "store-link";
           storeButtonsContainer.insertBefore(playStoreBtn, appStoreBtn);
         }
-
-        const qrCode = new QRCodeStyling({
-          width: 400,
-          height: 400,
-          data: deepLink,
-          dotsOptions: {
-            color: "#333333",
-            type: "rounded",
-          },
-          backgroundOptions: {
-            color: "#ffffff",
-          },
-          cornersSquareOptions: {
-            type: "extra-rounded",
-          },
-          cornersDotOptions: {
-            type: "dot",
-          },
-          qrOptions: {
-            errorCorrectionLevel: "H",
-          },
-        });
-
-        qrCode.append(document.getElementById("qr-code"));
 
         if (isAndroid || isIOS) {
           loadingEl.style.display = "block";

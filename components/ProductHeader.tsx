@@ -1,5 +1,4 @@
 import { StyleSheet, Text, View, Platform } from "react-native";
-import { Image } from "expo-image";
 import { Feather, MaterialCommunityIcons, Ionicons } from "@expo/vector-icons";
 import type { ProductData } from "@/lib/mock-data";
 import { formatBSR, formatCurrency, estimateSalesPerDay } from "@/lib/mock-data";
@@ -17,7 +16,7 @@ export function ProductHeader({ product }: ProductHeaderProps) {
     <View style={styles.container}>
       <View style={styles.topRow}>
         <View style={styles.imageWrap}>
-          <Image source={{ uri: product.imageUrl }} style={styles.image} contentFit="contain" />
+          <Feather name="package" size={28} color={Colors.light.textTertiary} />
         </View>
         <View style={styles.info}>
           <Text style={styles.brand}>{product.brand}</Text>
