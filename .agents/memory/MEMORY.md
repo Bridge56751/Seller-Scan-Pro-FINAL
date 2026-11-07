@@ -1,1 +1,2 @@
 - [Photo matching](searchapi-photo-matching.md) — Lens product-tab removal requires visual suggestions followed by confirmed shopping queries.
+- [Dependency compatibility](dependency-compatibility.md) — fix blocked transitive packages without forcing a major mobile SDK migration.
