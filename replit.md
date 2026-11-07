@@ -8,6 +8,10 @@ The new product direction is a shopper-focused price comparison app: identify go
 
 Geographic goal: support all countries, primarily the US. Build country-aware comparisons with US defaults; clearly disclose unavailable regional coverage rather than presenting US listings as local offers. This is a product goal, not a claim that any selected provider covers every country.
 
+The user has a SerpApi account but explicitly deferred provider setup. Current scope is the phone's native camera interface, not an embedded barcode scanner. Keep captured photos local until provider integration and its photo-sharing disclosures are implemented.
+
+**Why:** The user said “lets worry about that later lets just make sure we use the native camera app.” Preserve the existing styling and do not broaden this camera-only step into API setup.
+
 The user requested removal of Keepa, Amazon-hosted product images, and unpkg, with product-data features disabled rather than replaced. Do not reconnect these providers or substitute mock data. Scanning, search, product details/charts, and the purchase paywall now show an unavailable notice; saved history and subscription management remain available. Legacy product endpoints return HTTP 503 without external calls. The landing page uses a direct Expo Go link instead of a QR library. Provider descriptions below are historical and do not describe currently enabled functionality.
 
 **Why:** The user explicitly chose to disable product-data features for now when removing these services. Removing code does not cancel provider billing or existing Apple subscriptions.

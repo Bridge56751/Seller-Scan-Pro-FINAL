@@ -9,8 +9,8 @@ export default function ProductDataUnavailable() {
       <View style={styles.content}>
         <Text style={styles.title}>Product data is unavailable</Text>
         <Text style={styles.text}>
-          Product scanning, search, pricing, sales ranks, and charts are disabled for now.
-          No camera access or new subscription is needed.
+          Product identification, search, and price comparisons are not connected yet.
+          You can take and review a product photo in the Scan tab. No new subscription is needed.
         </Text>
         <Text style={styles.text}>
           Your saved history is still available. Existing subscriptions are not automatically

@@ -18,7 +18,7 @@
       "bundleIdentifier": "com.sellerscan.pro",
       "buildNumber": "13",
       "infoPlist": {
-        "NSCameraUsageDescription": "Seller Scan needs camera access to scan product barcodes (UPC and EAN codes) while you shop. Each scan instantly retrieves Amazon pricing, sales rank, and estimated profit so you can quickly evaluate whether an item is worth reselling. Your camera is used only for barcode reading — no photos or videos are captured, stored, or shared."
+        "NSCameraUsageDescription": "Seller Scan uses your camera to take a photo of a product so you can review the item and its model details in the app. Photos stay on your device and are not uploaded in this version."
       }
     },
     "android": {
@@ -42,9 +42,11 @@
       ],
       "expo-font",
       [
-        "expo-camera",
+        "expo-image-picker",
         {
-          "cameraPermission": "Seller Scan needs camera access to scan product barcodes (UPC and EAN codes) while you shop. Each scan instantly retrieves Amazon pricing, sales rank, and estimated profit so you can quickly evaluate whether an item is worth reselling. Your camera is used only for barcode reading — no photos or videos are captured, stored, or shared."
+          "cameraPermission": "Seller Scan uses your camera to take a photo of a product so you can review the item and its model details in the app. Photos stay on your device and are not uploaded in this version.",
+          "photosPermission": false,
+          "microphonePermission": false
         }
       ]
     ],
