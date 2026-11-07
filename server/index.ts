@@ -2,6 +2,7 @@ import express from "express";
 import type { Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import deviceRouter from "./routes/device";
+import shoppingRouter from "./routes/shopping";
 import * as fs from "fs";
 import * as path from "path";
 
@@ -20,6 +21,8 @@ function setupCors(app: express.Application) {
 
     if (process.env.REPLIT_DEV_DOMAIN) {
       origins.add(`https://${process.env.REPLIT_DEV_DOMAIN}`);
+      // Expo's dedicated preview has a distinct, project-specific origin.
+      origins.add(`https://${process.env.REPLIT_DEV_DOMAIN.replace(".", ".expo.")}`);
     }
 
     if (process.env.REPLIT_DOMAINS) {
@@ -67,6 +70,8 @@ function setupBodyParsing(app: express.Application) {
 
 function setupRequestLogging(app: express.Application) {
   app.use((req, res, next) => {
+    // Capability URLs and search results must never enter application logs.
+    if (req.path.startsWith("/api/shopping") || req.path === "/api/config/revenuecat") return next();
     const start = Date.now();
     const path = req.path;
     let capturedJsonResponse: Record<string, unknown> | undefined = undefined;
@@ -228,8 +233,9 @@ function setupErrorHandler(app: express.Application) {
 
 (async () => {
   setupCors(app);
-  setupBodyParsing(app);
   setupRequestLogging(app);
+  app.use("/api/shopping", shoppingRouter);
+  setupBodyParsing(app);
 
   app.use(deviceRouter);
   // Explicit response for older installed builds; never call the retired provider.

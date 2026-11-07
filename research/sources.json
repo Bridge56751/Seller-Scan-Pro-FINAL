@@ -1,0 +1,66 @@
+[
+  {
+    "key": "google-auth",
+    "title": "Google Search API",
+    "url": "https://www.searchapi.io/docs/google",
+    "date": "undated",
+    "tier": 3,
+    "evidence": "research/sources/safety-0-02-google-authentication.md"
+  },
+  {
+    "key": "account",
+    "title": "Account API",
+    "url": "https://www.searchapi.io/docs/account-api",
+    "date": "undated",
+    "tier": 3,
+    "evidence": "research/sources/safety-2-01-account-api.md"
+  },
+  {
+    "key": "keys",
+    "title": "November 2023 Update",
+    "url": "https://www.searchapi.io/announcements/7",
+    "date": "2023-11-06",
+    "tier": 3,
+    "evidence": "research/sources/safety-2-02-november-update.md"
+  },
+  {
+    "key": "pricing",
+    "title": "Pricing and FAQ",
+    "url": "https://www.searchapi.io/pricing",
+    "date": "undated",
+    "tier": 3,
+    "evidence": "research/sources/safety-1-01-pricing.md"
+  },
+  {
+    "key": "terms",
+    "title": "Terms of Service",
+    "url": "https://www.searchapi.io/legal/terms",
+    "date": "2026-04-11",
+    "tier": 3,
+    "evidence": "research/sources/safety-2-03-terms.md"
+  },
+  {
+    "key": "errors",
+    "title": "Amazon Categories OpenAPI",
+    "url": "https://www.searchapi.io/openapi/amazon_categories.yaml",
+    "date": "undated",
+    "tier": 3,
+    "evidence": "research/sources/safety-1-03-amazon-openapi.md"
+  },
+  {
+    "key": "analytics",
+    "title": "Search Analytics API",
+    "url": "https://www.searchapi.io/docs/search-analytics-api",
+    "date": "undated",
+    "tier": 3,
+    "evidence": "research/sources/quotas-billing-failure-snippets.md"
+  },
+  {
+    "key": "team",
+    "title": "June 2024 Update",
+    "url": "https://www.searchapi.io/announcements/14",
+    "date": "2024-06-07",
+    "tier": 3,
+    "evidence": "research/sources/isolation-safeguards-snippets.md"
+  }
+]

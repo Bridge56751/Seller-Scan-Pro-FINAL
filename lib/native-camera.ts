@@ -1,4 +1,5 @@
 import * as ImagePicker from "expo-image-picker";
+import { manipulateAsync, SaveFormat } from "expo-image-manipulator";
 
 export type CameraCaptureResult =
   | { status: "captured"; uri: string }
@@ -27,4 +28,15 @@ export async function captureProductPhoto(): Promise<CameraCaptureResult> {
   const uri = result.assets?.[0]?.uri;
   if (!uri) throw new Error("The camera did not return a photo. Please try again.");
   return { status: "captured", uri };
+}
+
+/** Local re-encoding only; caller must obtain sharing consent before uploading. */
+export async function prepareProductPhoto(uri: string): Promise<string> {
+  const result = await manipulateAsync(uri, [{ resize: { width: 1200 } }], {
+    compress: 0.75, format: SaveFormat.JPEG, base64: true,
+  });
+  if (!result.base64 || result.base64.length > 4 * 1024 * 1024) {
+    throw new Error("This photo is too large. Please retake it with just the product in view.");
+  }
+  return result.base64;
 }

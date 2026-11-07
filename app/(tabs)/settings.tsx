@@ -45,7 +45,7 @@ export default function SettingsScreen() {
               </View>
               <View style={styles.avatarInfo}>
                 <Text style={styles.userName}>Seller Scan {accountType}</Text>
-                <Text style={styles.userEmail}>Product-data features are disabled</Text>
+                <Text style={styles.userEmail}>Shopping comparisons available; legacy seller tools paused</Text>
               </View>
               <View style={[styles.badge, isPaid && styles.badgePro]}>
                 <Text style={[styles.badgeText, isPaid && styles.badgeTextPro]}>{accountType}</Text>
@@ -74,7 +74,7 @@ export default function SettingsScreen() {
               <View style={styles.upgradeLeft}>
                 <Feather name="zap" size={20} color="#FFFFFF" />
                 <View style={styles.upgradeTextContainer}>
-                  <Text style={styles.upgradeTitle}>Product Data Unavailable</Text>
+                  <Text style={styles.upgradeTitle}>Legacy Seller Tools Paused</Text>
                   <Text style={styles.upgradeSubtitle}>New subscriptions are paused</Text>
                 </View>
               </View>
@@ -124,6 +124,11 @@ export default function SettingsScreen() {
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Legal</Text>
           <View style={styles.card}>
+            <Pressable style={styles.menuRow} onPress={() => router.push("/photo-privacy")}>
+              <Text style={styles.menuText}>Photo & Shopping Privacy</Text>
+              <Feather name="chevron-right" size={16} color={Colors.light.textTertiary} />
+            </Pressable>
+            <View style={styles.menuDivider} />
             <Pressable
               style={({ pressed }) => [styles.menuRow, pressed && { backgroundColor: Colors.light.background }]}
               onPress={() => handleOpenLink(PRIVACY_POLICY_URL)}

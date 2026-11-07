@@ -9,8 +9,7 @@ export function getApiUrl(): string {
   let host = process.env.EXPO_PUBLIC_DOMAIN;
 
   if (!host) {
-    console.warn("EXPO_PUBLIC_DOMAIN is not set, using fallback");
-    host = "seller-scan-pro-final.replit.app";
+    throw new Error("The app’s server address is not configured. Please use a configured build.");
   }
 
   let url = new URL(`https://${host}`);

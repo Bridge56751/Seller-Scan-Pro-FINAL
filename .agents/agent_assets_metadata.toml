@@ -1,0 +1,30 @@
+uploads = []
+generated = []
+
+[[outputs]]
+id = "8U32DnBmJquIEjxFzGDup"
+uri = "file://research/notes.md"
+type = "text"
+title = "SearchApi safety research"
+description = "Research plan and evidence about protecting your existing app."
+logical_id = "44d40a89-41bf-4cd4-ab9b-12282175bc9e"
+content_hash = "sha256:869e78ae0ee21a711dd63efd3a4fc57e19df5b8a2319c53a5d1bed5f08df02dc"
+size = 1289
+mtime_ms = 1794088853006
+storage_uri = "gcs://replit-rams-assets-janeway/rams/assets/repl:f50d4f3c-c5e5-4cfd-ae2d-34532804679e/44d40a89-41bf-4cd4-ab9b-12282175bc9e/9ec2d363-5107-4bc3-aa15-1e7a91bc2568"
+storage_version_token = "1794088864901500"
+content_type = "text/markdown"
+
+[[outputs]]
+id = "pCNfr3VhO7h3k6Ypl4PjL"
+uri = "file://research/searchapi-account-safety.md"
+type = "text"
+title = "SearchApi: risks of sharing an account"
+description = "Documented facts, unresolved isolation questions, and a recommendation to protect your existing app."
+logical_id = "b3be5f8f-3b41-42f0-990b-f437b5b1e1a0"
+content_hash = "sha256:9f5d3b40445044ba523b3accf21c5fab014d0b004cccf919e3cd585f6ae5ae01"
+size = 9731
+mtime_ms = 1794089070668
+storage_uri = "gcs://replit-rams-assets-janeway/rams/assets/repl:f50d4f3c-c5e5-4cfd-ae2d-34532804679e/b3be5f8f-3b41-42f0-990b-f437b5b1e1a0/8be82ac1-4c85-430a-a67d-1ec77c29e8af"
+storage_version_token = "1794089090968012"
+content_type = "text/markdown"

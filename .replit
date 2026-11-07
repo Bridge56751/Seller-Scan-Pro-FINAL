@@ -1,5 +1,5 @@
 entrypoint = "README.md"
-modules = ["nodejs-22", "postgresql-16", "python-base-3.13"]
+modules = ["nodejs-22", "python-base-3.13", "postgresql-16"]
 
 [nix]
 channel = "stable-24_05"
@@ -76,3 +76,7 @@ ensurePreviewReachable = "/status"
 [userenv]
 
 [userenv.shared]
+
+[postMerge]
+path = "scripts/post-merge.sh"
+timeoutMs = 180000

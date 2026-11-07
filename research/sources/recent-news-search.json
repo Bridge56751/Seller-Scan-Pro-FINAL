@@ -1,0 +1,25 @@
+{
+  "resultPages": [
+    {
+      "snippet": "What's New\n\nNew updates and improvements to SearchApi\nOctober 6, 2026 12:13pm\n\nSeptember 2026: Update\n\nNew\nSeptember and the first days of October brought twelve new APIs, among them Yelp Search, GitHub Search, Google Reverse Image, and five new YouTube APIs.\n\n...\n\nit has one), retail_price (the car",
+      "title": "SearchApi: Changelog - Google Search API",
+      "url": "https://www.searchapi.io/announcements"
+    },
+    {
+      "snippet": "What's New\n\nNew updates and improvements to SearchApi\n← Back\nOctober 6, 2026 12:13pm\n\nSeptember 2026: Update\n\nNew\nSeptember and the first days of October brought twelve new APIs, among them Yelp Search, GitHub Search, Google Reverse Image, and five new YouTube APIs. We also added follow-up questions",
+      "title": "Google Search API for real-time SERP scraping",
+      "url": "https://www.searchapi.io/announcements/42"
+    },
+    {
+      "snippet": "What's included\n* 250,000 Searches\n* Team Management\n* Legal Protection Guarantee\n* 99.9% SLA\n* High Throughput\n* Search Analytics\n\nOcto 500K\n\n$1.8 per 1,000 searches\n$900 / month\nBuy Octo 500K\n\n...\n\n* 5,000,000 Searches\n* Team Management\n* Legal Protection Guarantee\n* 99.9% SLA\n* Dedicated Throughp",
+      "title": "Affordable SERP API Pricing",
+      "url": "https://www.searchapi.io/pricing"
+    },
+    {
+      "snippet": "Account API\n\nGET /api/v1/me\nThe Account API provides access to your account usage statistics, allowing you to retrieve real-time data on your current monthly usage, remaining credits, and hourly limits.\n\nAPI Parameters\n\nSearch Parameters\n\n* Name api_key Required Required Description The api_key auth",
+      "title": "Account API Documentation",
+      "url": "https://www.searchapi.io/docs/account-api"
+    }
+  ],
+  "searchAnswer": null
+}

@@ -2,19 +2,31 @@
 
 ## Current scope override
 
-The new product direction is a shopper-focused price comparison app: identify goods using native-camera photos (not barcodes), then help shoppers find the cheapest marketplace to buy them. This supersedes the earlier seller-profit direction. Preserve the existing UI's visual style and mobile layout; the user explicitly said “BUT LEAVE THE UI.” Marketplace, region, and data-provider selection are not yet settled. Do not invent prices or reconnect removed providers without agreement.
+The new product direction is a shopper-focused price comparison app: identify goods using native-camera photos (not barcodes), then compare real shopping prices. This supersedes the earlier seller-profit direction. Preserve the existing UI's visual style and mobile layout; the user explicitly said “BUT LEAVE THE UI.” The user has now approved SearchApi.io (not SerpApi). Do not invent prices or reconnect removed providers.
 
 **Why:** The user changed course to AI/API-assisted photo scanning for shoppers finding the cheapest marketplace, and explicitly wants to keep the UI they like.
 
 Geographic goal: support all countries, primarily the US. Build country-aware comparisons with US defaults; clearly disclose unavailable regional coverage rather than presenting US listings as local offers. This is a product goal, not a claim that any selected provider covers every country.
 
-The user has a SerpApi account but explicitly deferred provider setup. Current scope is the phone's native camera interface, not an embedded barcode scanner. Keep captured photos local until provider integration and its photo-sharing disclosures are implemented.
+Provider setup is now approved using a dedicated SearchApi key stored server-side as SEARCHAPI_API_KEY. Leave the user's other app, its existing key, and account-wide settings untouched. The user is not concerned about shared usage limits; their concern is breaking the other integration.
 
-**Why:** The user said “lets worry about that later lets just make sure we use the native camera app.” Preserve the existing styling and do not broaden this camera-only step into API setup.
+**Why:** The user subsequently chose “Proceed with SearchApi” and supplied the key securely. Native capture still uses the operating system camera; photographs are uploaded only after explicit per-request consent.
 
-The user requested removal of Keepa, Amazon-hosted product images, and unpkg, with product-data features disabled rather than replaced. Do not reconnect these providers or substitute mock data. Scanning, search, product details/charts, and the purchase paywall now show an unavailable notice; saved history and subscription management remain available. Legacy product endpoints return HTTP 503 without external calls. The landing page uses a direct Expo Go link instead of a QR library. Provider descriptions below are historical and do not describe currently enabled functionality.
+The user requested removal of Keepa, Amazon-hosted product images, and unpkg. Do not reconnect these providers or substitute mock data. Legacy product details/charts and new subscriptions remain paused; saved legacy history and subscription management remain available. Legacy product endpoints still return HTTP 503 without external calls. Provider descriptions below are historical and do not describe currently enabled functionality.
 
 **Why:** The user explicitly chose to disable product-data features for now when removing these services. Removing code does not cancel provider billing or existing Apple subscriptions.
+
+## Current shopping implementation
+
+The user clarified that scanning should not ask for country: scan a product, show comparable listings, and help find the cheapest place to buy the same item. Use US listings by default in the scan flow and label the market, without a country-selection step. Keep the product-match check lightweight; detailed corrections are optional.
+
+- Scan uses SearchApi's Google Lens `visual_matches`, followed by explicit user confirmation of model, size/capacity, color, pack quantity and condition before a Google Shopping request. The Search tab allows the same confirmation flow without a photo.
+- Supported countries are the initial Lens/Shopping intersection in `shared/shopping.ts`; US is the default. Unsupported countries return an explicit error without a US fallback. Country targeting is not a shipping guarantee.
+- Prices are actual provider results, not checkout totals. Only matching-title prices in the regional currency without detected financing/bundle conditions are sorted. All titles/conditions must still be checked at the retailer; results are not exhaustive or verified seller endorsements.
+- Photos are resized/re-encoded locally and server-side; server-side metadata is stripped. An AES-GCM encrypted temporary database record supports fetching across replicas. A random capability URL includes the decryption key; it is never stored alongside the ciphertext. Links expire after 2 minutes, records are deleted after processing and expired records are swept. Database backups and third-party retention are disclosed.
+- Photo-sharing consent and provider links appear before upload; Settings has a separate Photo & Shopping Privacy disclosure. Native permission-string changes require a new native build. The existing hosted general privacy policy is external to this repository.
+- `shopping_photos` is defined in `shared/schema.ts`. Post-merge setup installs dependencies and applies the development schema. No production DDL runs on application startup.
+- `npm run test:shopping` covers schema validation, result normalization and API guardrails. Use real development API smoke checks for provider compatibility; do not log keys, image URLs or provider bodies.
 
 ## Overview
 

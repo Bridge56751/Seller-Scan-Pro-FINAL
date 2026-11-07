@@ -1,0 +1,1 @@
+- [Photo matching](searchapi-photo-matching.md) — Lens product-tab removal requires visual suggestions followed by confirmed shopping queries.

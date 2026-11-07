@@ -25,3 +25,9 @@ export const deviceScans = pgTable("device_scans", {
 });
 
 export type DeviceScan = typeof deviceScans.$inferSelect;
+
+export const shoppingPhotos = pgTable("shopping_photos", {
+  id: text("id").primaryKey(),
+  payload: text("payload").notNull(),
+  expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+});

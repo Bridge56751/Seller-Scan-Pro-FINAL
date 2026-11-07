@@ -18,7 +18,7 @@
       "bundleIdentifier": "com.sellerscan.pro",
       "buildNumber": "13",
       "infoPlist": {
-        "NSCameraUsageDescription": "Seller Scan uses your camera to take a photo of a product so you can review the item and its model details in the app. Photos stay on your device and are not uploaded in this version."
+        "NSCameraUsageDescription": "Take product photos to find shopping matches. Photos stay on your device until you explicitly agree to share them with our server, SearchApi, and Google Lens."
       }
     },
     "android": {
@@ -44,7 +44,7 @@
       [
         "expo-image-picker",
         {
-          "cameraPermission": "Seller Scan uses your camera to take a photo of a product so you can review the item and its model details in the app. Photos stay on your device and are not uploaded in this version.",
+          "cameraPermission": "Take product photos to find shopping matches. Photos stay on your device until you explicitly agree to share them with our server, SearchApi, and Google Lens.",
           "photosPermission": false,
           "microphonePermission": false
         }
