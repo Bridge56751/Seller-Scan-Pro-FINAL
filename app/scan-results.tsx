@@ -7,12 +7,15 @@ import Colors from "@/constants/colors";
 import { useScanSession } from "@/lib/scan-session";
 import ShoppingOfferCard from "@/components/shopping/ShoppingOfferCard";
 import type { ShoppingOffer } from "@/shared/shopping";
+import PriceSortControl from "@/components/shopping/PriceSortControl";
+import { isComparablePrice, sortOffersByPrice, type PriceSort } from "@/shared/offer-sorting";
 
 type Condition = "any" | "new" | "used";
 
 export default function ScanResultsScreen() {
   const { session, busy, capture, refine, retry } = useScanSession();
   const [showRefine, setShowRefine] = useState(false);
+  const [priceSort, setPriceSort] = useState<PriceSort>("low");
   const [query, setQuery] = useState(session.query);
   const [condition, setCondition] = useState<Condition>("any");
   const [localError, setLocalError] = useState<string | null>(null);
@@ -23,12 +26,10 @@ export default function ScanResultsScreen() {
   const processing = session.stage === "identifying" || session.stage === "searching";
   const hasSearch = !!session.result;
   const offers = session.result?.offers || [];
-  const rankable = (offer: ShoppingOffer) => offer.titleMatches && !offer.restricted &&
-    !!session.result?.currency && offer.currency === session.result.currency &&
-    typeof offer.amount === "number" && Number.isFinite(offer.amount);
-  const ranked = offers.filter(rankable).sort((a, b) => a.amount! - b.amount!);
+  const rankable = (offer: ShoppingOffer) => isComparablePrice(offer, session.result?.currency);
+  const ranked = sortOffersByPrice(offers.filter(rankable), session.result?.currency, priceSort);
   const related = offers.filter(offer => !rankable(offer));
-  const lowest = ranked[0]?.amount;
+  const lowest = ranked.length ? Math.min(...ranked.map(offer => offer.amount!)) : undefined;
 
   useEffect(() => { setQuery(session.query); }, [session.query]);
 
@@ -141,7 +142,8 @@ export default function ScanResultsScreen() {
 
           {!processing && hasSearch && offers.length > 0 && <>
             <View style={styles.sectionHeading}><Text style={styles.sectionTitle}>Possible matches</Text><Text style={styles.count}>{offers.length} {offers.length === 1 ? "listing" : "listings"}</Text></View>
-            <Text style={styles.body}>Possible matches, lowest comparable prices first. Check the exact item at the store.</Text>
+            <PriceSortControl value={priceSort} onChange={setPriceSort} />
+            <Text style={styles.body}>Possible matches. Price sorting applies to comparable offers. Check the exact item at the store.</Text>
             {ranked.map((offer, index) => <ShoppingOfferCard key={`ranked-${offer.url}-${index}`} offer={offer} cheapest={offer.amount === lowest} onOpen={openListing} />)}
             {related.length > 0 && <>
               <Text style={styles.relatedTitle}>Other related listings</Text>

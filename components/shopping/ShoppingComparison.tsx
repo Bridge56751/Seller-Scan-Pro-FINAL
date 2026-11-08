@@ -5,6 +5,8 @@ import { compareProduct } from "@/lib/shopping-client";
 import Colors from "@/constants/colors";
 import { shoppingStyles as styles } from "./styles";
 import ShoppingOfferCard from "./ShoppingOfferCard";
+import PriceSortControl from "./PriceSortControl";
+import { sortOffersByPrice, type PriceSort } from "@/shared/offer-sorting";
 
 export default function ShoppingComparison({ country, initialProduct = "", onBusyChange }: {
   country: string; initialProduct?: string; onBusyChange?: (value: boolean) => void;
@@ -20,6 +22,7 @@ export default function ShoppingComparison({ country, initialProduct = "", onBus
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<Comparison | null>(null);
   const [editingResult, setEditingResult] = useState(false);
+  const [priceSort, setPriceSort] = useState<PriceSort>("low");
   const lock = useRef(false);
   const parsed = comparisonSchema.safeParse({ product, size, color, quantity: Number(quantity), condition, country, confirmed });
   function changed() { setConfirmed(false); setResult(null); setError(null); }
@@ -40,7 +43,7 @@ export default function ShoppingComparison({ country, initialProduct = "", onBus
     ["Color", color, setColor, "Enter the color, or N/A"],
     ["Pack quantity", quantity, setQuantity, "1"],
   ] as const;
-  const visibleOffers = result?.offers.filter(offer => offer.titleMatches) ?? [];
+  const visibleOffers = sortOffersByPrice(result?.offers.filter(offer => offer.titleMatches) ?? [], result?.currency, priceSort);
   const isRanked = (offer: Comparison["offers"][number]) =>
     offer.titleMatches && !offer.restricted && offer.currency === result?.currency &&
     offer.amount !== null && Number.isFinite(offer.amount);
@@ -102,7 +105,8 @@ export default function ShoppingComparison({ country, initialProduct = "", onBus
         <Text style={resultStyles.meta}>{countryInfo(result.country)?.[1]}</Text>
       </View>
       <Text style={resultStyles.meta}>Updated {new Date(result.fetchedAt).toLocaleString()} · {result.currency}</Text>
-      <Text style={resultStyles.note}>Lowest comparable prices first. Check the item and final price at the store.</Text>
+      {visibleOffers.length > 0 && <PriceSortControl value={priceSort} onChange={setPriceSort} />}
+      <Text style={resultStyles.note}>Price sorting applies to comparable offers. Check the item and final price at the store.</Text>
       {result.offers.filter(offer => offer.titleMatches).length === 0 && <Text accessibilityRole="alert" style={styles.text}>No priced listings matched these product details. Try correcting the model or variant. We will not show a different product as a cheaper alternative.</Text>}
       {visibleOffers.map((offer, index) => <ShoppingOfferCard
         key={`${offer.url}-${index}`} offer={offer}
