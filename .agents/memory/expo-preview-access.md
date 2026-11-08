@@ -14,3 +14,5 @@ Check workflow port detection separately from HTTP reachability when Replit's ph
 **Why:** The loopback-bound Expo server served browser requests while workflow status reported no open ports. Binding all interfaces made port detection report the expected port. This is evidence of corrected readiness detection, not proof that the user's embedded panel or iPhone login works.
 
 **How to apply:** Confirm the actual listening address and workflow open-port status; preserve the public proxy URL while correcting the bind address. Do not repeatedly change app UI to fix the platform's loading screen.
+
+The user confirmed the website preview became visible after the bind-address correction. This confirmation covers the embedded website preview only, not physical-device access.
