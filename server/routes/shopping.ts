@@ -1,7 +1,7 @@
 import express, { Router, type Request, type Response, type NextFunction } from "express";
 import sharp from "sharp";
 import { z } from "zod";
-import { comparisonSchema, countryInfo, PHOTO_CONSENT_VERSION } from "../../shared/shopping";
+import { comparisonSchema, countryInfo } from "../../shared/shopping";
 import { searchApi, ShoppingError, normalizeMatches, normalizeOffers, shoppingQuery } from "../services/searchapi";
 import { storePhoto, readPhoto, deletePhoto } from "../services/photo-store";
 
@@ -9,7 +9,6 @@ const router = Router();
 const photoSchema = z.object({
   image: z.string().min(100).max(4 * 1024 * 1024).regex(/^[A-Za-z0-9+/]+={0,2}$/),
   country: z.string().length(2).transform(v => v.toUpperCase()),
-  consent: z.literal(PHOTO_CONSENT_VERSION),
 }).strict();
 
 function requireCountry(code: string) {
@@ -115,7 +114,7 @@ router.post("/compare", limit, express.json({ limit: "8kb" }), async (req, res, 
 router.use((error: unknown, _req: Request, res: Response, _next: NextFunction) => {
   res.locals.releaseSearch?.();
   if (error instanceof z.ZodError) return res.status(400).json({
-    error: "Check your photo consent, country, and product details. All variant fields and confirmation are required.",
+    error: "Check your photo, country, and product details. All variant fields and confirmation are required for price comparison.",
   });
   if (error instanceof ShoppingError) return res.status(error.status).json({ code: error.code, error: error.message });
   if ((error as { type?: string })?.type === "entity.too.large") return res.status(413).json({ error: "Photo is too large. Please retake it." });

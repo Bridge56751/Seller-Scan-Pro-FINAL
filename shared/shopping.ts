@@ -22,9 +22,8 @@ export function countryInfo(code: string) {
   return COUNTRIES.find(([value]) => value === code.toUpperCase());
 }
 
-export const PHOTO_CONSENT_VERSION = "searchapi-photo-auto-v2";
 export const PHOTO_DISCLOSURE =
-  "After you allow automatic identification, each photo you accept in the camera is uploaded to this app’s server and shared with SearchApi and Google Lens for matching. You can turn off future automatic uploads in Photo & Shopping Privacy. We remove image metadata and temporarily store an encrypted copy. An unlisted image link is accessible to anyone who has it while processing, for at most 2 minutes. The temporary record is deleted after processing; encrypted copies may remain in database backups. SearchApi and Google may retain submitted data under their own policies. Avoid faces, addresses, receipts, and other private information. Clearing a photo or withdrawing permission does not remove copies already received by providers. Photos are not saved to your photo library.";
+  "Each product photo you accept in the camera is uploaded to this app’s server and shared with SearchApi and Google Lens for identification. Canceling the camera sends no photo. We remove image metadata and temporarily store an encrypted copy. An unlisted image link is accessible to anyone who has it while processing, for at most 2 minutes. The temporary record is deleted after processing; encrypted copies may remain in database backups. SearchApi and Google may retain submitted data under their own policies. Avoid faces, addresses, receipts, and other private information. Clearing a photo does not remove copies already received by providers. Photos are not saved to your photo library.";
 
 export const comparisonSchema = z.object({
   country: z.string().length(2).transform(v => v.toUpperCase()),

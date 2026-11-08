@@ -30,7 +30,7 @@ export async function captureProductPhoto(): Promise<CameraCaptureResult> {
   return { status: "captured", uri };
 }
 
-/** Local re-encoding only; caller must obtain sharing consent before uploading. */
+/** Local re-encoding only, before submitting a user-accepted photo for identification. */
 export async function prepareProductPhoto(uri: string): Promise<string> {
   const result = await manipulateAsync(uri, [{ resize: { width: 1200 } }], {
     compress: 0.75, format: SaveFormat.JPEG, base64: true,

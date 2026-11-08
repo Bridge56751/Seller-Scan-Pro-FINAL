@@ -1,6 +1,6 @@
 import { getApiUrl } from "./query-client";
 import { prepareProductPhoto } from "./native-camera";
-import { PHOTO_CONSENT_VERSION, type Identification, type Comparison, type ComparisonInput } from "@/shared/shopping";
+import { type Identification, type Comparison, type ComparisonInput } from "@/shared/shopping";
 
 async function shoppingRequest<T>(route: string, body: unknown): Promise<T> {
   const controller = new AbortController();
@@ -22,10 +22,10 @@ async function shoppingRequest<T>(route: string, body: unknown): Promise<T> {
   } finally { clearTimeout(timeout); }
 }
 
-// Caller must check the user's versioned, revocable photo-sharing consent.
+// Only called for a user-accepted camera photo or an explicit retry.
 export async function identifyPhoto(uri: string, country: string) {
   const image = await prepareProductPhoto(uri);
-  return shoppingRequest<Identification>("identify", { image, country, consent: PHOTO_CONSENT_VERSION });
+  return shoppingRequest<Identification>("identify", { image, country });
 }
 export function compareProduct(input: ComparisonInput) {
   return shoppingRequest<Comparison>("compare", input);

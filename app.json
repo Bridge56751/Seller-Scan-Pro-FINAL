@@ -12,7 +12,7 @@
       "bundleIdentifier": "com.sellerscan.pro",
       "buildNumber": "13",
       "infoPlist": {
-        "NSCameraUsageDescription": "Take product photos to find shopping matches. Photos stay on your device until you explicitly agree to share them with our server, SearchApi, and Google Lens."
+        "NSCameraUsageDescription": "Take product photos to find shopping matches. Accepted photos are sent to our server, SearchApi, and Google Lens for identification."
       }
     },
     "android": {
@@ -39,7 +39,7 @@
       [
         "expo-image-picker",
         {
-          "cameraPermission": "Take product photos to find shopping matches. Photos stay on your device until you explicitly agree to share them with our server, SearchApi, and Google Lens.",
+          "cameraPermission": "Take product photos to find shopping matches. Accepted photos are sent to our server, SearchApi, and Google Lens for identification.",
           "photosPermission": false,
           "microphonePermission": false
         }

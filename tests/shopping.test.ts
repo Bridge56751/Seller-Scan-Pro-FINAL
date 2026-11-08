@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { comparisonSchema, countryInfo, PHOTO_CONSENT_VERSION } from "../shared/shopping";
+import { comparisonSchema, countryInfo } from "../shared/shopping";
 import { normalizeMatches, normalizeOffers, safeUrl, shoppingQuery, searchApi, ShoppingError } from "../server/services/searchapi";
 
 const input = { product: "Sony WH-1000XM5", color: "Black", size: "N/A", quantity: 1, condition: "new", country: "US", confirmed: true } as const;
@@ -10,7 +10,6 @@ test("comparison requires explicit variant details and confirmation", () => {
   for (const patch of [{ confirmed: false }, { size: "" }, { color: "" }, { quantity: 0 }, { quantity: 1.5 }, { product: "" }]) {
     assert.equal(comparisonSchema.safeParse({ ...input, ...patch }).success, false);
   }
-  assert.ok(PHOTO_CONSENT_VERSION);
 });
 test("regional coverage never falls back to US", () => {
   assert.equal(countryInfo("ZZ"), undefined);

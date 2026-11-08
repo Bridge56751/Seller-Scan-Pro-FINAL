@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { ActivityIndicator, Alert, Image, Linking, Platform, Pressable, ScrollView, StyleSheet, Text } from "react-native";
+import { ActivityIndicator, Image, Linking, Platform, Pressable, ScrollView, StyleSheet, Text } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import Colors from "@/constants/colors";
 import { captureProductPhoto } from "@/lib/native-camera";
@@ -8,7 +8,6 @@ import { countryInfo, type PhotoMatch } from "@/shared/shopping";
 import { router } from "expo-router";
 import ShoppingComparison from "@/components/shopping/ShoppingComparison";
 import { useScanTrigger } from "@/lib/scan-trigger";
-import { grantPhotoConsent, hasPhotoConsent } from "@/lib/photo-consent";
 
 export default function ScanScreen() {
   const [photoUri, setPhotoUri] = useState<string | null>(null);
@@ -16,11 +15,9 @@ export default function ScanScreen() {
   const [needsSettings, setNeedsSettings] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const opening = useRef(false);
-  const consentAction = useRef<"camera" | "retry">("camera");
   const country = "US";
   const [matches, setMatches] = useState<PhotoMatch[] | null>(null);
   const [selected, setSelected] = useState<string | null>(null);
-  const [showConsent, setShowConsent] = useState(false);
   const [comparing, setComparing] = useState(false);
   const identifying = useRef(false);
   const disabled = busy || comparing;
@@ -28,8 +25,6 @@ export default function ScanScreen() {
   const { request } = useScanTrigger();
   const handledRequest = useRef(0);
   const takePhotoRef = useRef<() => Promise<void>>(async () => {});
-  const agreeRef = useRef<() => Promise<void>>(async () => {});
-  const alertOpen = useRef(false);
 
   useEffect(() => {
     if (request > handledRequest.current) {
@@ -38,28 +33,10 @@ export default function ScanScreen() {
     }
   }, [request]);
 
-  useEffect(() => {
-    if (!showConsent || isWeb || alertOpen.current) return;
-    alertOpen.current = true;
-    const dismiss = () => {
-      alertOpen.current = false;
-      setShowConsent(false);
-    };
-    Alert.alert(
-      "Allow Photo Identification?",
-      "Photos you accept in the camera will be sent to our server, SearchApi and Google Lens to identify products and find where to buy them. This applies to future scans too. Privacy details and controls are in Settings.",
-      [
-        { text: "Don’t Allow", style: "cancel", onPress: dismiss },
-        { text: "Allow", onPress: () => { dismiss(); void agreeRef.current(); } },
-      ],
-      { cancelable: true, onDismiss: dismiss },
-    );
-  }, [showConsent, isWeb]);
-
-  function resetIdentification() { setMatches(null); setSelected(null); setShowConsent(false); setError(null); }
+  function resetIdentification() { setMatches(null); setSelected(null); setError(null); }
   async function identify(uri: string) {
     if (!countryInfo(country) || identifying.current) return;
-    identifying.current = true; setBusy(true); setError(null); setMatches(null); setSelected(null); setShowConsent(false);
+    identifying.current = true; setBusy(true); setError(null); setMatches(null); setSelected(null);
     try { setMatches((await identifyPhoto(uri, country)).matches); }
     catch (e) { setError(e instanceof Error ? e.message : "Could not identify the photo. Please try again."); }
     finally { identifying.current = false; setBusy(false); }
@@ -72,11 +49,6 @@ export default function ScanScreen() {
     setError(null);
     setNeedsSettings(false);
     try {
-      if (!await hasPhotoConsent()) {
-        consentAction.current = "camera";
-        setShowConsent(true);
-        return;
-      }
       const result = await captureProductPhoto();
       if (result.status === "denied") {
         setNeedsSettings(!result.canAskAgain);
@@ -97,25 +69,6 @@ export default function ScanScreen() {
     }
   }
   takePhotoRef.current = takePhoto;
-
-  async function agreeAndContinue() {
-    if (opening.current || identifying.current || busy || comparing) return;
-    opening.current = true;
-    setBusy(true);
-    try {
-      await grantPhotoConsent();
-    } catch {
-      setError("Could not save your photo-sharing permission. Please try again.");
-      return;
-    } finally {
-      opening.current = false;
-      setBusy(false);
-    }
-    setShowConsent(false);
-    if (consentAction.current === "retry" && photoUri) await identify(photoUri);
-    else await takePhoto();
-  }
-  agreeRef.current = agreeAndContinue;
 
   async function openSettings() {
     try {
@@ -138,7 +91,7 @@ export default function ScanScreen() {
           </>
         ) : (
           <Text style={styles.text}>
-            Use your phone’s native camera to photograph a product. Keep the item and its model name clearly visible.
+            Take a product photo to find where to buy it. Accepted photos are processed by SearchApi and Google Lens.
           </Text>
         )}
         <Pressable accessibilityRole="link" onPress={() => router.push("/photo-privacy")}>
@@ -181,12 +134,7 @@ export default function ScanScreen() {
         )}
         {photoUri && !isWeb && <>
           {error && !needsSettings && <Pressable accessibilityRole="button" disabled={disabled}
-            style={[styles.button, disabled && styles.disabled]} onPress={async () => {
-              try {
-                if (await hasPhotoConsent()) await identify(photoUri);
-                else { consentAction.current = "retry"; setShowConsent(true); }
-              } catch { setError("Could not read photo-sharing permission. Please try again."); }
-            }}>
+            style={[styles.button, disabled && styles.disabled]} onPress={() => identify(photoUri)}>
             <Text style={styles.buttonText}>Retry Identification</Text>
           </Pressable>}
           {busy && <Text accessibilityRole="alert" style={styles.text}>Working… this can take up to a minute.</Text>}
