@@ -46,7 +46,7 @@ Preferred communication style: Simple, everyday language.
 
 ### Frontend (Expo / React Native)
 
-- **Framework**: Expo SDK 54 with React Native 0.81, using the new architecture (`newArchEnabled: true`)
+- **Framework**: Expo SDK 58 with React Native 0.88 (New Architecture is mandatory). Preview with stock Expo Go 58.
 - **Routing**: `expo-router` with file-based routing. No auth gate — users go straight to the app. Tab navigation lives in `app/(tabs)/` with four tabs: Scan (barcode camera), Search, History, and Settings. Product detail pages are at `app/product/[asin].tsx`. Paywall is at `app/paywall.tsx` (modal)
 - **No User Accounts**: No sign-in, no user accounts. The app is fully anonymous. Subscription status is managed via Apple's non-consumable/subscription purchases (StoreKit/RevenueCat). Auth context (`lib/auth-context.tsx`) manages device state only (isPaid, scanCount, freeScansLeft)
 - **Anti-Abuse**: Device fingerprint via `lib/device-id.ts` stored in SecureStore (persists across app reinstalls on iOS). Device ID sent with scan recording. Server tracks scans per device in `device_scans` table, preventing users from getting more free scans by reinstalling the app

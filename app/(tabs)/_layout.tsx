@@ -1,6 +1,6 @@
 import { isLiquidGlassAvailable } from "expo-glass-effect";
 import { Tabs } from "expo-router";
-import { NativeTabs, Icon, Label } from "expo-router/unstable-native-tabs";
+import { NativeTabs } from "expo-router/native-tabs";
 import { Platform, StyleSheet } from "react-native";
 import React from "react";
 import { Feather } from "@expo/vector-icons";
@@ -10,20 +10,20 @@ function NativeTabLayout() {
   return (
     <NativeTabs>
       <NativeTabs.Trigger name="index">
-        <Icon sf={{ default: "barcode.viewfinder", selected: "barcode.viewfinder" }} />
-        <Label>Scan</Label>
+        <NativeTabs.Trigger.Icon sf={{ default: "barcode.viewfinder", selected: "barcode.viewfinder" }} />
+        <NativeTabs.Trigger.Label>Scan</NativeTabs.Trigger.Label>
       </NativeTabs.Trigger>
       <NativeTabs.Trigger name="search">
-        <Icon sf={{ default: "magnifyingglass", selected: "magnifyingglass" }} />
-        <Label>Search</Label>
+        <NativeTabs.Trigger.Icon sf={{ default: "magnifyingglass", selected: "magnifyingglass" }} />
+        <NativeTabs.Trigger.Label>Search</NativeTabs.Trigger.Label>
       </NativeTabs.Trigger>
       <NativeTabs.Trigger name="history">
-        <Icon sf={{ default: "clock", selected: "clock.fill" }} />
-        <Label>History</Label>
+        <NativeTabs.Trigger.Icon sf={{ default: "clock", selected: "clock.fill" }} />
+        <NativeTabs.Trigger.Label>History</NativeTabs.Trigger.Label>
       </NativeTabs.Trigger>
       <NativeTabs.Trigger name="settings">
-        <Icon sf={{ default: "gearshape", selected: "gearshape.fill" }} />
-        <Label>Settings</Label>
+        <NativeTabs.Trigger.Icon sf={{ default: "gearshape", selected: "gearshape.fill" }} />
+        <NativeTabs.Trigger.Label>Settings</NativeTabs.Trigger.Label>
       </NativeTabs.Trigger>
     </NativeTabs>
   );
@@ -54,8 +54,8 @@ function ClassicTabLayout() {
         name="index"
         options={{
           title: "Scan",
-          tabBarIcon: ({ color }) => (
-            <Feather name="camera" size={22} color={color} />
+          tabBarIcon: ({ focused }) => (
+            <Feather name="camera" size={22} color={focused ? Colors.light.accent : Colors.light.tabIconDefault} />
           ),
         }}
       />
@@ -63,8 +63,8 @@ function ClassicTabLayout() {
         name="search"
         options={{
           title: "Search",
-          tabBarIcon: ({ color }) => (
-            <Feather name="search" size={22} color={color} />
+          tabBarIcon: ({ focused }) => (
+            <Feather name="search" size={22} color={focused ? Colors.light.accent : Colors.light.tabIconDefault} />
           ),
         }}
       />
@@ -72,8 +72,8 @@ function ClassicTabLayout() {
         name="history"
         options={{
           title: "History",
-          tabBarIcon: ({ color }) => (
-            <Feather name="clock" size={22} color={color} />
+          tabBarIcon: ({ focused }) => (
+            <Feather name="clock" size={22} color={focused ? Colors.light.accent : Colors.light.tabIconDefault} />
           ),
         }}
       />
@@ -81,8 +81,8 @@ function ClassicTabLayout() {
         name="settings"
         options={{
           title: "Settings",
-          tabBarIcon: ({ color }) => (
-            <Feather name="settings" size={22} color={color} />
+          tabBarIcon: ({ focused }) => (
+            <Feather name="settings" size={22} color={focused ? Colors.light.accent : Colors.light.tabIconDefault} />
           ),
         }}
       />

@@ -1,4 +1,5 @@
 import { StyleSheet, Text, View, Pressable, ActivityIndicator, PanResponder } from "react-native";
+import type { ViewInstance } from "react-native";
 import { useState, useMemo, useRef, useCallback } from "react";
 import Svg, { Path, Line, Text as SvgText, Rect, Circle } from "react-native-svg";
 import * as Haptics from "expo-haptics";
@@ -49,7 +50,7 @@ export function ChartsPanel({ priceHistory, rankHistory, loading }: ChartsPanelP
     return { x: clampedX, index: Math.max(0, Math.min(idx, dataLen - 1)) };
   }, [dataLen, padLeft, drawW]);
 
-  const chartViewRef = useRef<View>(null);
+  const chartViewRef = useRef<ViewInstance>(null);
   const isScrubbing = useRef(false);
   const grantLocationX = useRef(0);
   const grantPageX = useRef(0);
