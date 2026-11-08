@@ -18,6 +18,8 @@ Provider setup is now approved using a dedicated SearchApi key stored server-sid
 
 **Why:** The user subsequently chose “Proceed with SearchApi” and supplied the key securely. The user requires permissions BEFORE the camera opens, remembered for future scans. Obtain versioned, revocable photo-sharing permission first, then OS camera permission, then launch the camera. Once granted, Scan-tab taps open the native camera directly and accepted photos process automatically, without another consent or Identify step. Ask again only if permission is revoked or the disclosure version changes. Canceling the camera must never upload a photo. Preserve the existing visual style.
 
+Permission presentation: the user wants a short native Allow / Don’t Allow popup before the camera, not a full-screen legal disclosure. Name the photo-sharing providers in that popup; keep full details and revocation controls in Photo & Shopping Privacy. The OS camera permission remains separate. Do not imply the custom popup is an Apple endorsement or App Store approval.
+
 The user requested removal of Keepa, Amazon-hosted product images, and unpkg. Do not reconnect these providers or substitute mock data. Legacy product details/charts and new subscriptions remain paused; saved legacy history and subscription management remain available. Legacy product endpoints still return HTTP 503 without external calls. Provider descriptions below are historical and do not describe currently enabled functionality.
 
 **Why:** The user explicitly chose to disable product-data features for now when removing these services. Removing code does not cancel provider billing or existing Apple subscriptions.

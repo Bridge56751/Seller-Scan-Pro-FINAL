@@ -1,10 +1,11 @@
 import { useEffect, useRef, useState } from "react";
-import { ActivityIndicator, Image, Linking, Platform, Pressable, ScrollView, StyleSheet, Text } from "react-native";
+import { ActivityIndicator, Alert, Image, Linking, Platform, Pressable, ScrollView, StyleSheet, Text } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import Colors from "@/constants/colors";
 import { captureProductPhoto } from "@/lib/native-camera";
 import { identifyPhoto } from "@/lib/shopping-client";
-import { PHOTO_DISCLOSURE, countryInfo, type PhotoMatch } from "@/shared/shopping";
+import { countryInfo, type PhotoMatch } from "@/shared/shopping";
+import { router } from "expo-router";
 import ShoppingComparison from "@/components/shopping/ShoppingComparison";
 import { useScanTrigger } from "@/lib/scan-trigger";
 import { grantPhotoConsent, hasPhotoConsent } from "@/lib/photo-consent";
@@ -27,6 +28,8 @@ export default function ScanScreen() {
   const { request } = useScanTrigger();
   const handledRequest = useRef(0);
   const takePhotoRef = useRef<() => Promise<void>>(async () => {});
+  const agreeRef = useRef<() => Promise<void>>(async () => {});
+  const alertOpen = useRef(false);
 
   useEffect(() => {
     if (request > handledRequest.current) {
@@ -34,6 +37,24 @@ export default function ScanScreen() {
       void takePhotoRef.current();
     }
   }, [request]);
+
+  useEffect(() => {
+    if (!showConsent || isWeb || alertOpen.current) return;
+    alertOpen.current = true;
+    const dismiss = () => {
+      alertOpen.current = false;
+      setShowConsent(false);
+    };
+    Alert.alert(
+      "Allow Photo Identification?",
+      "Photos you accept in the camera will be sent to our server, SearchApi and Google Lens to identify products and find where to buy them. This applies to future scans too. Privacy details and controls are in Settings.",
+      [
+        { text: "Don’t Allow", style: "cancel", onPress: dismiss },
+        { text: "Allow", onPress: () => { dismiss(); void agreeRef.current(); } },
+      ],
+      { cancelable: true, onDismiss: dismiss },
+    );
+  }, [showConsent, isWeb]);
 
   function resetIdentification() { setMatches(null); setSelected(null); setShowConsent(false); setError(null); }
   async function identify(uri: string) {
@@ -94,6 +115,7 @@ export default function ScanScreen() {
     if (consentAction.current === "retry" && photoUri) await identify(photoUri);
     else await takePhoto();
   }
+  agreeRef.current = agreeAndContinue;
 
   async function openSettings() {
     try {
@@ -101,23 +123,6 @@ export default function ScanScreen() {
     } catch {
       setError("Could not open Settings. Open your phone’s Settings manually to manage camera access.");
     }
-  }
-
-  if (showConsent && !isWeb) {
-    return <SafeAreaView style={styles.container}>
-      <ScrollView contentContainerStyle={styles.content}>
-        <Text style={styles.title}>Before Your First Scan</Text>
-        <Text style={styles.text}>{PHOTO_DISCLOSURE}</Text>
-        <Text style={styles.text}>Allow automatic identification once. Next, your phone will ask for camera access if needed. Future scans open the camera directly and process accepted photos automatically. You can turn this off in Settings → Photo & Shopping Privacy.</Text>
-        <Pressable accessibilityRole="link" onPress={() => Linking.openURL("https://www.searchapi.io/legal/privacy").catch(() => setError("Could not open privacy policy."))}><Text style={styles.text}>SearchApi privacy policy</Text></Pressable>
-        <Pressable accessibilityRole="link" onPress={() => Linking.openURL("https://policies.google.com/privacy").catch(() => setError("Could not open privacy policy."))}><Text style={styles.text}>Google privacy policy</Text></Pressable>
-        {error && <Text accessibilityRole="alert" style={styles.error}>{error}</Text>}
-        <Pressable accessibilityRole="button" disabled={disabled} style={[styles.button, disabled && styles.disabled]} onPress={agreeAndContinue}>
-          <Text style={styles.buttonText}>{busy ? "Saving…" : "Allow & Continue"}</Text>
-        </Pressable>
-        <Pressable accessibilityRole="button" disabled={disabled} onPress={() => setShowConsent(false)} style={[styles.button, disabled && styles.disabled]}><Text style={styles.buttonText}>Not Now</Text></Pressable>
-      </ScrollView>
-    </SafeAreaView>;
   }
 
   return (
@@ -136,9 +141,9 @@ export default function ScanScreen() {
             Use your phone’s native camera to photograph a product. Keep the item and its model name clearly visible.
           </Text>
         )}
-        <Text style={styles.text}>
-          After you enable automatic identification, accepted photos are sent for matching immediately. You can turn this off in Settings → Photo & Shopping Privacy. Photos are not saved to your photo library.
-        </Text>
+        <Pressable accessibilityRole="link" onPress={() => router.push("/photo-privacy")}>
+          <Text style={styles.privacyLink}>Photo & Shopping Privacy</Text>
+        </Pressable>
         <Text style={styles.text}>Find out what it is and where to buy it for less.</Text>
         {isWeb ? (
           <Text style={styles.text}>
@@ -210,4 +215,5 @@ const styles = StyleSheet.create({
   disabled: { opacity: 0.6 },
   photo: { width: "100%", height: 260, backgroundColor: Colors.light.surface, borderRadius: 8 },
   error: { color: Colors.light.danger, fontSize: 14, lineHeight: 20, textAlign: "center" },
+  privacyLink: { color: Colors.light.accent, fontSize: 13, textAlign: "center", paddingVertical: 8 },
 });
