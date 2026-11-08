@@ -141,13 +141,12 @@ export default function ScanResultsScreen() {
 
           {!processing && hasSearch && offers.length > 0 && <>
             <View style={styles.sectionHeading}><Text style={styles.sectionTitle}>Possible matches</Text><Text style={styles.count}>{offers.length} {offers.length === 1 ? "listing" : "listings"}</Text></View>
-            <Text style={styles.body}>Check the model, size, color and condition at the store before buying. These listings may not be the item in your photo.</Text>
-            {ranked.length > 0 && <Text style={styles.rankingNote}>Lowest listed price among comparable matching titles in {session.result?.currency}. Check the exact item and final price at the store.</Text>}
-            {ranked.map((offer, index) => <ShoppingOfferCard key={`ranked-${offer.url}-${index}`} offer={offer} ranked cheapest={offer.amount === lowest} onOpen={openListing} />)}
+            <Text style={styles.body}>Possible matches, lowest comparable prices first. Check the exact item at the store.</Text>
+            {ranked.map((offer, index) => <ShoppingOfferCard key={`ranked-${offer.url}-${index}`} offer={offer} cheapest={offer.amount === lowest} onOpen={openListing} />)}
             {related.length > 0 && <>
               <Text style={styles.relatedTitle}>Other related listings</Text>
-              <Text style={styles.body}>These may differ in product, currency or offer conditions. They are not included in the lowest-price comparison.</Text>
-              {related.map((offer, index) => <ShoppingOfferCard key={`related-${offer.url}-${index}`} offer={offer} ranked={false} cheapest={false} onOpen={openListing} />)}
+              <Text style={styles.body}>Different items or offer terms; not compared for lowest price.</Text>
+              {related.map((offer, index) => <ShoppingOfferCard key={`related-${offer.url}-${index}`} offer={offer} cheapest={false} onOpen={openListing} />)}
             </>}
           </>}
 

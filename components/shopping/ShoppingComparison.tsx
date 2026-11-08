@@ -102,10 +102,10 @@ export default function ShoppingComparison({ country, initialProduct = "", onBus
         <Text style={resultStyles.meta}>{countryInfo(result.country)?.[1]}</Text>
       </View>
       <Text style={resultStyles.meta}>Updated {new Date(result.fetchedAt).toLocaleString()} · {result.currency}</Text>
-      <Text style={resultStyles.note}>Matching listings are sorted by item price. Unranked offers are excluded from the lowest-price ranking. Check the exact item and final price at the store.</Text>
+      <Text style={resultStyles.note}>Lowest comparable prices first. Check the item and final price at the store.</Text>
       {result.offers.filter(offer => offer.titleMatches).length === 0 && <Text accessibilityRole="alert" style={styles.text}>No priced listings matched these product details. Try correcting the model or variant. We will not show a different product as a cheaper alternative.</Text>}
       {visibleOffers.map((offer, index) => <ShoppingOfferCard
-        key={`${offer.url}-${index}`} offer={offer} ranked={isRanked(offer)}
+        key={`${offer.url}-${index}`} offer={offer}
         cheapest={offer === cheapestOffer} onOpen={openOffer}
       />)}
       {result.offers.some(offer => !offer.titleMatches) && <Text style={styles.text}>Listings that did not match your product details were hidden.</Text>}

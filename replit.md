@@ -10,6 +10,8 @@ Keep the shopper experience narrowly focused: someone sees an item (for example,
 
 Shopping results should follow the user's supplied reference: compact rows with a product picture, price, marketplace/store, and View Listing action. Keep the existing app style and rank comparable matching offers by listed price; never fabricate missing product images or prices.
 
+Results must stay focused on price and a buying link, with the photo/name/store identifying the listing. Do not show sales rank, BSR, sales estimates or reseller metrics, and avoid “ranked/unranked” jargon. **Why:** The user explicitly said sales rank does not matter and asked for “just ... price a link.”
+
 The user approved a Pocket Pricer-inspired, results-first scan flow: native capture → automatic identification and shopping search → dedicated Scan Results screen. Show the photo, likely product name and listings immediately. Refine Search / Wrong Item is optional after results, not a mandatory questionnaire. Keep Scan Again easy to reach. Auto-selected visual suggestions and their listings are possible matches, never falsely user-confirmed exact variants; no seller-profit or resale-estimate features.
 
 The Scan tab is only a camera action, never a landing screen. Do not reintroduce the “See it. Scan it.” page or a second camera-launch button. Canceling capture leaves the shopper on their previous tab; accepting a photo opens results and saves history. The initial app destination is Search.

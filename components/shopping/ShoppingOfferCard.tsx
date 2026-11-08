@@ -6,13 +6,12 @@ import Colors from "@/constants/colors";
 
 type Props = {
   offer: ShoppingOffer;
-  ranked: boolean;
   cheapest: boolean;
   onOpen: (url: string) => void;
 };
 
 // Image-left marketplace rows keep the product, real price and destination together.
-export default function ShoppingOfferCard({ offer, ranked, cheapest, onOpen }: Props) {
+export default function ShoppingOfferCard({ offer, cheapest, onOpen }: Props) {
   const [failedImage, setFailedImage] = useState<string | null>(null);
   const imageUrl = offer.imageUrl;
   const showImage = !!imageUrl && failedImage !== imageUrl;
@@ -42,8 +41,6 @@ export default function ShoppingOfferCard({ offer, ranked, cheapest, onOpen }: P
         <Text style={styles.price}>{offer.priceText?.trim() || "Price unavailable"}</Text>
         {!!offer.currency && <Text style={styles.currency}>{offer.currency}</Text>}
       </View>
-      <Text style={styles.condition}>{offer.condition}</Text>
-      {!ranked && <Text style={styles.warning}>Unranked · verify variant, currency and offer conditions.</Text>}
       <Pressable
         accessibilityRole="link"
         accessibilityLabel={offer.linkKind === "comparison" ? `View Google Shopping offers for ${offer.title}` : `View listing at ${offer.seller || "marketplace"}`}
