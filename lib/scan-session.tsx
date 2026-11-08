@@ -20,7 +20,7 @@ export type ScanSession = {
 const empty: ScanSession = { photoUri: null, stage: "idle", matches: [], query: "", result: null, error: null, needsSettings: false };
 const Context = createContext<{
   session: ScanSession; busy: boolean; historyVersion: number;
-  capture: () => Promise<boolean>;
+  capture: (onFailure?: (message: string, needsSettings: boolean) => void) => Promise<boolean>;
   refine: (query: string, condition?: "any" | "new" | "used") => Promise<void>;
   retry: () => Promise<void>;
   restore: (item: PhotoScanHistoryItem) => boolean;
@@ -93,7 +93,7 @@ export function ScanSessionProvider({ children }: { children: ReactNode }) {
       patch({ stage: "error", error: e instanceof Error ? e.message : "Could not search this photo. Please try again." });
     } finally { await saveHistory(); lock.current = false; }
   }
-  async function capture() {
+  async function capture(onFailure?: (message: string, needsSettings: boolean) => void) {
     if (lock.current || Platform.OS === "web") return false;
     lock.current = true;
     const previousStage = state.current.stage;
@@ -109,15 +109,16 @@ export function ScanSessionProvider({ children }: { children: ReactNode }) {
         return true;
       }
       lock.current = false;
-      if (result.status === "denied") patch({
-        stage: previousStage,
-        needsSettings: !result.canAskAgain,
-        error: result.canAskAgain ? "Camera access was not granted. Tap Scan to try again." : "Camera access is off. Enable it in your phone’s Settings.",
-      });
+      if (result.status === "denied") {
+        const message = result.canAskAgain ? "Camera access was not granted. Tap Scan to try again." : "Camera access is off. Enable it in your phone’s Settings.";
+        patch({ stage: previousStage, needsSettings: !result.canAskAgain, error: message });
+        onFailure?.(message, !result.canAskAgain);
+      }
       else patch({ stage: previousStage });
     } catch {
       lock.current = false;
       patch({ stage: previousStage, error: "The camera could not open. Please try again." });
+      onFailure?.("The camera could not open. Please try again.", false);
     }
     return false;
   }

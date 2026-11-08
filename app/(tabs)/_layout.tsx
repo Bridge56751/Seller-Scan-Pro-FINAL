@@ -1,18 +1,21 @@
 import { isLiquidGlassAvailable } from "expo-glass-effect";
 import { Tabs } from "expo-router";
 import { NativeTabs } from "expo-router/native-tabs";
-import { Platform, StyleSheet } from "react-native";
+import { Platform } from "react-native";
 import React from "react";
 import { Feather } from "@expo/vector-icons";
 import Colors from "@/constants/colors";
-import { ScanTriggerProvider, useScanTrigger } from "@/lib/scan-trigger";
+import { useCameraAction } from "@/lib/use-camera-action";
+
+export const unstable_settings = { anchor: "search" };
 
 function NativeTabLayout() {
-  const { requestScan } = useScanTrigger();
+  const requestScan = useCameraAction();
   return (
-    <NativeTabs>
-      <NativeTabs.Trigger name="index" listeners={{ tabPress: requestScan }}>
-        <NativeTabs.Trigger.Icon sf={{ default: "barcode.viewfinder", selected: "barcode.viewfinder" }} />
+    <NativeTabs backBehavior="initialRoute">
+      {/* Native disabled triggers emit tabPress without selecting their route. */}
+      <NativeTabs.Trigger name="index" disabled listeners={{ tabPress: () => { void requestScan(); } }}>
+        <NativeTabs.Trigger.Icon sf={{ default: "camera", selected: "camera.fill" }} />
         <NativeTabs.Trigger.Label>Scan</NativeTabs.Trigger.Label>
       </NativeTabs.Trigger>
       <NativeTabs.Trigger name="search">
@@ -32,9 +35,9 @@ function NativeTabLayout() {
 }
 
 function ClassicTabLayout() {
-  const { requestScan } = useScanTrigger();
+  const requestScan = useCameraAction();
   return (
-    <Tabs
+    <Tabs backBehavior="initialRoute"
       screenOptions={{
         headerShown: false,
         tabBarActiveTintColor: Colors.light.accent,
@@ -55,7 +58,7 @@ function ClassicTabLayout() {
     >
       <Tabs.Screen
         name="index"
-        listeners={{ tabPress: requestScan }}
+        listeners={{ tabPress: event => { event.preventDefault(); void requestScan(); } }}
         options={{
           title: "Scan",
           tabBarIcon: ({ focused }) => (
@@ -95,7 +98,5 @@ function ClassicTabLayout() {
 }
 
 export default function TabLayout() {
-  return <ScanTriggerProvider>
-    {isLiquidGlassAvailable() ? <NativeTabLayout /> : <ClassicTabLayout />}
-  </ScanTriggerProvider>;
+  return isLiquidGlassAvailable() ? <NativeTabLayout /> : <ClassicTabLayout />;
 }

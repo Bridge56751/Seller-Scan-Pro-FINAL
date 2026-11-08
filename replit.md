@@ -12,6 +12,10 @@ Shopping results should follow the user's supplied reference: compact rows with 
 
 The user approved a Pocket Pricer-inspired, results-first scan flow: native capture → automatic identification and shopping search → dedicated Scan Results screen. Show the photo, likely product name and listings immediately. Refine Search / Wrong Item is optional after results, not a mandatory questionnaire. Keep Scan Again easy to reach. Auto-selected visual suggestions and their listings are possible matches, never falsely user-confirmed exact variants; no seller-profit or resale-estimate features.
 
+The Scan tab is only a camera action, never a landing screen. Do not reintroduce the “See it. Scan it.” page or a second camera-launch button. Canceling capture leaves the shopper on their previous tab; accepting a photo opens results and saves history. The initial app destination is Search.
+
+**Why:** The user explicitly corrected this: “the scan button should only be a camera get rid of that other screen.”
+
 **Why:** The user explicitly corrected the scope: “just scan find and find the cheapest marketplace,” not shipping or everything else.
 
 Geographic goal: support all countries, primarily the US. Build country-aware comparisons with US defaults; clearly disclose unavailable regional coverage rather than presenting US listings as local offers. This is a product goal, not a claim that any selected provider covers every country.
