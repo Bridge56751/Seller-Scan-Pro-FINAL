@@ -15,6 +15,7 @@ export default function ScanScreen() {
   const [needsSettings, setNeedsSettings] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const opening = useRef(false);
+  const consentAction = useRef<"camera" | "retry">("camera");
   const country = "US";
   const [matches, setMatches] = useState<PhotoMatch[] | null>(null);
   const [selected, setSelected] = useState<string | null>(null);
@@ -50,6 +51,11 @@ export default function ScanScreen() {
     setError(null);
     setNeedsSettings(false);
     try {
+      if (!await hasPhotoConsent()) {
+        consentAction.current = "camera";
+        setShowConsent(true);
+        return;
+      }
       const result = await captureProductPhoto();
       if (result.status === "denied") {
         setNeedsSettings(!result.canAskAgain);
@@ -59,11 +65,7 @@ export default function ScanScreen() {
       } else if (result.status === "captured") {
         resetIdentification();
         setPhotoUri(result.uri);
-        if (await hasPhotoConsent()) {
-          await identify(result.uri);
-        } else {
-          setShowConsent(true);
-        }
+        await identify(result.uri);
       }
       // Canceling a retake keeps the previous photo.
     } catch {
@@ -75,15 +77,22 @@ export default function ScanScreen() {
   }
   takePhotoRef.current = takePhoto;
 
-  async function agreeAndIdentify() {
-    if (!photoUri || busy) return;
+  async function agreeAndContinue() {
+    if (opening.current || identifying.current || busy || comparing) return;
+    opening.current = true;
     setBusy(true);
     try {
       await grantPhotoConsent();
-      await identify(photoUri);
     } catch {
       setError("Could not save your photo-sharing permission. Please try again.");
-    } finally { setBusy(false); }
+      return;
+    } finally {
+      opening.current = false;
+      setBusy(false);
+    }
+    setShowConsent(false);
+    if (consentAction.current === "retry" && photoUri) await identify(photoUri);
+    else await takePhoto();
   }
 
   async function openSettings() {
@@ -92,6 +101,23 @@ export default function ScanScreen() {
     } catch {
       setError("Could not open Settings. Open your phone’s Settings manually to manage camera access.");
     }
+  }
+
+  if (showConsent && !isWeb) {
+    return <SafeAreaView style={styles.container}>
+      <ScrollView contentContainerStyle={styles.content}>
+        <Text style={styles.title}>Before Your First Scan</Text>
+        <Text style={styles.text}>{PHOTO_DISCLOSURE}</Text>
+        <Text style={styles.text}>Allow automatic identification once. Next, your phone will ask for camera access if needed. Future scans open the camera directly and process accepted photos automatically. You can turn this off in Settings → Photo & Shopping Privacy.</Text>
+        <Pressable accessibilityRole="link" onPress={() => Linking.openURL("https://www.searchapi.io/legal/privacy").catch(() => setError("Could not open privacy policy."))}><Text style={styles.text}>SearchApi privacy policy</Text></Pressable>
+        <Pressable accessibilityRole="link" onPress={() => Linking.openURL("https://policies.google.com/privacy").catch(() => setError("Could not open privacy policy."))}><Text style={styles.text}>Google privacy policy</Text></Pressable>
+        {error && <Text accessibilityRole="alert" style={styles.error}>{error}</Text>}
+        <Pressable accessibilityRole="button" disabled={disabled} style={[styles.button, disabled && styles.disabled]} onPress={agreeAndContinue}>
+          <Text style={styles.buttonText}>{busy ? "Saving…" : "Allow & Continue"}</Text>
+        </Pressable>
+        <Pressable accessibilityRole="button" disabled={disabled} onPress={() => setShowConsent(false)} style={[styles.button, disabled && styles.disabled]}><Text style={styles.buttonText}>Not Now</Text></Pressable>
+      </ScrollView>
+    </SafeAreaView>;
   }
 
   return (
@@ -153,20 +179,11 @@ export default function ScanScreen() {
             style={[styles.button, disabled && styles.disabled]} onPress={async () => {
               try {
                 if (await hasPhotoConsent()) await identify(photoUri);
-                else setShowConsent(true);
+                else { consentAction.current = "retry"; setShowConsent(true); }
               } catch { setError("Could not read photo-sharing permission. Please try again."); }
             }}>
             <Text style={styles.buttonText}>Retry Identification</Text>
           </Pressable>}
-          {showConsent && <>
-            <Text style={styles.title}>Enable Automatic Identification</Text>
-            <Text style={styles.text}>{PHOTO_DISCLOSURE}</Text>
-            <Text style={styles.text}>Allow this photo and future photos you accept in the camera to be uploaded automatically for identification. You can withdraw this permission in Settings → Photo & Shopping Privacy.</Text>
-            <Pressable accessibilityRole="link" onPress={() => Linking.openURL("https://www.searchapi.io/legal/privacy").catch(() => setError("Could not open privacy policy."))}><Text style={styles.text}>SearchApi privacy policy</Text></Pressable>
-            <Pressable accessibilityRole="link" onPress={() => Linking.openURL("https://policies.google.com/privacy").catch(() => setError("Could not open privacy policy."))}><Text style={styles.text}>Google privacy policy</Text></Pressable>
-            <Pressable accessibilityRole="button" disabled={disabled} style={styles.button} onPress={agreeAndIdentify}><Text style={styles.buttonText}>Allow Automatic Identification</Text></Pressable>
-            <Pressable accessibilityRole="button" onPress={() => setShowConsent(false)} style={styles.button}><Text style={styles.buttonText}>Keep Photo Private</Text></Pressable>
-          </>}
           {busy && <Text accessibilityRole="alert" style={styles.text}>Working… this can take up to a minute.</Text>}
         </>}
         {matches !== null && <>
