@@ -16,3 +16,9 @@ Check workflow port detection separately from HTTP reachability when Replit's ph
 **How to apply:** Confirm the actual listening address and workflow open-port status; preserve the public proxy URL while correcting the bind address. Do not repeatedly change app UI to fix the platform's loading screen.
 
 The user confirmed the website preview became visible after the bind-address correction. This confirmation covers the embedded website preview only, not physical-device access.
+
+Use the user's own Expo account for preview authentication rather than automatically signing into Replit's managed account.
+
+**Why:** The user explicitly selected this approach after the built-in QR and managed-account sign-in button both failed on their physical iPhone.
+
+**How to apply:** Preserve the user's authenticated CLI session on startup. Do not restore automatic managed-account login without asking. Do not store the user's account details or credentials in project files. The installed create-launch browser login uses a localhost callback inside the remote container, so its login URL cannot complete directly from the user's computer. Do not hand out that URL or ask the user to paste authorization codes; use an official supported login method instead.
