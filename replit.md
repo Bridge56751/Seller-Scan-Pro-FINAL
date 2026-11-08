@@ -8,6 +8,8 @@ The new product direction is a shopper-focused price comparison app: identify go
 
 Keep the shopper experience narrowly focused: someone sees an item (for example, a water bottle), photographs it, learns what it is, and finds the cheapest listed marketplace offer with a link to buy. No shipping calculations, seller-profit tools, or extra shopping-management features. Preserve the UI; do not expand the flow into a detailed shopping questionnaire.
 
+Shopping results should follow the user's supplied reference: compact rows with a product picture, price, marketplace/store, and View Listing action. Keep the existing app style and rank comparable matching offers by listed price; never fabricate missing product images or prices.
+
 **Why:** The user explicitly corrected the scope: “just scan find and find the cheapest marketplace,” not shipping or everything else.
 
 Geographic goal: support all countries, primarily the US. Build country-aware comparisons with US defaults; clearly disclose unavailable regional coverage rather than presenting US listings as local offers. This is a product goal, not a claim that any selected provider covers every country.

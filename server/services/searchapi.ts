@@ -48,13 +48,22 @@ function rows(value: unknown): Row[] {
   return Array.isArray(value) ? value.filter(v => v && typeof v === "object") : [];
 }
 
+/** Provider thumbnails only; do not reintroduce removed Amazon image hosting. */
+export function productImageUrl(value: unknown): string | null {
+  const url = safeUrl(value);
+  if (!url) return null;
+  const host = new URL(url).hostname.toLowerCase();
+  if (/(^|\.)(media-amazon\.com|ssl-images-amazon\.com|images-amazon\.com|amazonaws\.com|unpkg\.com)$/.test(host)) return null;
+  return url;
+}
+
 export function normalizeMatches(data: Record<string, unknown>): PhotoMatch[] {
   const seen = new Set<string>();
   return rows(data.visual_matches).flatMap(row => {
     const title = text(row.title).trim();
     if (!title || seen.has(title.toLowerCase())) return [];
     seen.add(title.toLowerCase());
-    return [{ title, source: text(row.source) || "Visual search result", url: safeUrl(row.link) }];
+    return [{ title, source: text(row.source) || "Visual search result", url: safeUrl(row.link), imageUrl: productImageUrl(row.thumbnail) }];
   }).slice(0, 8);
 }
 export const isNotApplicable = (v: string) => /^(n\/a|na|none|not applicable)$/i.test(v.trim());
@@ -107,7 +116,7 @@ export function normalizeOffers(data: Record<string, unknown>, input: Comparison
         : new RegExp(`\\b${input.quantity}[\\s-]*(pack|count|pcs|pieces)\\b`, "i").test(title)) &&
       !(input.condition === "new" && /\b(used|pre.?owned|refurbished|renewed|open.?box)\b/i.test(combined)) &&
       !(input.condition === "used" && /\bnew\b/i.test(condition));
-    offers.push({ title, seller, url, priceText, amount, currency: offerCurrency,
+    offers.push({ title, seller, url, priceText, imageUrl: productImageUrl(row.thumbnail), amount, currency: offerCurrency,
       delivery: text(row.delivery) || "Delivery cost not supplied",
       condition, titleMatches, restricted });
   }

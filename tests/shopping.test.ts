@@ -58,6 +58,13 @@ test("empty provider results remain empty", () => {
   assert.deepEqual(normalizeMatches({}), []);
   assert.deepEqual(normalizeOffers({}, input, "USD"), { offers: [], excluded: 0 });
 });
+test("product thumbnails are preserved without unsafe or removed image hosts", () => {
+  const row = { title: "Sony WH-1000XM5 Black", price: "$199", link: "https://example.com/item", seller: "Shop" };
+  const thumbnails = ["https://example.com/product.jpg", "javascript:bad", "https://m.media-amazon.com/image.jpg", "https://unpkg.com/image.png", undefined];
+  const { offers } = normalizeOffers({ shopping_results: thumbnails.map((thumbnail, index) => ({ ...row, seller: `Shop ${index}`, thumbnail })) }, input, "USD");
+  assert.deepEqual(offers.map(offer => offer.imageUrl), ["https://example.com/product.jpg", null, null, null, null]);
+  assert.equal(normalizeMatches({ visual_matches: [{ title: "Bottle", thumbnail: thumbnails[0] }] })[0].imageUrl, thumbnails[0]);
+});
 test("foreign currency labels and bundles never sort as ordinary local prices", () => {
   const row = { title: "Sony WH-1000XM5 Black", price: "$20 CAD", extracted_price: 20, link: "https://example.com/item" };
   const { offers } = normalizeOffers({ shopping_results: [
