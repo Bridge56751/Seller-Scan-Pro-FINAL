@@ -3,6 +3,9 @@ import { Platform } from "react-native";
 import { captureProductPhoto } from "./native-camera";
 import { identifyPhoto, searchListings } from "./shopping-client";
 import type { ListingSearch, PhotoMatch } from "@/shared/shopping";
+import { manipulateAsync, SaveFormat } from "expo-image-manipulator";
+import { randomUUID } from "expo-crypto";
+import { photoScanHistory, type PhotoScanHistoryItem } from "./photo-scan-history";
 
 export type ScanSession = {
   photoUri: string | null;
@@ -12,27 +15,63 @@ export type ScanSession = {
   result: ListingSearch | null;
   error: string | null;
   needsSettings: boolean;
+  historyWarning?: string | null;
 };
 const empty: ScanSession = { photoUri: null, stage: "idle", matches: [], query: "", result: null, error: null, needsSettings: false };
 const Context = createContext<{
-  session: ScanSession; busy: boolean;
+  session: ScanSession; busy: boolean; historyVersion: number;
   capture: () => Promise<boolean>;
   refine: (query: string, condition?: "any" | "new" | "used") => Promise<void>;
   retry: () => Promise<void>;
+  restore: (item: PhotoScanHistoryItem) => boolean;
 } | null>(null);
 
 export function ScanSessionProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<ScanSession>(empty);
+  const [saving, setSaving] = useState(false);
+  const [historyVersion, setHistoryVersion] = useState(0);
   const state = useRef(session);
   state.current = session;
   const lock = useRef(false);
   const lastStage = useRef<"identify" | "search">("identify");
   const conditionRef = useRef<"any" | "new" | "used">("any");
-  const patch = (value: Partial<ScanSession>) => setSession(previous => {
-    const next = { ...previous, ...value };
-    state.current = next;
-    return next;
-  });
+  const historyRef = useRef<{ id: string; timestamp: number; thumbnail: string | null; saved: boolean } | null>(null);
+  const patch = (value: Partial<ScanSession>) => {
+    state.current = { ...state.current, ...value };
+    setSession(state.current);
+  };
+  async function saveHistory() {
+    const info = historyRef.current;
+    if (!info) return;
+    setSaving(true);
+    try {
+      if (!info.thumbnail && state.current.photoUri) {
+        const image = await manipulateAsync(state.current.photoUri, [{ resize: { width: 320 } }], { compress: 0.6, format: SaveFormat.JPEG, base64: true });
+        if (!image.base64) throw new Error("Photo thumbnail unavailable");
+        info.thumbnail = `data:image/jpeg;base64,${image.base64}`;
+      }
+      const current = state.current;
+      await photoScanHistory.save({
+        id: info.id, timestamp: info.timestamp, photoUri: info.thumbnail,
+        query: current.query, matches: current.matches, result: current.result,
+        error: current.error, condition: conditionRef.current,
+      }, info.saved);
+      info.saved = true;
+      setHistoryVersion(value => value + 1);
+      patch({ historyWarning: null });
+    } catch {
+      patch({ historyWarning: "This scan could not be saved to History. Your current results are still available." });
+    } finally { setSaving(false); }
+  }
+  function restore(item: PhotoScanHistoryItem) {
+    if (lock.current) return false;
+    historyRef.current = { id: item.id, timestamp: item.timestamp, thumbnail: item.photoUri, saved: true };
+    conditionRef.current = item.condition;
+    lastStage.current = item.query ? "search" : "identify";
+    patch({ ...empty, photoUri: item.photoUri, query: item.query, matches: item.matches,
+      result: item.result, error: item.error, stage: item.error ? "error" : "ready", historyWarning: null });
+    return true;
+  }
 
   async function search(query: string, condition: "any" | "new" | "used" = "any") {
     lastStage.current = "search";
@@ -52,7 +91,7 @@ export function ScanSessionProvider({ children }: { children: ReactNode }) {
       else patch({ stage: "ready" });
     } catch (e) {
       patch({ stage: "error", error: e instanceof Error ? e.message : "Could not search this photo. Please try again." });
-    } finally { lock.current = false; }
+    } finally { await saveHistory(); lock.current = false; }
   }
   async function capture() {
     if (lock.current || Platform.OS === "web") return false;
@@ -62,6 +101,9 @@ export function ScanSessionProvider({ children }: { children: ReactNode }) {
     try {
       const result = await captureProductPhoto();
       if (result.status === "captured") {
+        historyRef.current = { id: randomUUID(), timestamp: Date.now(), thumbnail: null, saved: false };
+        conditionRef.current = "any";
+        patch({ historyWarning: null });
         // Capture returns immediately after starting the pipeline so the results route can show progress.
         void process(result.uri);
         return true;
@@ -89,7 +131,7 @@ export function ScanSessionProvider({ children }: { children: ReactNode }) {
     lock.current = true;
     try { await search(clean, condition); }
     catch (e) { patch({ stage: "error", error: e instanceof Error ? e.message : "Could not search listings." }); }
-    finally { lock.current = false; }
+    finally { await saveHistory(); lock.current = false; }
   }
   async function retry() {
     if (lock.current) return;
@@ -100,8 +142,8 @@ export function ScanSessionProvider({ children }: { children: ReactNode }) {
       await process(state.current.photoUri);
     }
   }
-  const busy = ["camera", "identifying", "searching"].includes(session.stage);
-  return <Context.Provider value={{ session, busy, capture, refine, retry }}>{children}</Context.Provider>;
+  const busy = saving || ["camera", "identifying", "searching"].includes(session.stage);
+  return <Context.Provider value={{ session, busy, historyVersion, capture, refine, retry, restore }}>{children}</Context.Provider>;
 }
 export function useScanSession() {
   const context = useContext(Context);

@@ -136,6 +136,8 @@ export default function ScanResultsScreen() {
             </View>
           </View>}
           {openingUrl && <Text accessibilityLiveRegion="polite" style={styles.caption}>Opening store listing…</Text>}
+          {session.historyWarning && <Text accessibilityRole="alert" style={styles.error}>{session.historyWarning}</Text>}
+          {session.result && <Text style={styles.caption}>Prices checked {new Date(session.result.fetchedAt).toLocaleString()}. Saved prices may change.</Text>}
 
           {!processing && hasSearch && offers.length > 0 && <>
             <View style={styles.sectionHeading}><Text style={styles.sectionTitle}>Possible matches</Text><Text style={styles.count}>{offers.length} {offers.length === 1 ? "listing" : "listings"}</Text></View>

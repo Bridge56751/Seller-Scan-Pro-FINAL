@@ -82,7 +82,7 @@ Preferred communication style: Simple, everyday language.
 - **Schema**: Defined in `shared/schema.ts` using Drizzle ORM with PostgreSQL dialect. `device_scans` table tracks scan counts per device ID. `users` table exists but is no longer used for authentication. Uses `drizzle-zod` for validation schemas
 - **Database**: PostgreSQL configured via `DATABASE_URL` environment variable. Drizzle Kit handles migrations (`drizzle.config.ts` outputs to `./migrations`)
 - **Mock Data**: `lib/mock-data.ts` exports TypeScript interfaces (ProductData, PricePoint, RankPoint, Competitor, Alert) and helper functions (`calculateProfit`, `formatCurrency`, `formatBSR`, `estimateSalesPerDay`). Product data now comes entirely from Keepa API
-- **Local Storage**: Scan history is persisted on-device using `AsyncStorage` (`lib/scan-history.ts`), capped at 15 items
+- **Local Storage**: Photo scans are automatically saved locally in History, including failed/no-match scans, a small photo copy, and result snapshots. Latest 50 scans, newest first; refinements update the same entry. Reopening does not re-query providers; saved price timestamps remain visible. Legacy ASIN history storage is preserved separately.
 
 ### API Communication
 
