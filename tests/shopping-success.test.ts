@@ -41,6 +41,7 @@ test("fresh schema supports identification, image fetch, cleanup and confirmed c
     }
     assert.match(target.searchParams.get("q")!, /Sony WH-1000XM5 Black/);
     assert.equal(target.searchParams.get("gl"), "us");
+    assert.equal(target.searchParams.get("link"), "raw");
     searchedConditions.push(target.searchParams.get("condition"));
     return Response.json({ shopping_results: [{
       title: "Sony WH-1000XM5 Black", seller: "Fixture retailer", price: "$299",

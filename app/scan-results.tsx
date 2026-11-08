@@ -138,6 +138,7 @@ export default function ScanResultsScreen() {
           </View>}
           {openingUrl && <Text accessibilityLiveRegion="polite" style={styles.caption}>Opening store listing…</Text>}
           {session.historyWarning && <Text accessibilityRole="alert" style={styles.error}>{session.historyWarning}</Text>}
+          {session.result?.fallbackUsed && <Text style={styles.caption}>We used a shorter search to find these possible matches.</Text>}
           {session.result && <Text style={styles.caption}>Prices checked {new Date(session.result.fetchedAt).toLocaleString()}. Saved prices may change.</Text>}
 
           {!processing && hasSearch && offers.length > 0 && <>

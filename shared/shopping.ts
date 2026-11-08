@@ -40,9 +40,10 @@ export const listingSearchSchema = z.object({
   country: z.string().length(2).transform(v => v.toUpperCase()),
   query: z.string().trim().min(3).max(180),
   condition: z.enum(["any", "new", "used"]).default("any"),
+  automatic: z.boolean().default(false),
 }).strict();
 export type ListingSearchInput = z.input<typeof listingSearchSchema>;
-export type ListingSearch = Comparison & { query: string; matchStatus: "possible" };
+export type ListingSearch = Comparison & { query: string; matchStatus: "possible"; fallbackUsed?: boolean };
 export type PhotoMatch = { title: string; source: string; url: string | null; imageUrl: string | null };
 export type Identification = { matches: PhotoMatch[]; country: string };
 export type ShoppingOffer = {

@@ -4,6 +4,8 @@ import { z } from "zod";
 import { comparisonSchema, countryInfo, listingSearchSchema } from "../../shared/shopping";
 import { searchApi, ShoppingError, normalizeMatches, normalizeOffers, shoppingQuery } from "../services/searchapi";
 import { storePhoto, readPhoto, deletePhoto } from "../services/photo-store";
+import { randomUUID } from "node:crypto";
+import { findListings } from "../services/listing-search";
 
 const router = Router();
 const photoSchema = z.object({
@@ -32,7 +34,7 @@ function publicOrigin(req: Request) {
   return `https://${host}`;
 }
 
-// Bounded anonymous access; no unbounded waiting queue or automatic paid retries.
+// Bounded anonymous access; photo searches allow at most one empty-result fallback.
 let active = 0;
 let windowStart = Date.now();
 let count = 0;
@@ -50,11 +52,26 @@ function limit(_req: Request, res: Response, next: NextFunction) {
   next();
 }
 
-router.use((_req, res, next) => {
+router.use((req, res, next) => {
   res.setHeader("Cache-Control", "no-store");
   res.setHeader("Referrer-Policy", "no-referrer");
+  if (req.method === "POST" && ["/identify", "/search", "/compare"].includes(req.path)) {
+    const start = Date.now();
+    const requestId = randomUUID();
+    res.locals.timings = {};
+    res.setHeader("X-Scan-Request-Id", requestId);
+    res.once("finish", () => console.info("[Shopping]", JSON.stringify({
+      requestId, step: req.path.slice(1), status: res.statusCode,
+      durationMs: Date.now() - start, ...res.locals.timings, code: res.locals.failureCode,
+    })));
+  }
   next();
 });
+async function timed<T>(res: Response, stage: string, work: () => Promise<T>): Promise<T> {
+  const start = Date.now();
+  try { return await work(); }
+  finally { res.locals.timings[stage] = Date.now() - start; }
+}
 router.get("/photo/:token", async (req, res, next) => {
   try {
     const bytes = await readPhoto(req.params.token);
@@ -75,18 +92,22 @@ router.post("/identify", limit, express.json({ limit: "5mb" }), async (req, res,
     const raw = Buffer.from(input.image, "base64");
     let image: Buffer;
     try {
-      image = await sharp(raw, { limitInputPixels: 20_000_000, animated: false })
-        .rotate().resize(1600, 1600, { fit: "inside", withoutEnlargement: true }).jpeg({ quality: 80 }).toBuffer();
+      image = await timed(res, "imagePrepareMs", () => sharp(raw, { limitInputPixels: 20_000_000, animated: false })
+        .rotate().resize(1600, 1600, { fit: "inside", withoutEnlargement: true }).jpeg({ quality: 80 }).toBuffer());
     } catch {
       throw new ShoppingError(400, "INVALID_IMAGE", "That photo could not be read. Please take another photo.");
     }
-    const stored = await storePhoto(image);
+    const stored = await timed(res, "photoStorageMs", () => storePhoto(image)).catch(() => {
+      throw new ShoppingError(503, "PHOTO_STORAGE_UNAVAILABLE", "Your photo could not be prepared for identification. Please retry.");
+    });
     id = stored.id;
-    const data = await searchApi({
+    const data = await timed(res, "identificationMs", () => searchApi({
       engine: "google_lens", search_type: "visual_matches", country: input.country,
       hl: "en", url: `${origin}/api/shopping/photo/${stored.token}`,
-    });
-    res.json({ matches: normalizeMatches(data), country: input.country });
+    }));
+    const matches = normalizeMatches(data);
+    res.locals.timings.matchCount = matches.length;
+    res.json({ matches, country: input.country });
   } catch (error) { next(error); }
   finally {
     if (id) await deletePhoto(id).catch(() =>
@@ -100,16 +121,15 @@ router.post("/search", limit, express.json({ limit: "8kb" }), async (req, res, n
   try {
     const input = listingSearchSchema.parse(req.body);
     const country = requireCountry(input.country);
-    const data = await searchApi({
-      engine: "google_shopping", q: input.query, gl: input.country.toLowerCase(),
-      hl: "en", link: "resolved",
-      ...(input.condition === "any" ? {} : { condition: input.condition }),
-    });
-    res.json({
-      ...normalizeOffers(data, { product: input.query, size: "N/A", color: "N/A", quantity: 1, condition: input.condition, country: input.country }, country[2]),
-      query: input.query, matchStatus: "possible",
-      country: input.country, currency: country[2], fetchedAt: new Date().toISOString(),
-    });
+    const result = await timed(res, "listingSearchMs", () => findListings(input, country[2], searchApi,
+      (attempt, ms, offers) => {
+        res.locals.timings[`attempt${attempt}Ms`] = ms;
+        res.locals.timings[`attempt${attempt}Offers`] = offers;
+      }));
+    res.locals.timings.offerCount = result.offers.length;
+    res.locals.timings.excludedCount = result.excluded;
+    res.locals.timings.fallbackUsed = result.fallbackUsed;
+    res.json(result);
   } catch (error) { next(error); }
   finally { res.locals.releaseSearch?.(); }
 });
@@ -118,10 +138,10 @@ router.post("/compare", limit, express.json({ limit: "8kb" }), async (req, res, 
   try {
     const input = comparisonSchema.parse(req.body);
     const country = requireCountry(input.country);
-    const data = await searchApi({
+    const data = await timed(res, "listingSearchMs", () => searchApi({
       engine: "google_shopping", q: shoppingQuery(input), gl: input.country.toLowerCase(),
-      hl: "en", condition: input.condition, link: "resolved",
-    });
+      hl: "en", condition: input.condition, link: "raw",
+    }));
     res.json({
       ...normalizeOffers(data, input, country[2]),
       country: input.country, currency: country[2], fetchedAt: new Date().toISOString(),
@@ -132,8 +152,10 @@ router.post("/compare", limit, express.json({ limit: "8kb" }), async (req, res, 
 
 router.use((error: unknown, _req: Request, res: Response, _next: NextFunction) => {
   res.locals.releaseSearch?.();
+  res.locals.failureCode = error instanceof ShoppingError ? error.code :
+    error instanceof z.ZodError ? "INVALID_INPUT" : "REQUEST_FAILED";
   if (error instanceof z.ZodError) return res.status(400).json({
-    error: "Check your photo, country, and product details. All variant fields and confirmation are required for price comparison.",
+    error: "Check the photo or product details and the selected country, then try again.",
   });
   if (error instanceof ShoppingError) return res.status(error.status).json({ code: error.code, error: error.message });
   if ((error as { type?: string })?.type === "entity.too.large") return res.status(413).json({ error: "Photo is too large. Please retake it." });

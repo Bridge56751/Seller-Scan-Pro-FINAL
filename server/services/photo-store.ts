@@ -3,7 +3,8 @@ import { randomBytes, createCipheriv, createDecipheriv } from "node:crypto";
 import { setInterval } from "node:timers";
 
 // Shared storage makes temporary links work across backend replicas.
-const pool = new Pool({ connectionString: process.env.DATABASE_URL, max: 4 });
+const pool = new Pool({ connectionString: process.env.DATABASE_URL, max: 4,
+  connectionTimeoutMillis: 5000, query_timeout: 10000, statement_timeout: 10000 });
 const TTL_MS = 120000;
 
 export async function storePhoto(bytes: Buffer) {
@@ -13,7 +14,6 @@ export async function storePhoto(bytes: Buffer) {
   const cipher = createCipheriv("aes-256-gcm", key, iv);
   const ciphertext = Buffer.concat([cipher.update(bytes), cipher.final()]);
   const payload = Buffer.concat([iv, cipher.getAuthTag(), ciphertext]).toString("base64");
-  await pool.query("DELETE FROM shopping_photos WHERE expires_at <= NOW()");
   await pool.query("INSERT INTO shopping_photos (id, payload, expires_at) VALUES ($1, $2, $3)",
     [id, payload, new Date(Date.now() + TTL_MS)]);
   // Encryption key exists only in the unguessable short-lived capability URL, not the database.

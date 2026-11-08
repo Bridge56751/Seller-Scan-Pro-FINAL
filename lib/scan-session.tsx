@@ -6,6 +6,7 @@ import type { ListingSearch, PhotoMatch } from "@/shared/shopping";
 import { manipulateAsync, SaveFormat } from "expo-image-manipulator";
 import { randomUUID } from "expo-crypto";
 import { photoScanHistory, type PhotoScanHistoryItem } from "./photo-scan-history";
+import { photoSearchQueries } from "@/shared/photo-search-query";
 
 export type ScanSession = {
   photoUri: string | null;
@@ -73,12 +74,12 @@ export function ScanSessionProvider({ children }: { children: ReactNode }) {
     return true;
   }
 
-  async function search(query: string, condition: "any" | "new" | "used" = "any") {
+  async function search(query: string, condition: "any" | "new" | "used" = "any", automatic = false) {
     lastStage.current = "search";
     conditionRef.current = condition;
     patch({ query, stage: "searching", error: null, result: null });
-    const result = await searchListings({ query, country: "US", condition });
-    patch({ result, stage: "ready" });
+    const result = await searchListings({ query, country: "US", condition, automatic });
+    patch({ result, query: result.query, stage: "ready" });
   }
   async function process(uri: string) {
     lastStage.current = "identify";
@@ -87,7 +88,7 @@ export function ScanSessionProvider({ children }: { children: ReactNode }) {
       const { matches } = await identifyPhoto(uri, "US");
       patch({ matches });
       const first = matches.find(match => match.title.trim().length >= 3);
-      if (first) await search(first.title.trim().slice(0, 180));
+      if (first) await search(photoSearchQueries(first.title)[0], "any", true);
       else patch({ stage: "ready" });
     } catch (e) {
       patch({ stage: "error", error: e instanceof Error ? e.message : "Could not search this photo. Please try again." });

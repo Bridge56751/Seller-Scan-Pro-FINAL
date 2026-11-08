@@ -6,32 +6,35 @@ export class ShoppingError extends Error {
   }
 }
 
-export async function searchApi(params: Record<string, string>) {
+export async function searchApi(params: Record<string, string>, options: { timeoutMs?: number } = {}) {
   const key = process.env.SEARCHAPI_API_KEY;
   if (!key) throw new ShoppingError(503, "NOT_CONFIGURED", "Shopping service is not configured yet.");
   const url = new URL("https://www.searchapi.io/api/v1/search");
   for (const [name, value] of Object.entries(params)) url.searchParams.set(name, value);
-  let response: Response;
+  const stage = params.engine === "google_lens" ? "Photo identification" : "Price search";
+  const signal = AbortSignal.timeout(options.timeoutMs ?? 60000);
   try {
-    response = await fetch(url, {
+    const response = await fetch(url, {
       headers: { Authorization: `Bearer ${key}` },
-      signal: AbortSignal.timeout(60000),
+      signal,
     });
-  } catch {
-    throw new ShoppingError(504, "PROVIDER_TIMEOUT", "The search service did not respond. Please try again.");
+    // Never return or log provider bodies: they can contain credentials or photo URLs.
+    if (!response.ok) {
+      throw new ShoppingError(response.status === 429 ? 429 : 502, "PROVIDER_UNAVAILABLE",
+        response.status === 429 ? `${stage} is temporarily busy. Wait a moment before retrying.`
+          : `${stage} is unavailable right now. Please retry.`);
+    }
+    const data = await response.json();
+    if (!data || typeof data !== "object" || data.error ||
+        (data.search_metadata?.status && data.search_metadata.status !== "Success")) {
+      throw new ShoppingError(502, "PROVIDER_ERROR", `${stage} returned an unsuccessful response. Please retry.`);
+    }
+    return data;
+  } catch (error) {
+    if (error instanceof ShoppingError) throw error;
+    if (signal.aborted) throw new ShoppingError(504, "PROVIDER_TIMEOUT", `${stage} timed out. Please retry this step.`);
+    throw new ShoppingError(502, "PROVIDER_CONNECTION", `${stage} could not connect or read a response. Please retry.`);
   }
-  // Never return or log provider error bodies: they can contain credentials or image URLs.
-  if (!response.ok) {
-    throw new ShoppingError(response.status === 429 ? 429 : 502, "PROVIDER_UNAVAILABLE",
-      response.status === 429 ? "The search service is busy. Please try again later."
-        : "The search service could not complete this request. Please try again later.");
-  }
-  const data = await response.json().catch(() => null);
-  if (!data || typeof data !== "object" || data.error ||
-      (data.search_metadata?.status && data.search_metadata.status !== "Success")) {
-    throw new ShoppingError(502, "PROVIDER_ERROR", "The search service returned an unsuccessful response.");
-  }
-  return data;
 }
 
 type Row = Record<string, unknown>;
