@@ -28,3 +28,17 @@ mtime_ms = 1794089070668
 storage_uri = "gcs://replit-rams-assets-janeway/rams/assets/repl:f50d4f3c-c5e5-4cfd-ae2d-34532804679e/b3be5f8f-3b41-42f0-990b-f437b5b1e1a0/8be82ac1-4c85-430a-a67d-1ec77c29e8af"
 storage_version_token = "1794089090968012"
 content_type = "text/markdown"
+
+[[outputs]]
+id = "6b8Bv4AJsSfRBu3BD3bFl"
+uri = "file://generated-artifacts/expo-go-58-qr.png"
+type = "image"
+title = "Open in Expo Go 58"
+description = "Scan with your iPhone Camera, then tap Open in Expo Go. This connects to the running development preview."
+logical_id = "3814370d-ae25-4f7c-8988-882ad09b0a47"
+content_hash = "sha256:91ce226545780d31495e1342b6229b3d533bcc61ad4c700ca940da69cb73c5fa"
+size = 9182
+mtime_ms = 1794102159629
+storage_uri = "gcs://replit-rams-assets-janeway/rams/assets/repl:f50d4f3c-c5e5-4cfd-ae2d-34532804679e/3814370d-ae25-4f7c-8988-882ad09b0a47/bc4271d8-473c-475c-b40e-dace4766e8cd"
+storage_version_token = "1794102163978024"
+content_type = "image/png"
