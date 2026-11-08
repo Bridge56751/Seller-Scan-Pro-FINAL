@@ -30,6 +30,8 @@ async function fetchApiKey(): Promise<string | null> {
 }
 
 export async function configureRevenueCat(): Promise<boolean> {
+  // This app only configures native billing; its key cannot initialize Web Billing.
+  if (Platform.OS === "web") return false;
   if (isConfigured) return true;
 
   const RC = await loadPurchasesModule();
@@ -39,11 +41,7 @@ export async function configureRevenueCat(): Promise<boolean> {
   if (!apiKey) return false;
 
   try {
-    if (Platform.OS === "web") {
-      await RC.configure({ apiKey });
-    } else {
-      await RC.configure({ apiKey });
-    }
+    await RC.configure({ apiKey });
     isConfigured = true;
     return true;
   } catch {
