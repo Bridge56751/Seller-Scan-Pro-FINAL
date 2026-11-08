@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ActivityIndicator, Image, Linking, Platform, Pressable, ScrollView, StyleSheet, Text } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import Colors from "@/constants/colors";
@@ -6,6 +6,8 @@ import { captureProductPhoto } from "@/lib/native-camera";
 import { identifyPhoto } from "@/lib/shopping-client";
 import { PHOTO_DISCLOSURE, countryInfo, type PhotoMatch } from "@/shared/shopping";
 import ShoppingComparison from "@/components/shopping/ShoppingComparison";
+import { useScanTrigger } from "@/lib/scan-trigger";
+import { grantPhotoConsent, hasPhotoConsent } from "@/lib/photo-consent";
 
 export default function ScanScreen() {
   const [photoUri, setPhotoUri] = useState<string | null>(null);
@@ -21,18 +23,28 @@ export default function ScanScreen() {
   const identifying = useRef(false);
   const disabled = busy || comparing;
   const isWeb = Platform.OS === "web";
+  const { request } = useScanTrigger();
+  const handledRequest = useRef(0);
+  const takePhotoRef = useRef<() => Promise<void>>(async () => {});
+
+  useEffect(() => {
+    if (request > handledRequest.current) {
+      handledRequest.current = request;
+      void takePhotoRef.current();
+    }
+  }, [request]);
 
   function resetIdentification() { setMatches(null); setSelected(null); setShowConsent(false); setError(null); }
-  async function identify() {
-    if (!photoUri || !countryInfo(country) || identifying.current) return;
+  async function identify(uri: string) {
+    if (!countryInfo(country) || identifying.current) return;
     identifying.current = true; setBusy(true); setError(null); setMatches(null); setSelected(null); setShowConsent(false);
-    try { setMatches((await identifyPhoto(photoUri, country)).matches); }
+    try { setMatches((await identifyPhoto(uri, country)).matches); }
     catch (e) { setError(e instanceof Error ? e.message : "Could not identify the photo. Please try again."); }
     finally { identifying.current = false; setBusy(false); }
   }
 
   async function takePhoto() {
-    if (opening.current || isWeb) return;
+    if (opening.current || identifying.current || comparing || isWeb) return;
     opening.current = true;
     setBusy(true);
     setError(null);
@@ -47,6 +59,11 @@ export default function ScanScreen() {
       } else if (result.status === "captured") {
         resetIdentification();
         setPhotoUri(result.uri);
+        if (await hasPhotoConsent()) {
+          await identify(result.uri);
+        } else {
+          setShowConsent(true);
+        }
       }
       // Canceling a retake keeps the previous photo.
     } catch {
@@ -55,6 +72,18 @@ export default function ScanScreen() {
       setBusy(false);
       opening.current = false;
     }
+  }
+  takePhotoRef.current = takePhoto;
+
+  async function agreeAndIdentify() {
+    if (!photoUri || busy) return;
+    setBusy(true);
+    try {
+      await grantPhotoConsent();
+      await identify(photoUri);
+    } catch {
+      setError("Could not save your photo-sharing permission. Please try again.");
+    } finally { setBusy(false); }
   }
 
   async function openSettings() {
@@ -68,12 +97,12 @@ export default function ScanScreen() {
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView contentContainerStyle={styles.content}>
-        <Text style={styles.title}>{photoUri ? "Your Product Photo" : "Take a Product Photo"}</Text>
+        <Text style={styles.title}>{identifying.current ? "Identifying Your Product" : photoUri ? "Your Product Photo" : "Take a Product Photo"}</Text>
         {photoUri ? (
           <>
             <Image source={{ uri: photoUri }} style={styles.photo} resizeMode="contain" accessibilityLabel="Your captured product photo" />
             <Text style={styles.text}>
-              Review your photo, then identify possible products. You will confirm the exact model and variant before comparing real prices.
+              {busy ? "Finding your product… this can take up to a minute." : "Choose the matching product to find where to buy it for less."}
             </Text>
           </>
         ) : (
@@ -82,7 +111,7 @@ export default function ScanScreen() {
           </Text>
         )}
         <Text style={styles.text}>
-          Taking a photo does not upload it. Sharing happens only after you agree below. This app does not save photos to your photo library.
+          After you enable automatic identification, accepted photos are sent for matching immediately. You can turn this off in Settings → Photo & Shopping Privacy. Photos are not saved to your photo library.
         </Text>
         <Text style={styles.text}>Find out what it is and where to buy it for less.</Text>
         {isWeb ? (
@@ -99,13 +128,13 @@ export default function ScanScreen() {
             )}
             <Pressable
               accessibilityRole="button"
-              accessibilityLabel={photoUri ? "Retake product photo" : "Continue to camera"}
+              accessibilityLabel={photoUri ? "Retake product photo" : "Open camera"}
               accessibilityState={{ disabled, busy }}
               disabled={disabled}
               style={[styles.button, disabled && styles.disabled]}
               onPress={takePhoto}
             >
-              {busy ? <ActivityIndicator color="#fff" /> : <Text style={styles.buttonText}>{photoUri ? "Retake Photo" : "Continue"}</Text>}
+              {busy ? <ActivityIndicator color="#fff" /> : <Text style={styles.buttonText}>{photoUri ? "Retake Photo" : "Open Camera"}</Text>}
             </Pressable>
           </>
         )}
@@ -120,16 +149,22 @@ export default function ScanScreen() {
           </Pressable>
         )}
         {photoUri && !isWeb && <>
-          <Pressable accessibilityRole="button" disabled={disabled || !countryInfo(country)}
-            style={[styles.button, (disabled || !countryInfo(country)) && styles.disabled]} onPress={() => setShowConsent(true)}>
-            <Text style={styles.buttonText}>Identify Product</Text>
-          </Pressable>
+          {error && !needsSettings && <Pressable accessibilityRole="button" disabled={disabled}
+            style={[styles.button, disabled && styles.disabled]} onPress={async () => {
+              try {
+                if (await hasPhotoConsent()) await identify(photoUri);
+                else setShowConsent(true);
+              } catch { setError("Could not read photo-sharing permission. Please try again."); }
+            }}>
+            <Text style={styles.buttonText}>Retry Identification</Text>
+          </Pressable>}
           {showConsent && <>
-            <Text style={styles.title}>Before sharing your photo</Text>
+            <Text style={styles.title}>Enable Automatic Identification</Text>
             <Text style={styles.text}>{PHOTO_DISCLOSURE}</Text>
+            <Text style={styles.text}>Allow this photo and future photos you accept in the camera to be uploaded automatically for identification. You can withdraw this permission in Settings → Photo & Shopping Privacy.</Text>
             <Pressable accessibilityRole="link" onPress={() => Linking.openURL("https://www.searchapi.io/legal/privacy").catch(() => setError("Could not open privacy policy."))}><Text style={styles.text}>SearchApi privacy policy</Text></Pressable>
             <Pressable accessibilityRole="link" onPress={() => Linking.openURL("https://policies.google.com/privacy").catch(() => setError("Could not open privacy policy."))}><Text style={styles.text}>Google privacy policy</Text></Pressable>
-            <Pressable accessibilityRole="button" disabled={disabled} style={styles.button} onPress={identify}><Text style={styles.buttonText}>Agree & Identify</Text></Pressable>
+            <Pressable accessibilityRole="button" disabled={disabled} style={styles.button} onPress={agreeAndIdentify}><Text style={styles.buttonText}>Allow Automatic Identification</Text></Pressable>
             <Pressable accessibilityRole="button" onPress={() => setShowConsent(false)} style={styles.button}><Text style={styles.buttonText}>Keep Photo Private</Text></Pressable>
           </>}
           {busy && <Text accessibilityRole="alert" style={styles.text}>Working… this can take up to a minute.</Text>}

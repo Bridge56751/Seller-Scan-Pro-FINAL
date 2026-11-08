@@ -5,11 +5,13 @@ import { Platform, StyleSheet } from "react-native";
 import React from "react";
 import { Feather } from "@expo/vector-icons";
 import Colors from "@/constants/colors";
+import { ScanTriggerProvider, useScanTrigger } from "@/lib/scan-trigger";
 
 function NativeTabLayout() {
+  const { requestScan } = useScanTrigger();
   return (
     <NativeTabs>
-      <NativeTabs.Trigger name="index">
+      <NativeTabs.Trigger name="index" listeners={{ tabPress: requestScan }}>
         <NativeTabs.Trigger.Icon sf={{ default: "barcode.viewfinder", selected: "barcode.viewfinder" }} />
         <NativeTabs.Trigger.Label>Scan</NativeTabs.Trigger.Label>
       </NativeTabs.Trigger>
@@ -30,6 +32,7 @@ function NativeTabLayout() {
 }
 
 function ClassicTabLayout() {
+  const { requestScan } = useScanTrigger();
   return (
     <Tabs
       screenOptions={{
@@ -52,6 +55,7 @@ function ClassicTabLayout() {
     >
       <Tabs.Screen
         name="index"
+        listeners={{ tabPress: requestScan }}
         options={{
           title: "Scan",
           tabBarIcon: ({ focused }) => (
@@ -91,8 +95,7 @@ function ClassicTabLayout() {
 }
 
 export default function TabLayout() {
-  if (isLiquidGlassAvailable()) {
-    return <NativeTabLayout />;
-  }
-  return <ClassicTabLayout />;
+  return <ScanTriggerProvider>
+    {isLiquidGlassAvailable() ? <NativeTabLayout /> : <ClassicTabLayout />}
+  </ScanTriggerProvider>;
 }

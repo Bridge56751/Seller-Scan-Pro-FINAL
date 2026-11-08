@@ -5,6 +5,7 @@ import { randomBytes } from "node:crypto";
 import type { AddressInfo } from "node:net";
 import express from "express";
 import sharp from "sharp";
+import { PHOTO_CONSENT_VERSION } from "../shared/shopping";
 
 test("fresh schema supports consented identification, image fetch, cleanup and confirmed comparison", async () => {
   const schema = `shopping_test_${randomBytes(8).toString("hex")}`;
@@ -51,7 +52,10 @@ test("fresh schema supports consented identification, image fetch, cleanup and c
       method: "POST", headers: { "Content-Type": "application/json", "X-Forwarded-Host": process.env.REPLIT_DEV_DOMAIN! },
       body: JSON.stringify(body),
     });
-    const identified = await post("identify", { image: image.toString("base64"), country: "US", consent: "searchapi-photo-v1" });
+    const staleConsent = await post("identify", { image: image.toString("base64"), country: "US", consent: "searchapi-photo-v1" });
+    assert.equal(staleConsent.status, 400);
+    assert.equal(imageFetched, false, "outdated consent must not send the photo to a provider");
+    const identified = await post("identify", { image: image.toString("base64"), country: "US", consent: PHOTO_CONSENT_VERSION });
     assert.equal(identified.status, 200);
     const matches = await identified.json();
     assert.equal(matches.matches[0].title, "Sony WH-1000XM5 Black");

@@ -14,7 +14,7 @@ Geographic goal: support all countries, primarily the US. Build country-aware co
 
 Provider setup is now approved using a dedicated SearchApi key stored server-side as SEARCHAPI_API_KEY. Leave the user's other app, its existing key, and account-wide settings untouched. The user is not concerned about shared usage limits; their concern is breaking the other integration.
 
-**Why:** The user subsequently chose “Proceed with SearchApi” and supplied the key securely. Native capture still uses the operating system camera; photographs are uploaded only after explicit per-request consent.
+**Why:** The user subsequently chose “Proceed with SearchApi” and supplied the key securely. The user now requires Scan-tab taps to open the native camera immediately and accepted photos to begin processing automatically. Obtain versioned, revocable permission once before the first automatic upload, rather than requiring a review and Identify action for every scan. Canceling the camera must never upload a photo. Preserve the existing visual style.
 
 The user requested removal of Keepa, Amazon-hosted product images, and unpkg. Do not reconnect these providers or substitute mock data. Legacy product details/charts and new subscriptions remain paused; saved legacy history and subscription management remain available. Legacy product endpoints still return HTTP 503 without external calls. Provider descriptions below are historical and do not describe currently enabled functionality.
 

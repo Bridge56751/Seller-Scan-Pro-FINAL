@@ -22,7 +22,7 @@ async function shoppingRequest<T>(route: string, body: unknown): Promise<T> {
   } finally { clearTimeout(timeout); }
 }
 
-// Called only by the explicit photo-sharing consent action.
+// Caller must check the user's versioned, revocable photo-sharing consent.
 export async function identifyPhoto(uri: string, country: string) {
   const image = await prepareProductPhoto(uri);
   return shoppingRequest<Identification>("identify", { image, country, consent: PHOTO_CONSENT_VERSION });
