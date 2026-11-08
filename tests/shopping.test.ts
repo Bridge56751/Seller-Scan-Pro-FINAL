@@ -64,6 +64,15 @@ test("product thumbnails are preserved without unsafe or removed image hosts", (
   assert.deepEqual(offers.map(offer => offer.imageUrl), ["https://example.com/product.jpg", null, null, null, null]);
   assert.equal(normalizeMatches({ visual_matches: [{ title: "Bottle", thumbnail: thumbnails[0] }] })[0].imageUrl, thumbnails[0]);
 });
+test("promotional prices are unranked and Google destinations are labeled as comparisons", () => {
+  const { offers } = normalizeOffers({ shopping_results: [{
+    title: "Branded Stanley Quencher 40 oz", seller: "Promotional supplier", price: "$0.01", extracted_price: 0.01,
+    product_link: "https://www.google.com/search?q=Stanley", image: "https://example.com/bottle.jpg",
+  }] }, { ...input, product: "Stanley Quencher 40 oz", color: "N/A", condition: "any" }, "USD");
+  assert.equal(offers[0].restricted, true);
+  assert.equal(offers[0].linkKind, "comparison");
+  assert.equal(offers[0].imageUrl, "https://example.com/bottle.jpg");
+});
 test("foreign currency labels and bundles never sort as ordinary local prices", () => {
   const row = { title: "Sony WH-1000XM5 Black", price: "$20 CAD", extracted_price: 20, link: "https://example.com/item" };
   const { offers } = normalizeOffers({ shopping_results: [

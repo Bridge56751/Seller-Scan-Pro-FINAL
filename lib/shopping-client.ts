@@ -1,6 +1,6 @@
 import { getApiUrl } from "./query-client";
 import { prepareProductPhoto } from "./native-camera";
-import { type Identification, type Comparison, type ComparisonInput } from "@/shared/shopping";
+import { type Identification, type Comparison, type ComparisonInput, type ListingSearchInput, type ListingSearch } from "@/shared/shopping";
 
 async function shoppingRequest<T>(route: string, body: unknown): Promise<T> {
   const controller = new AbortController();
@@ -29,4 +29,7 @@ export async function identifyPhoto(uri: string, country: string) {
 }
 export function compareProduct(input: ComparisonInput) {
   return shoppingRequest<Comparison>("compare", input);
+}
+export function searchListings(input: ListingSearchInput) {
+  return shoppingRequest<ListingSearch>("search", input);
 }

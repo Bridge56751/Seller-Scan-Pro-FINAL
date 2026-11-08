@@ -10,6 +10,8 @@ Keep the shopper experience narrowly focused: someone sees an item (for example,
 
 Shopping results should follow the user's supplied reference: compact rows with a product picture, price, marketplace/store, and View Listing action. Keep the existing app style and rank comparable matching offers by listed price; never fabricate missing product images or prices.
 
+The user approved a Pocket Pricer-inspired, results-first scan flow: native capture → automatic identification and shopping search → dedicated Scan Results screen. Show the photo, likely product name and listings immediately. Refine Search / Wrong Item is optional after results, not a mandatory questionnaire. Keep Scan Again easy to reach. Auto-selected visual suggestions and their listings are possible matches, never falsely user-confirmed exact variants; no seller-profit or resale-estimate features.
+
 **Why:** The user explicitly corrected the scope: “just scan find and find the cheapest marketplace,” not shipping or everything else.
 
 Geographic goal: support all countries, primarily the US. Build country-aware comparisons with US defaults; clearly disclose unavailable regional coverage rather than presenting US listings as local offers. This is a product goal, not a claim that any selected provider covers every country.
@@ -28,7 +30,7 @@ The user requested removal of Keepa, Amazon-hosted product images, and unpkg. Do
 
 The user clarified that scanning should not ask for country: scan a product, show comparable listings, and help find the cheapest place to buy the same item. Use US listings by default in the scan flow and label the market, without a country-selection step. Keep the product-match check lightweight; detailed corrections are optional.
 
-- Scan uses SearchApi's Google Lens `visual_matches`, followed by explicit user confirmation of model, size/capacity, color, pack quantity and condition before a Google Shopping request. The Search tab allows the same confirmation flow without a photo.
+- Scan uses SearchApi's Google Lens `visual_matches`, followed automatically by a Google Shopping query for the leading usable suggestion. These are labeled possible matches with optional refinement. The separate Search tab retains the detailed confirmed-comparison flow.
 - Supported countries are the initial Lens/Shopping intersection in `shared/shopping.ts`; US is the default. Unsupported countries return an explicit error without a US fallback. Country targeting is not a shipping guarantee.
 - Prices are actual provider results, not checkout totals. Only matching-title prices in the regional currency without detected financing/bundle conditions are sorted. All titles/conditions must still be checked at the retailer; results are not exhaustive or verified seller endorsements.
 - Photos are resized/re-encoded locally and server-side; server-side metadata is stripped. An AES-GCM encrypted temporary database record supports fetching across replicas. A random capability URL includes the decryption key; it is never stored alongside the ciphertext. Links expire after 2 minutes, records are deleted after processing and expired records are swept. Database backups and third-party retention are disclosed.

@@ -11,6 +11,7 @@ import { queryClient } from "@/lib/query-client";
 import { AuthProvider, useAuth } from "@/lib/auth-context";
 import { ActivityIndicator, Text, View } from "react-native";
 import Colors from "@/constants/colors";
+import { ScanSessionProvider } from "@/lib/scan-session";
 
 SplashScreen.preventAutoHideAsync();
 
@@ -28,6 +29,7 @@ function RootLayoutNav() {
   return (
     <Stack screenOptions={{ headerBackTitle: "Back" }}>
       <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+      <Stack.Screen name="scan-results" options={{ title: "Scan Results", headerShown: false }} />
       <Stack.Screen name="product/[asin]" options={{ headerShown: false }} />
       <Stack.Screen name="paywall" options={{ headerShown: false, presentation: "modal" }} />
     </Stack>
@@ -72,7 +74,7 @@ export default function RootLayout() {
           <KeyboardProvider>
             <AuthProvider>
               <StatusBar style="light" />
-              <RootLayoutNav />
+              <ScanSessionProvider><RootLayoutNav /></ScanSessionProvider>
             </AuthProvider>
           </KeyboardProvider>
         </GestureHandlerRootView>

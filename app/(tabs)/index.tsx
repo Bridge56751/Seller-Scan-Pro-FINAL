@@ -1,30 +1,34 @@
 import { useEffect, useRef, useState } from "react";
-import { ActivityIndicator, Image, Linking, Platform, Pressable, ScrollView, StyleSheet, Text } from "react-native";
+import { ActivityIndicator, Linking, Platform, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import Colors from "@/constants/colors";
-import { captureProductPhoto } from "@/lib/native-camera";
-import { identifyPhoto } from "@/lib/shopping-client";
-import { countryInfo, type PhotoMatch } from "@/shared/shopping";
+import { Feather } from "@expo/vector-icons";
 import { router } from "expo-router";
-import ShoppingComparison from "@/components/shopping/ShoppingComparison";
+import Colors from "@/constants/colors";
 import { useScanTrigger } from "@/lib/scan-trigger";
+import { useScanSession } from "@/lib/scan-session";
 
 export default function ScanScreen() {
-  const [photoUri, setPhotoUri] = useState<string | null>(null);
-  const [busy, setBusy] = useState(false);
-  const [needsSettings, setNeedsSettings] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const opening = useRef(false);
-  const country = "US";
-  const [matches, setMatches] = useState<PhotoMatch[] | null>(null);
-  const [selected, setSelected] = useState<string | null>(null);
-  const [comparing, setComparing] = useState(false);
-  const identifying = useRef(false);
-  const disabled = busy || comparing;
-  const isWeb = Platform.OS === "web";
+  const { session, busy, capture } = useScanSession();
   const { request } = useScanTrigger();
   const handledRequest = useRef(0);
+  const opening = useRef(false);
+  const [localError, setLocalError] = useState<string | null>(null);
   const takePhotoRef = useRef<() => Promise<void>>(async () => {});
+  const isWeb = Platform.OS === "web";
+
+  async function takePhoto() {
+    if (opening.current || busy || isWeb) return;
+    opening.current = true;
+    setLocalError(null);
+    try {
+      if (await capture()) router.push("/scan-results");
+    } catch {
+      setLocalError("The camera could not open. Please try again.");
+    } finally {
+      opening.current = false;
+    }
+  }
+  takePhotoRef.current = takePhoto;
 
   useEffect(() => {
     if (request > handledRequest.current) {
@@ -33,121 +37,48 @@ export default function ScanScreen() {
     }
   }, [request]);
 
-  function resetIdentification() { setMatches(null); setSelected(null); setError(null); }
-  async function identify(uri: string) {
-    if (!countryInfo(country) || identifying.current) return;
-    identifying.current = true; setBusy(true); setError(null); setMatches(null); setSelected(null);
-    try { setMatches((await identifyPhoto(uri, country)).matches); }
-    catch (e) { setError(e instanceof Error ? e.message : "Could not identify the photo. Please try again."); }
-    finally { identifying.current = false; setBusy(false); }
-  }
-
-  async function takePhoto() {
-    if (opening.current || identifying.current || comparing || isWeb) return;
-    opening.current = true;
-    setBusy(true);
-    setError(null);
-    setNeedsSettings(false);
-    try {
-      const result = await captureProductPhoto();
-      if (result.status === "denied") {
-        setNeedsSettings(!result.canAskAgain);
-        setError(result.canAskAgain
-          ? "Camera access was not granted. You can continue using the other tabs or try again."
-          : "Camera access is off. You can allow it in your phone’s Settings, then return and try again.");
-      } else if (result.status === "captured") {
-        resetIdentification();
-        setPhotoUri(result.uri);
-        await identify(result.uri);
-      }
-      // Canceling a retake keeps the previous photo.
-    } catch {
-      setError("The camera could not open or return a photo. Please try again on a phone with a camera.");
-    } finally {
-      setBusy(false);
-      opening.current = false;
-    }
-  }
-  takePhotoRef.current = takePhoto;
-
   async function openSettings() {
-    try {
-      await Linking.openSettings();
-    } catch {
-      setError("Could not open Settings. Open your phone’s Settings manually to manage camera access.");
-    }
+    try { await Linking.openSettings(); }
+    catch { setLocalError("Open your phone’s Settings to allow camera access."); }
   }
 
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView contentContainerStyle={styles.content}>
-        <Text style={styles.title}>{identifying.current ? "Identifying Your Product" : photoUri ? "Your Product Photo" : "Take a Product Photo"}</Text>
-        {photoUri ? (
-          <>
-            <Image source={{ uri: photoUri }} style={styles.photo} resizeMode="contain" accessibilityLabel="Your captured product photo" />
-            <Text style={styles.text}>
-              {busy ? "Finding your product… this can take up to a minute." : "Choose the matching product to find where to buy it for less."}
-            </Text>
-          </>
-        ) : (
-          <Text style={styles.text}>
-            Take a product photo to find where to buy it. Accepted photos are processed by SearchApi and Google Lens.
-          </Text>
-        )}
-        <Pressable accessibilityRole="link" onPress={() => router.push("/photo-privacy")}>
-          <Text style={styles.privacyLink}>Photo & Shopping Privacy</Text>
-        </Pressable>
-        <Text style={styles.text}>Find out what it is and where to buy it for less.</Text>
-        {isWeb ? (
-          <Text style={styles.text}>
-            The native camera is available in the iPhone and Android app, not this browser preview.
-          </Text>
-        ) : (
-          <>
-            {error && <Text accessibilityRole="alert" style={styles.error}>{error}</Text>}
-            {needsSettings && (
-              <Pressable accessibilityRole="button" style={styles.button} onPress={openSettings}>
-                <Text style={styles.buttonText}>Open Settings</Text>
-              </Pressable>
-            )}
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel={photoUri ? "Retake product photo" : "Open camera"}
-              accessibilityState={{ disabled, busy }}
-              disabled={disabled}
-              style={[styles.button, disabled && styles.disabled]}
-              onPress={takePhoto}
-            >
-              {busy ? <ActivityIndicator color="#fff" /> : <Text style={styles.buttonText}>{photoUri ? "Retake Photo" : "Open Camera"}</Text>}
-            </Pressable>
-          </>
-        )}
-        {photoUri && (
-          <Pressable
-            accessibilityRole="button"
-            disabled={disabled}
-            style={[styles.button, disabled && styles.disabled]}
-            onPress={() => { setPhotoUri(null); resetIdentification(); setNeedsSettings(false); }}
-          >
-            <Text style={styles.buttonText}>Clear Photo</Text>
+        <View style={styles.topline}>
+          <Text style={styles.eyebrow}>PHOTO PRICE SEARCH</Text>
+          <Feather name="shopping-bag" size={20} color={Colors.light.accent} />
+        </View>
+        <View style={styles.hero}>
+          <View style={styles.cameraFrame}>
+            <Feather name="camera" size={52} color={Colors.light.accent} />
+            <View style={styles.frameCorner} />
+          </View>
+          <Text style={styles.title}>See it. Scan it.{"\n"}Find it for less.</Text>
+          <Text style={styles.description}>Photograph a product to find possible matches and compare prices across stores.</Text>
+        </View>
+        <View style={styles.card}>
+          <View style={styles.step}>
+            <View style={styles.stepIcon}><Feather name="camera" size={18} color={Colors.light.accent} /></View>
+            <View style={styles.stepCopy}><Text style={styles.stepTitle}>Point at the product</Text><Text style={styles.stepText}>A clear photo with the label visible works best.</Text></View>
+          </View>
+          <View style={styles.divider} />
+          <View style={styles.step}>
+            <View style={styles.stepIcon}><Feather name="tag" size={18} color={Colors.light.accent} /></View>
+            <View style={styles.stepCopy}><Text style={styles.stepTitle}>Go straight to prices</Text><Text style={styles.stepText}>Browse listings. Refine only if you need to.</Text></View>
+          </View>
+        </View>
+        {(localError || session.error) && <Text accessibilityRole="alert" style={styles.error}>{localError || session.error}</Text>}
+        {session.needsSettings && <Pressable accessibilityRole="button" onPress={openSettings} style={styles.secondary}><Text style={styles.secondaryText}>Open Camera Settings</Text></Pressable>}
+        {isWeb ? <View style={styles.webNote}><Feather name="smartphone" size={20} color={Colors.light.accent} /><Text style={styles.note}>Open the iPhone or Android app to scan with your native camera. Camera scanning is not available in the browser.</Text></View> : (
+          <Pressable accessibilityRole="button" accessibilityLabel="Scan a product with your camera" accessibilityState={{ disabled: busy, busy }} disabled={busy} onPress={takePhoto} style={({ pressed }) => [styles.primary, (busy || pressed) && styles.dimmed]}>
+            {busy ? <ActivityIndicator color={Colors.light.surface} /> : <Feather name="camera" size={21} color={Colors.light.surface} />}
+            <Text style={styles.primaryText}>{busy ? "Scan in progress…" : "Scan a Product"}</Text>
           </Pressable>
         )}
-        {photoUri && !isWeb && <>
-          {error && !needsSettings && <Pressable accessibilityRole="button" disabled={disabled}
-            style={[styles.button, disabled && styles.disabled]} onPress={() => identify(photoUri)}>
-            <Text style={styles.buttonText}>Retry Identification</Text>
-          </Pressable>}
-          {busy && <Text accessibilityRole="alert" style={styles.text}>Working… this can take up to a minute.</Text>}
-        </>}
-        {matches !== null && <>
-          <Text style={styles.title}>{matches.length ? "Possible Matches" : "No Visual Matches"}</Text>
-          <Text style={styles.text}>{matches.length ? "Choose a suggestion, then correct its model and variant details. Similar-looking items may be different products." : "Try another photo with the model label visible, or enter the product details manually."}</Text>
-          {matches.map((match, index) => <Pressable accessibilityRole="button" key={index} disabled={disabled} style={styles.button} onPress={() => setSelected(match.title)}>
-            <Text style={styles.buttonText}>{match.title}</Text><Text style={styles.buttonText}>{match.source}</Text>
-          </Pressable>)}
-          <Pressable accessibilityRole="button" disabled={disabled} style={styles.button} onPress={() => setSelected("")}><Text style={styles.buttonText}>None of These — Enter Details</Text></Pressable>
-        </>}
-        {selected !== null && <ShoppingComparison key={`${country}-${selected}`} country={country} initialProduct={selected} onBusyChange={setComparing} />}
+        {session.photoUri && <Pressable accessibilityRole="button" onPress={() => router.push("/scan-results")} style={styles.secondary}><Text style={styles.secondaryText}>{busy ? "View scan progress" : "Back to your results"}</Text><Feather name="arrow-right" size={17} color={Colors.light.accent} /></Pressable>}
+        <Text style={styles.disclosure}>Accepted photos are processed by SearchApi and Google Lens. Results are suggestions, not exact identification.</Text>
+        <Pressable accessibilityRole="link" onPress={() => router.push("/photo-privacy")} style={styles.privacy}><Text style={styles.privacyText}>Photo & Shopping Privacy</Text></Pressable>
       </ScrollView>
     </SafeAreaView>
   );
@@ -155,13 +86,30 @@ export default function ScanScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.light.background },
-  content: { flexGrow: 1, justifyContent: "center", padding: 28, gap: 20 },
-  title: { fontSize: 24, fontWeight: "700", color: Colors.light.text, textAlign: "center" },
-  text: { fontSize: 16, lineHeight: 24, color: Colors.light.textSecondary, textAlign: "center" },
-  button: { backgroundColor: Colors.light.accent, padding: 16, borderRadius: 8, alignItems: "center", minHeight: 52 },
-  buttonText: { color: "#fff", fontSize: 16, fontWeight: "600" },
-  disabled: { opacity: 0.6 },
-  photo: { width: "100%", height: 260, backgroundColor: Colors.light.surface, borderRadius: 8 },
-  error: { color: Colors.light.danger, fontSize: 14, lineHeight: 20, textAlign: "center" },
-  privacyLink: { color: Colors.light.accent, fontSize: 13, textAlign: "center", paddingVertical: 8 },
+  content: { flexGrow: 1, paddingHorizontal: 24, paddingTop: 24, paddingBottom: 32, gap: 18 },
+  topline: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
+  eyebrow: { fontSize: 11, fontWeight: "700", letterSpacing: 1.8, color: Colors.light.textSecondary },
+  hero: { alignItems: "center", paddingTop: 24, paddingBottom: 8, gap: 18 },
+  cameraFrame: { width: 116, height: 116, alignItems: "center", justifyContent: "center", backgroundColor: Colors.light.accentDim, borderRadius: 30, borderWidth: 1, borderColor: Colors.light.border },
+  frameCorner: { position: "absolute", right: 14, top: 14, width: 9, height: 9, borderRadius: 5, backgroundColor: Colors.light.accent },
+  title: { fontSize: 32, lineHeight: 39, letterSpacing: -1, fontWeight: "700", color: Colors.light.text, textAlign: "center" },
+  description: { fontSize: 16, lineHeight: 24, color: Colors.light.textSecondary, textAlign: "center", maxWidth: 340 },
+  card: { padding: 18, backgroundColor: Colors.light.surface, borderRadius: 18, borderWidth: 1, borderColor: Colors.light.border, gap: 16 },
+  step: { flexDirection: "row", gap: 12, alignItems: "center" },
+  stepIcon: { width: 38, height: 38, borderRadius: 12, backgroundColor: Colors.light.accentDim, alignItems: "center", justifyContent: "center" },
+  stepCopy: { flex: 1, gap: 4 },
+  stepTitle: { fontSize: 14, fontWeight: "600", color: Colors.light.text },
+  stepText: { fontSize: 12, lineHeight: 18, color: Colors.light.textSecondary },
+  divider: { height: 1, backgroundColor: Colors.light.borderLight, marginLeft: 50 },
+  primary: { minHeight: 56, borderRadius: 14, backgroundColor: Colors.light.accent, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 10, padding: 16 },
+  primaryText: { fontSize: 16, fontWeight: "600", color: Colors.light.surface },
+  secondary: { minHeight: 44, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8 },
+  secondaryText: { fontSize: 14, fontWeight: "600", color: Colors.light.accent },
+  dimmed: { opacity: 0.6 },
+  disclosure: { fontSize: 11, lineHeight: 17, color: Colors.light.textSecondary, textAlign: "center" },
+  privacy: { alignSelf: "center", padding: 8 },
+  privacyText: { fontSize: 12, color: Colors.light.accent },
+  error: { color: Colors.light.danger, fontSize: 14, lineHeight: 21 },
+  webNote: { backgroundColor: Colors.light.accentDim, padding: 16, borderRadius: 14, flexDirection: "row", gap: 12 },
+  note: { flex: 1, fontSize: 13, lineHeight: 20, color: Colors.light.textSecondary },
 });

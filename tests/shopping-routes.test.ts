@@ -17,6 +17,9 @@ test("API guardrails reject invalid input without transmitting photos or searchi
   try {
     assert.equal((await post("identify", { image: "!".repeat(120), country: "US" })).status, 400);
     assert.equal((await post("compare", { ...body, confirmed: false })).status, 400);
+    assert.equal((await post("search", { query: "", country: "US" })).status, 400);
+    assert.equal((await post("search", { query: "Bottle", country: "US", confirmed: true })).status, 400);
+    assert.equal((await post("search", { query: "Bottle", country: "ZZ" })).status, 422);
     const unsupported = await post("compare", { ...body, country: "ZZ" });
     assert.equal(unsupported.status, 422);
     assert.equal((await unsupported.json()).code, "REGION_UNAVAILABLE");

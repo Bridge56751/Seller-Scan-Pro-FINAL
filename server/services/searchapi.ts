@@ -74,7 +74,7 @@ export function shoppingQuery(input: ComparisonInput) {
     input.quantity > 1 ? `${input.quantity} pack` : "", input.condition].filter(Boolean).join(" ");
 }
 
-export function normalizeOffers(data: Record<string, unknown>, input: ComparisonInput, currency: string) {
+export function normalizeOffers(data: Record<string, unknown>, input: Omit<ComparisonInput, "confirmed" | "condition"> & { condition: "new" | "used" | "any" }, currency: string) {
   const all = [...rows(data.shopping_results), ...rows(data.shopping_ads),
     ...rows(data.categorized_shopping_results).flatMap(group => rows(group.shopping_results))];
   const seen = new Set<string>();
@@ -105,6 +105,8 @@ export function normalizeOffers(data: Record<string, unknown>, input: Comparison
     const condition = text(row.durability) || text(row.condition) || "Not stated by seller";
     const combined = `${title} ${priceText} ${condition}`;
     const restricted = Boolean(row.installment) ||
+      (/\b(branded|customi[sz]ed|personali[sz]ed|promotional|wholesale|sample|deposit|quote)\b/i.test(combined) &&
+        !/\b(branded|customi[sz]ed|personali[sz]ed|promotional|wholesale|sample|deposit|quote)\b/i.test(input.product)) ||
       /\b(month|monthly|payments?|trade.in|activation|contract|subscription|with plan|coupon|membership)\b|\/mo\b/i.test(combined) ||
       /\b(from|starting at)\b/i.test(priceText) ||
       (/\b(bundle|with|warranty|international version|renewed)\b|& more/i.test(title) &&
@@ -116,7 +118,8 @@ export function normalizeOffers(data: Record<string, unknown>, input: Comparison
         : new RegExp(`\\b${input.quantity}[\\s-]*(pack|count|pcs|pieces)\\b`, "i").test(title)) &&
       !(input.condition === "new" && /\b(used|pre.?owned|refurbished|renewed|open.?box)\b/i.test(combined)) &&
       !(input.condition === "used" && /\bnew\b/i.test(condition));
-    offers.push({ title, seller, url, priceText, imageUrl: productImageUrl(row.thumbnail), amount, currency: offerCurrency,
+    const linkKind = /(^|\.)google\.[a-z.]+$/i.test(new URL(url).hostname) ? "comparison" : "store";
+    offers.push({ title, seller, url, priceText, linkKind, imageUrl: productImageUrl(row.thumbnail) || productImageUrl(row.image), amount, currency: offerCurrency,
       delivery: text(row.delivery) || "Delivery cost not supplied",
       condition, titleMatches, restricted });
   }

@@ -1,3 +1,3 @@
-- [Photo matching](searchapi-photo-matching.md) — Lens product-tab removal requires visual suggestions followed by confirmed shopping queries.
+- [Photo matching](searchapi-photo-matching.md) — Lens product-tab removal requires visual suggestions then a separate shopping query; automatic results remain uncertain.
 - [Dependency compatibility](dependency-compatibility.md) — fix blocked transitive packages without forcing a major mobile SDK migration.
 - [Expo Go preview access](expo-preview-access.md) — a plain development QR can fail iOS account checks even when bundles and manifests pass.

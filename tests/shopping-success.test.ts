@@ -22,6 +22,7 @@ test("fresh schema supports identification, image fetch, cleanup and confirmed c
   const origin = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
   const originalFetch = global.fetch;
   let imageFetched = false;
+  const searchedConditions: Array<string | null> = [];
   let imagePath = "";
   global.fetch = async (url, init) => {
     const target = new URL(String(url));
@@ -40,6 +41,7 @@ test("fresh schema supports identification, image fetch, cleanup and confirmed c
     }
     assert.match(target.searchParams.get("q")!, /Sony WH-1000XM5 Black/);
     assert.equal(target.searchParams.get("gl"), "us");
+    searchedConditions.push(target.searchParams.get("condition"));
     return Response.json({ shopping_results: [{
       title: "Sony WH-1000XM5 Black", seller: "Fixture retailer", price: "$299",
       extracted_price: 299, product_link: "https://example.com/item",
@@ -66,6 +68,17 @@ test("fresh schema supports identification, image fetch, cleanup and confirmed c
       await new Promise(resolve => setTimeout(resolve, 25));
     }
     assert.equal((await originalFetch(`${origin}${imagePath}`)).status, 404);
+    // A visual suggestion can search immediately without pretending the user confirmed a variant.
+    const suggested = await post("search", { query: matches.matches[0].title, country: "US" });
+    assert.equal(suggested.status, 200);
+    const suggestions = await suggested.json();
+    assert.equal(suggestions.matchStatus, "possible");
+    assert.equal(suggestions.query, matches.matches[0].title);
+    assert.equal(suggestions.offers[0].amount, 299);
+    assert.equal(searchedConditions.at(-1), null, "photo search must not silently assume new condition");
+    const refined = await post("search", { query: matches.matches[0].title, country: "US", condition: "used" });
+    assert.equal(refined.status, 200);
+    assert.equal(searchedConditions.at(-1), "used");
     const compared = await post("compare", {
       product: matches.matches[0].title, size: "N/A", color: "N/A", quantity: 1, condition: "new", country: "US", confirmed: true,
     });

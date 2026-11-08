@@ -36,10 +36,18 @@ export const comparisonSchema = z.object({
   confirmed: z.literal(true),
 }).strict();
 export type ComparisonInput = z.infer<typeof comparisonSchema>;
+export const listingSearchSchema = z.object({
+  country: z.string().length(2).transform(v => v.toUpperCase()),
+  query: z.string().trim().min(3).max(180),
+  condition: z.enum(["any", "new", "used"]).default("any"),
+}).strict();
+export type ListingSearchInput = z.input<typeof listingSearchSchema>;
+export type ListingSearch = Comparison & { query: string; matchStatus: "possible" };
 export type PhotoMatch = { title: string; source: string; url: string | null; imageUrl: string | null };
 export type Identification = { matches: PhotoMatch[]; country: string };
 export type ShoppingOffer = {
   title: string; seller: string; url: string; priceText: string; imageUrl: string | null;
+  linkKind?: "store" | "comparison";
   amount: number | null; currency: string | null; delivery: string;
   condition: string; titleMatches: boolean; restricted: boolean;
 };

@@ -1,7 +1,7 @@
 import express, { Router, type Request, type Response, type NextFunction } from "express";
 import sharp from "sharp";
 import { z } from "zod";
-import { comparisonSchema, countryInfo } from "../../shared/shopping";
+import { comparisonSchema, countryInfo, listingSearchSchema } from "../../shared/shopping";
 import { searchApi, ShoppingError, normalizeMatches, normalizeOffers, shoppingQuery } from "../services/searchapi";
 import { storePhoto, readPhoto, deletePhoto } from "../services/photo-store";
 
@@ -93,6 +93,25 @@ router.post("/identify", limit, express.json({ limit: "5mb" }), async (req, res,
       console.warn("[Shopping] Photo cleanup delayed; link expires automatically."));
     res.locals.releaseSearch?.();
   }
+});
+
+// Results-first searches are suggestions, not a claim that the shopper confirmed a variant.
+router.post("/search", limit, express.json({ limit: "8kb" }), async (req, res, next) => {
+  try {
+    const input = listingSearchSchema.parse(req.body);
+    const country = requireCountry(input.country);
+    const data = await searchApi({
+      engine: "google_shopping", q: input.query, gl: input.country.toLowerCase(),
+      hl: "en", link: "resolved",
+      ...(input.condition === "any" ? {} : { condition: input.condition }),
+    });
+    res.json({
+      ...normalizeOffers(data, { product: input.query, size: "N/A", color: "N/A", quantity: 1, condition: input.condition, country: input.country }, country[2]),
+      query: input.query, matchStatus: "possible",
+      country: input.country, currency: country[2], fetchedAt: new Date().toISOString(),
+    });
+  } catch (error) { next(error); }
+  finally { res.locals.releaseSearch?.(); }
 });
 
 router.post("/compare", limit, express.json({ limit: "8kb" }), async (req, res, next) => {

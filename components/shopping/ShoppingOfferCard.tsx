@@ -46,11 +46,11 @@ export default function ShoppingOfferCard({ offer, ranked, cheapest, onOpen }: P
       {!ranked && <Text style={styles.warning}>Unranked · verify variant, currency and offer conditions.</Text>}
       <Pressable
         accessibilityRole="link"
-        accessibilityLabel={`View listing at ${offer.seller || "marketplace"}`}
+        accessibilityLabel={offer.linkKind === "comparison" ? `View Google Shopping offers for ${offer.title}` : `View listing at ${offer.seller || "marketplace"}`}
         onPress={() => onOpen(offer.url)}
         style={({ pressed }) => [styles.link, pressed && styles.pressed]}
       >
-        <Text style={styles.linkText}>View Listing</Text>
+        <Text style={styles.linkText}>{offer.linkKind === "comparison" ? "View Offers on Google" : "View Listing"}</Text>
         <Feather name="external-link" size={13} color={Colors.light.accent} />
       </Pressable>
     </View>
