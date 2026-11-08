@@ -12,6 +12,8 @@ Shopping results should follow the user's supplied reference: compact rows with 
 
 Results must stay focused on price and a buying link, with the photo/name/store identifying the listing. Do not show sales rank, BSR, sales estimates or reseller metrics, and avoid “ranked/unranked” jargon. **Why:** The user explicitly said sales rank does not matter and asked for “just ... price a link.”
 
+“Price: Low to High” must sort every displayed price in the selected currency together, regardless of match confidence or promotional restrictions. Never split matching and related listings into separate price groups. Keep different currencies and unavailable amounts after that list; lowest-comparable-price eligibility is separate from display order. **Why:** The user corrected the previous grouped sorting because low-to-high did not actually display prices in order.
+
 The user approved a Pocket Pricer-inspired, results-first scan flow: native capture → automatic identification and shopping search → dedicated Scan Results screen. Show the photo, likely product name and listings immediately. Refine Search / Wrong Item is optional after results, not a mandatory questionnaire. Keep Scan Again easy to reach. Auto-selected visual suggestions and their listings are possible matches, never falsely user-confirmed exact variants; no seller-profit or resale-estimate features.
 
 The Scan tab is only a camera action, never a landing screen. Do not reintroduce the “See it. Scan it.” page or a second camera-launch button. Canceling capture leaves the shopper on their previous tab; accepting a photo opens results and saves history. The initial app destination is Search.

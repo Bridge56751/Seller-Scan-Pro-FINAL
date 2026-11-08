@@ -13,13 +13,14 @@ test("price control sorts numerically both ways without mutating saved results",
   assert.deepEqual(sortOffersByPrice(source, "USD", "high").map(row => row.amount), [100, 25, 9]);
   assert.deepEqual(source.map(row => row.amount), [100, 9, 25]);
 });
-test("missing, foreign-currency, restricted and mismatched offers stay after comparable prices", () => {
+test("every local price sorts together regardless of match confidence or restrictions", () => {
   const extras = [offer(null), offer(1, { currency: "EUR" }), offer(0.01, { restricted: true }), offer(2, { titleMatches: false }), offer(NaN)];
-  for (const order of ["low", "high"] as const) {
-    const sorted = sortOffersByPrice([...extras, offer(9)], "USD", order);
-    assert.equal(sorted[0].amount, 9);
-    assert.deepEqual(sorted.slice(1), extras);
-  }
+  const source = [...extras, offer(9), offer(100)];
+  const low = sortOffersByPrice(source, "USD", "low");
+  assert.deepEqual(low.slice(0, 4).map(row => row.amount), [0.01, 2, 9, 100]);
+  const high = sortOffersByPrice(source, "USD", "high");
+  assert.deepEqual(high.slice(0, 4).map(row => row.amount), [100, 9, 2, 0.01]);
+  for (const sorted of [low, high]) assert.deepEqual(sorted.slice(4), [extras[1], extras[0], extras[4]]);
 });
 test("empty lists and equal prices preserve a stable order", () => {
   assert.deepEqual(sortOffersByPrice([], "USD", "low"), []);

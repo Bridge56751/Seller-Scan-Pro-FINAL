@@ -27,9 +27,9 @@ export default function ScanResultsScreen() {
   const hasSearch = !!session.result;
   const offers = session.result?.offers || [];
   const rankable = (offer: ShoppingOffer) => isComparablePrice(offer, session.result?.currency);
-  const ranked = sortOffersByPrice(offers.filter(rankable), session.result?.currency, priceSort);
-  const related = offers.filter(offer => !rankable(offer));
-  const lowest = ranked.length ? Math.min(...ranked.map(offer => offer.amount!)) : undefined;
+  const sortedOffers = sortOffersByPrice(offers, session.result?.currency, priceSort);
+  const comparable = offers.filter(rankable);
+  const lowest = comparable.length ? Math.min(...comparable.map(offer => offer.amount!)) : undefined;
 
   useEffect(() => { setQuery(session.query); }, [session.query]);
 
@@ -143,13 +143,8 @@ export default function ScanResultsScreen() {
           {!processing && hasSearch && offers.length > 0 && <>
             <View style={styles.sectionHeading}><Text style={styles.sectionTitle}>Possible matches</Text><Text style={styles.count}>{offers.length} {offers.length === 1 ? "listing" : "listings"}</Text></View>
             <PriceSortControl value={priceSort} onChange={setPriceSort} />
-            <Text style={styles.body}>Possible matches. Price sorting applies to comparable offers. Check the exact item at the store.</Text>
-            {ranked.map((offer, index) => <ShoppingOfferCard key={`ranked-${offer.url}-${index}`} offer={offer} cheapest={offer.amount === lowest} onOpen={openListing} />)}
-            {related.length > 0 && <>
-              <Text style={styles.relatedTitle}>Other related listings</Text>
-              <Text style={styles.body}>Different items or offer terms; not compared for lowest price.</Text>
-              {related.map((offer, index) => <ShoppingOfferCard key={`related-${offer.url}-${index}`} offer={offer} cheapest={false} onOpen={openListing} />)}
-            </>}
+            <Text style={styles.body}>All {session.result?.currency} prices sorted together. Other currencies and unavailable prices follow. Check the exact item and offer terms at the store.</Text>
+            {sortedOffers.map((offer, index) => <ShoppingOfferCard key={`${offer.url}-${index}`} offer={offer} cheapest={rankable(offer) && offer.amount === lowest} onOpen={openListing} />)}
           </>}
 
           {!processing && session.stage === "ready" && offers.length === 0 && <View style={styles.empty}>

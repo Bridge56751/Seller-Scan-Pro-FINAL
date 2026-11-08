@@ -6,11 +6,18 @@ export function isComparablePrice(offer: ShoppingOffer, currency?: string) {
     typeof offer.amount === "number" && Number.isFinite(offer.amount) && offer.amount >= 0;
 }
 export function sortOffersByPrice(offers: ShoppingOffer[], currency: string | undefined, order: PriceSort) {
+  const hasPrice = (offer: ShoppingOffer) => typeof offer.amount === "number" &&
+    Number.isFinite(offer.amount) && offer.amount >= 0;
   return [...offers].sort((a, b) => {
-    const comparableA = isComparablePrice(a, currency);
-    const comparableB = isComparablePrice(b, currency);
-    if (comparableA !== comparableB) return comparableA ? -1 : 1;
-    if (!comparableA) return 0;
+    // Price sorting is independent of match confidence and promotional restrictions.
+    // Never compare raw amounts from different currencies as if they were equivalent.
+    const group = (offer: ShoppingOffer) => !hasPrice(offer) ? 2 :
+      currency && offer.currency === currency ? 0 : 1;
+    const difference = group(a) - group(b);
+    if (difference) return difference;
+    if (!hasPrice(a)) return 0;
+    const currencyOrder = (a.currency || "").localeCompare(b.currency || "");
+    if (currencyOrder) return currencyOrder;
     return order === "low" ? a.amount! - b.amount! : b.amount! - a.amount!;
   });
 }

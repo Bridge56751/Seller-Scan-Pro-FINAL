@@ -106,7 +106,7 @@ export default function ShoppingComparison({ country, initialProduct = "", onBus
       </View>
       <Text style={resultStyles.meta}>Updated {new Date(result.fetchedAt).toLocaleString()} · {result.currency}</Text>
       {visibleOffers.length > 0 && <PriceSortControl value={priceSort} onChange={setPriceSort} />}
-      <Text style={resultStyles.note}>Price sorting applies to comparable offers. Check the item and final price at the store.</Text>
+      <Text style={resultStyles.note}>All {result.currency} prices sorted together. Other currencies and unavailable prices follow. Check the item and final price at the store.</Text>
       {result.offers.filter(offer => offer.titleMatches).length === 0 && <Text accessibilityRole="alert" style={styles.text}>No priced listings matched these product details. Try correcting the model or variant. We will not show a different product as a cheaper alternative.</Text>}
       {visibleOffers.map((offer, index) => <ShoppingOfferCard
         key={`${offer.url}-${index}`} offer={offer}
