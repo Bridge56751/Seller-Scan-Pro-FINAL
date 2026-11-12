@@ -96,7 +96,7 @@ export default function ScanResultsScreen() {
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
-        <Pressable accessibilityRole="button" accessibilityLabel="Back" onPress={() => router.canGoBack() ? router.back() : router.replace("/search")} style={styles.back}><Feather name="arrow-left" size={22} color={Colors.light.text} /></Pressable>
+        <Pressable accessibilityRole="button" accessibilityLabel="Back" onPress={() => router.canGoBack() ? router.back() : router.replace("/history")} style={styles.back}><Feather name="arrow-left" size={22} color={Colors.light.text} /></Pressable>
         <Text style={styles.headerTitle}>Scan Results</Text>
         <View style={styles.headerSpacer} />
       </View>

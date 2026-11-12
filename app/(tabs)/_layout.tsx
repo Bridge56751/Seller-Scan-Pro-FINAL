@@ -7,7 +7,7 @@ import { Feather } from "@expo/vector-icons";
 import Colors from "@/constants/colors";
 import { useCameraAction } from "@/lib/use-camera-action";
 
-export const unstable_settings = { anchor: "search" };
+export const unstable_settings = { anchor: "history" };
 
 function NativeTabLayout() {
   const requestScan = useCameraAction();
@@ -17,10 +17,6 @@ function NativeTabLayout() {
       <NativeTabs.Trigger name="index" disabled listeners={{ tabPress: () => { void requestScan(); } }}>
         <NativeTabs.Trigger.Icon sf={{ default: "camera", selected: "camera.fill" }} />
         <NativeTabs.Trigger.Label>Scan</NativeTabs.Trigger.Label>
-      </NativeTabs.Trigger>
-      <NativeTabs.Trigger name="search">
-        <NativeTabs.Trigger.Icon sf={{ default: "magnifyingglass", selected: "magnifyingglass" }} />
-        <NativeTabs.Trigger.Label>Search</NativeTabs.Trigger.Label>
       </NativeTabs.Trigger>
       <NativeTabs.Trigger name="history">
         <NativeTabs.Trigger.Icon sf={{ default: "clock", selected: "clock.fill" }} />
@@ -63,15 +59,6 @@ function ClassicTabLayout() {
           title: "Scan",
           tabBarIcon: ({ focused }) => (
             <Feather name="camera" size={22} color={focused ? Colors.light.accent : Colors.light.tabIconDefault} />
-          ),
-        }}
-      />
-      <Tabs.Screen
-        name="search"
-        options={{
-          title: "Search",
-          tabBarIcon: ({ focused }) => (
-            <Feather name="search" size={22} color={focused ? Colors.light.accent : Colors.light.tabIconDefault} />
           ),
         }}
       />
