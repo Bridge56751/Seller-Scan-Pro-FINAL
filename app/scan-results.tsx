@@ -13,14 +13,13 @@ import { isComparablePrice, sortOffersByPrice, type PriceSort } from "@/shared/o
 type Condition = "any" | "new" | "used";
 
 export default function ScanResultsScreen() {
-  const { session, busy, capture, refine, retry } = useScanSession();
+  const { session, busy, capture, refine, retry, cancel } = useScanSession();
   const [showRefine, setShowRefine] = useState(false);
   const [priceSort, setPriceSort] = useState<PriceSort>("low");
   const [query, setQuery] = useState(session.query);
   const [condition, setCondition] = useState<Condition>("any");
   const [localError, setLocalError] = useState<string | null>(null);
   const [openingUrl, setOpeningUrl] = useState(false);
-  const actionLock = useRef(false);
   const linkLock = useRef(false);
   const isWeb = Platform.OS === "web";
   const processing = session.stage === "identifying" || session.stage === "searching";
@@ -34,8 +33,7 @@ export default function ScanResultsScreen() {
   useEffect(() => { setQuery(session.query); }, [session.query]);
 
   async function scanAgain() {
-    if (busy || actionLock.current || isWeb) return;
-    actionLock.current = true;
+    if (busy || isWeb) return;
     setLocalError(null);
     try {
       if (await capture()) {
@@ -43,32 +41,27 @@ export default function ScanResultsScreen() {
         setCondition("any");
       }
     } catch { setLocalError("The camera could not open. Please try again."); }
-    finally { actionLock.current = false; }
   }
 
   async function search(value = query) {
-    if (busy || actionLock.current) return;
+    if (busy) return;
     const clean = value.trim();
     if (clean.length < 3 || clean.length > 180) {
       setLocalError("Enter a product name between 3 and 180 characters.");
       return;
     }
-    actionLock.current = true;
     Keyboard.dismiss();
     setQuery(clean);
     setLocalError(null);
     try { await refine(clean, condition); }
     catch { setLocalError("Could not update the search. Please try again."); }
-    finally { actionLock.current = false; }
   }
 
   async function retrySearch() {
-    if (busy || actionLock.current) return;
-    actionLock.current = true;
+    if (busy) return;
     setLocalError(null);
     try { await retry(); }
     catch { setLocalError("Could not retry the search. Please try again."); }
-    finally { actionLock.current = false; }
   }
 
   async function openListing(url: string) {
@@ -127,7 +120,11 @@ export default function ScanResultsScreen() {
               <Feather name="chevron-right" size={14} color={Colors.light.textTertiary} />
               <Text style={[styles.progressStep, session.stage === "searching" && styles.activeStep]}>2  Store listings</Text>
             </View>
+            <Pressable accessibilityRole="button" accessibilityLabel="Cancel search" onPress={cancel} style={styles.inlineAction}>
+              <Text style={styles.linkText}>Cancel Search</Text>
+            </Pressable>
           </View>}
+          {session.stage === "canceled" && <Text accessibilityLiveRegion="polite" style={styles.body}>Search canceled. You can scan again or search by product name.</Text>}
 
           {(localError || session.error) && <View style={styles.errorBox}>
             <Feather name="alert-circle" size={18} color={Colors.light.danger} />

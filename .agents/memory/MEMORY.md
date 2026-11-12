@@ -2,3 +2,4 @@
 - [Dependency compatibility](dependency-compatibility.md) — fix blocked transitive packages without forcing a major mobile SDK migration.
 - [Expo Go preview access](expo-preview-access.md) — a plain development QR can fail iOS account checks even when bundles and manifests pass.
 - [Expo navigation](expo-navigation.md) — SDK 58 native action tabs and default-route configuration differ from classic navigator examples.
+- [Scan cancellation](scan-cancellation.md) — cancellation preserves prior results and must not save a failure or start another paid request.

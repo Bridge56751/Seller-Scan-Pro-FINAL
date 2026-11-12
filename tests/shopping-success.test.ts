@@ -85,6 +85,48 @@ test("fresh schema supports identification, image fetch, cleanup and confirmed c
     });
     assert.equal(compared.status, 200);
     assert.equal((await compared.json()).offers[0].amount, 299);
+
+    // Cancel real HTTP requests after the provider starts. No paid requests are made.
+    for (const stage of ["identify", "search"] as const) {
+      let providerStarted!: () => void;
+      let providerAborted!: () => void;
+      const started = new Promise<void>(resolve => { providerStarted = resolve; });
+      const aborted = new Promise<void>(resolve => { providerAborted = resolve; });
+      let providerCalls = 0;
+      global.fetch = async (url, init) => {
+        if (new URL(String(url)).hostname !== "www.searchapi.io") return originalFetch(url, init);
+        providerCalls++;
+        assert.equal(init!.signal!.aborted, false);
+        providerStarted();
+        return new Promise((_resolve, reject) => init!.signal!.addEventListener("abort", () => {
+          providerAborted();
+          reject(new DOMException("Canceled", "AbortError"));
+        }));
+      };
+      const controller = new AbortController();
+      const pending = originalFetch(`${origin}/api/shopping/${stage}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "X-Forwarded-Host": process.env.REPLIT_DEV_DOMAIN! },
+        body: JSON.stringify(stage === "identify" ? { image: image.toString("base64"), country: "US" } :
+          { query: "Stanley Quencher H2.0 FlowState 40 oz insulated stainless steel travel tumbler", country: "US", automatic: true }),
+        signal: controller.signal,
+      });
+      const rejected = assert.rejects(pending, { name: "AbortError" });
+      await started;
+      controller.abort();
+      await rejected;
+      await Promise.race([aborted, new Promise((_, reject) => {
+        const timer = setTimeout(() => reject(new Error("Provider did not abort after disconnect")), 2000);
+        timer.unref();
+      })]);
+      for (let n = 0; n < 40; n++) {
+        const remaining = await db.query(`SELECT count(*)::int AS count FROM ${schema}.shopping_photos`);
+        if (remaining.rows[0].count === 0) break;
+        await new Promise(resolve => setTimeout(resolve, 25));
+      }
+      assert.equal((await db.query(`SELECT count(*)::int AS count FROM ${schema}.shopping_photos`)).rows[0].count, 0);
+      assert.equal(providerCalls, 1, "disconnect must not launch a fallback");
+    }
   } finally {
     global.fetch = originalFetch;
     if (priorOptions === undefined) delete process.env.PGOPTIONS; else process.env.PGOPTIONS = priorOptions;

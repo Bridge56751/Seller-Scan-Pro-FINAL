@@ -86,3 +86,31 @@ test("provider timeout covers reading the response body and reports the failing 
     else process.env.SEARCHAPI_API_KEY = originalKey;
   }
 });
+
+test("canceled empty first result never starts a paid fallback", async () => {
+  const controller = new AbortController();
+  let calls = 0;
+  await assert.rejects(findListings(input, "USD", async (_params, options) => {
+    calls++;
+    assert.equal(options?.signal, controller.signal);
+    controller.abort();
+    return {};
+  }, undefined, controller.signal), { name: "AbortError" });
+  assert.equal(calls, 1);
+});
+
+test("cancel while fallback is in flight discards its late response", async () => {
+  const controller = new AbortController();
+  let calls = 0;
+  await assert.rejects(findListings(input, "USD", async () => {
+    if (++calls === 2) controller.abort();
+    return {};
+  }, undefined, controller.signal), { name: "AbortError" });
+  assert.equal(calls, 2);
+});
+
+test("pre-canceled provider request never fetches", async () => {
+  const controller = new AbortController();
+  controller.abort();
+  await assert.rejects(searchApi({ engine: "google_lens" }, { signal: controller.signal }), { name: "AbortError" });
+});

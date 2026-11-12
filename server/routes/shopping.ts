@@ -6,6 +6,7 @@ import { searchApi, ShoppingError, normalizeMatches, normalizeOffers, shoppingQu
 import { storePhoto, readPhoto, deletePhoto } from "../services/photo-store";
 import { randomUUID } from "node:crypto";
 import { findListings } from "../services/listing-search";
+import { throwIfCanceled } from "../../shared/cancellation";
 
 const router = Router();
 const photoSchema = z.object({
@@ -49,6 +50,7 @@ function limit(_req: Request, res: Response, next: NextFunction) {
   const release = () => { if (!released) { active--; released = true; } };
   res.locals.releaseSearch = release;
   res.once("finish", release);
+  res.once("close", release);
   next();
 }
 
@@ -59,6 +61,13 @@ router.use((req, res, next) => {
     const start = Date.now();
     const requestId = randomUUID();
     res.locals.timings = {};
+    const controller = new AbortController();
+    res.locals.scanSignal = controller.signal;
+    const abort = () => controller.abort();
+    const close = () => { if (!res.writableFinished) abort(); };
+    req.once("aborted", abort);
+    res.once("close", close);
+    res.once("close", () => req.removeListener("aborted", abort));
     res.setHeader("X-Scan-Request-Id", requestId);
     res.once("finish", () => console.info("[Shopping]", JSON.stringify({
       requestId, step: req.path.slice(1), status: res.statusCode,
@@ -86,6 +95,7 @@ router.post("/identify", limit, express.json({ limit: "5mb" }), async (req, res,
   let id: string | undefined;
   try {
     const input = photoSchema.parse(req.body);
+    throwIfCanceled(res.locals.scanSignal);
     requireCountry(input.country);
     if (!process.env.SEARCHAPI_API_KEY) throw new ShoppingError(503, "NOT_CONFIGURED", "Shopping service is not configured yet.");
     const origin = publicOrigin(req);
@@ -97,14 +107,17 @@ router.post("/identify", limit, express.json({ limit: "5mb" }), async (req, res,
     } catch {
       throw new ShoppingError(400, "INVALID_IMAGE", "That photo could not be read. Please take another photo.");
     }
+    throwIfCanceled(res.locals.scanSignal);
     const stored = await timed(res, "photoStorageMs", () => storePhoto(image)).catch(() => {
       throw new ShoppingError(503, "PHOTO_STORAGE_UNAVAILABLE", "Your photo could not be prepared for identification. Please retry.");
     });
     id = stored.id;
+    throwIfCanceled(res.locals.scanSignal);
     const data = await timed(res, "identificationMs", () => searchApi({
       engine: "google_lens", search_type: "visual_matches", country: input.country,
       hl: "en", url: `${origin}/api/shopping/photo/${stored.token}`,
-    }));
+    }, { signal: res.locals.scanSignal }));
+    throwIfCanceled(res.locals.scanSignal);
     const matches = normalizeMatches(data);
     res.locals.timings.matchCount = matches.length;
     res.json({ matches, country: input.country });
@@ -125,7 +138,8 @@ router.post("/search", limit, express.json({ limit: "8kb" }), async (req, res, n
       (attempt, ms, offers) => {
         res.locals.timings[`attempt${attempt}Ms`] = ms;
         res.locals.timings[`attempt${attempt}Offers`] = offers;
-      }));
+      }, res.locals.scanSignal));
+    throwIfCanceled(res.locals.scanSignal);
     res.locals.timings.offerCount = result.offers.length;
     res.locals.timings.excludedCount = result.excluded;
     res.locals.timings.fallbackUsed = result.fallbackUsed;
@@ -141,7 +155,8 @@ router.post("/compare", limit, express.json({ limit: "8kb" }), async (req, res, 
     const data = await timed(res, "listingSearchMs", () => searchApi({
       engine: "google_shopping", q: shoppingQuery(input), gl: input.country.toLowerCase(),
       hl: "en", condition: input.condition, link: "raw",
-    }));
+    }, { signal: res.locals.scanSignal }));
+    throwIfCanceled(res.locals.scanSignal);
     res.json({
       ...normalizeOffers(data, input, country[2]),
       country: input.country, currency: country[2], fetchedAt: new Date().toISOString(),
@@ -152,6 +167,7 @@ router.post("/compare", limit, express.json({ limit: "8kb" }), async (req, res, 
 
 router.use((error: unknown, _req: Request, res: Response, _next: NextFunction) => {
   res.locals.releaseSearch?.();
+  if (res.locals.scanSignal?.aborted || res.destroyed) return;
   res.locals.failureCode = error instanceof ShoppingError ? error.code :
     error instanceof z.ZodError ? "INVALID_INPUT" : "REQUEST_FAILED";
   if (error instanceof z.ZodError) return res.status(400).json({

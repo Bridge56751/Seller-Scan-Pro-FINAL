@@ -1,5 +1,6 @@
 import * as ImagePicker from "expo-image-picker";
 import { manipulateAsync, SaveFormat } from "expo-image-manipulator";
+import { discardTemporaryPhoto } from "./temporary-photo";
 
 export type CameraCaptureResult =
   | { status: "captured"; uri: string }
@@ -35,8 +36,12 @@ export async function prepareProductPhoto(uri: string): Promise<string> {
   const result = await manipulateAsync(uri, [{ resize: { width: 1200 } }], {
     compress: 0.75, format: SaveFormat.JPEG, base64: true,
   });
-  if (!result.base64 || result.base64.length > 4 * 1024 * 1024) {
-    throw new Error("This photo is too large. Please retake it with just the product in view.");
+  try {
+    if (!result.base64 || result.base64.length > 4 * 1024 * 1024) {
+      throw new Error("This photo is too large. Please retake it with just the product in view.");
+    }
+    return result.base64;
+  } finally {
+    if (result.uri !== uri) discardTemporaryPhoto(result.uri);
   }
-  return result.base64;
 }

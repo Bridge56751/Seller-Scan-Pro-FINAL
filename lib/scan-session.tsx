@@ -1,4 +1,4 @@
-import { createContext, useContext, useRef, useState, type ReactNode } from "react";
+import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from "react";
 import { Platform } from "react-native";
 import { captureProductPhoto } from "./native-camera";
 import { identifyPhoto, searchListings } from "./shopping-client";
@@ -7,10 +7,11 @@ import { manipulateAsync, SaveFormat } from "expo-image-manipulator";
 import { randomUUID } from "expo-crypto";
 import { photoScanHistory, type PhotoScanHistoryItem } from "./photo-scan-history";
 import { photoSearchQueries } from "@/shared/photo-search-query";
+import { discardTemporaryPhoto } from "./temporary-photo";
 
 export type ScanSession = {
   photoUri: string | null;
-  stage: "idle" | "camera" | "identifying" | "searching" | "ready" | "error";
+  stage: "idle" | "camera" | "identifying" | "searching" | "ready" | "error" | "canceled";
   matches: PhotoMatch[];
   query: string;
   result: ListingSearch | null;
@@ -24,6 +25,7 @@ const Context = createContext<{
   capture: (onFailure?: (message: string, needsSettings: boolean) => void) => Promise<boolean>;
   refine: (query: string, condition?: "any" | "new" | "used") => Promise<void>;
   retry: () => Promise<void>;
+  cancel: () => void;
   restore: (item: PhotoScanHistoryItem) => boolean;
 } | null>(null);
 
@@ -34,6 +36,28 @@ export function ScanSessionProvider({ children }: { children: ReactNode }) {
   const state = useRef(session);
   state.current = session;
   const lock = useRef(false);
+  const operation = useRef<AbortController | null>(null);
+  const previous = useRef<ScanSession>(empty);
+  const previousCondition = useRef<"any" | "new" | "used">("any");
+  const isCurrent = (op: AbortController) => operation.current === op && !op.signal.aborted;
+  useEffect(() => () => { operation.current?.abort(); operation.current = null; }, []);
+  function begin() {
+    const op = new AbortController();
+    operation.current = op;
+    previous.current = state.current;
+    previousCondition.current = conditionRef.current;
+    return op;
+  }
+  function cancel() {
+    if (!["identifying", "searching"].includes(state.current.stage)) return;
+    operation.current?.abort();
+    operation.current = null;
+    lock.current = false;
+    setSaving(false);
+    conditionRef.current = previousCondition.current;
+    // A canceled refinement must not discard the shopper's existing results.
+    patch({ ...previous.current, stage: "canceled", error: null });
+  }
   const lastStage = useRef<"identify" | "search">("identify");
   const conditionRef = useRef<"any" | "new" | "used">("any");
   const historyRef = useRef<{ id: string; timestamp: number; thumbnail: string | null; saved: boolean } | null>(null);
@@ -41,28 +65,36 @@ export function ScanSessionProvider({ children }: { children: ReactNode }) {
     state.current = { ...state.current, ...value };
     setSession(state.current);
   };
-  async function saveHistory() {
+  async function saveHistory(op: AbortController) {
+    if (!isCurrent(op)) return;
     const info = historyRef.current;
     if (!info) return;
+    const current = state.current;
+    const condition = conditionRef.current;
     setSaving(true);
     try {
-      if (!info.thumbnail && state.current.photoUri) {
-        const image = await manipulateAsync(state.current.photoUri, [{ resize: { width: 320 } }], { compress: 0.6, format: SaveFormat.JPEG, base64: true });
-        if (!image.base64) throw new Error("Photo thumbnail unavailable");
-        info.thumbnail = `data:image/jpeg;base64,${image.base64}`;
+      if (!info.thumbnail && current.photoUri) {
+        const image = await manipulateAsync(current.photoUri, [{ resize: { width: 320 } }], { compress: 0.6, format: SaveFormat.JPEG, base64: true });
+        try {
+          if (!image.base64) throw new Error("Photo thumbnail unavailable");
+          info.thumbnail = `data:image/jpeg;base64,${image.base64}`;
+        } finally {
+          if (image.uri !== current.photoUri) discardTemporaryPhoto(image.uri);
+        }
       }
-      const current = state.current;
+      if (!isCurrent(op)) return;
       await photoScanHistory.save({
         id: info.id, timestamp: info.timestamp, photoUri: info.thumbnail,
         query: current.query, matches: current.matches, result: current.result,
-        error: current.error, condition: conditionRef.current,
+        error: current.error, condition,
       }, info.saved);
       info.saved = true;
+      if (!isCurrent(op)) return;
       setHistoryVersion(value => value + 1);
       patch({ historyWarning: null });
     } catch {
-      patch({ historyWarning: "This scan could not be saved to History. Your current results are still available." });
-    } finally { setSaving(false); }
+      if (isCurrent(op)) patch({ historyWarning: "This scan could not be saved to History. Your current results are still available." });
+    } finally { if (isCurrent(op)) setSaving(false); }
   }
   function restore(item: PhotoScanHistoryItem) {
     if (lock.current) return false;
@@ -74,25 +106,33 @@ export function ScanSessionProvider({ children }: { children: ReactNode }) {
     return true;
   }
 
-  async function search(query: string, condition: "any" | "new" | "used" = "any", automatic = false) {
+  async function search(op: AbortController, query: string, condition: "any" | "new" | "used" = "any", automatic = false) {
+    if (!isCurrent(op)) return;
     lastStage.current = "search";
     conditionRef.current = condition;
     patch({ query, stage: "searching", error: null, result: null });
-    const result = await searchListings({ query, country: "US", condition, automatic });
+    const result = await searchListings({ query, country: "US", condition, automatic }, op.signal);
+    if (!isCurrent(op)) return;
     patch({ result, query: result.query, stage: "ready" });
   }
-  async function process(uri: string) {
+  async function process(uri: string, op: AbortController) {
     lastStage.current = "identify";
     patch({ stage: "identifying", photoUri: uri, matches: [], result: null, query: "", error: null, needsSettings: false });
     try {
-      const { matches } = await identifyPhoto(uri, "US");
+      const { matches } = await identifyPhoto(uri, "US", op.signal);
+      if (!isCurrent(op)) return;
       patch({ matches });
       const first = matches.find(match => match.title.trim().length >= 3);
-      if (first) await search(photoSearchQueries(first.title)[0], "any", true);
+      if (first) await search(op, photoSearchQueries(first.title)[0], "any", true);
       else patch({ stage: "ready" });
     } catch (e) {
-      patch({ stage: "error", error: e instanceof Error ? e.message : "Could not search this photo. Please try again." });
-    } finally { await saveHistory(); lock.current = false; }
+      if (isCurrent(op)) patch({ stage: "error", error: e instanceof Error ? e.message : "Could not search this photo. Please try again." });
+    } finally { await finish(op); }
+  }
+  async function finish(op: AbortController) {
+    if (!isCurrent(op)) return;
+    await saveHistory(op);
+    if (isCurrent(op)) { lock.current = false; operation.current = null; }
   }
   async function capture(onFailure?: (message: string, needsSettings: boolean) => void) {
     if (lock.current || Platform.OS === "web") return false;
@@ -106,7 +146,8 @@ export function ScanSessionProvider({ children }: { children: ReactNode }) {
         conditionRef.current = "any";
         patch({ historyWarning: null });
         // Capture returns immediately after starting the pipeline so the results route can show progress.
-        void process(result.uri);
+        patch({ ...empty, photoUri: result.uri });
+        void process(result.uri, begin());
         return true;
       }
       lock.current = false;
@@ -131,9 +172,10 @@ export function ScanSessionProvider({ children }: { children: ReactNode }) {
       return;
     }
     lock.current = true;
-    try { await search(clean, condition); }
-    catch (e) { patch({ stage: "error", error: e instanceof Error ? e.message : "Could not search listings." }); }
-    finally { await saveHistory(); lock.current = false; }
+    const op = begin();
+    try { await search(op, clean, condition); }
+    catch (e) { if (isCurrent(op)) patch({ stage: "error", error: e instanceof Error ? e.message : "Could not search listings." }); }
+    finally { await finish(op); }
   }
   async function retry() {
     if (lock.current) return;
@@ -141,11 +183,11 @@ export function ScanSessionProvider({ children }: { children: ReactNode }) {
       await refine(state.current.query, conditionRef.current);
     } else if (state.current.photoUri) {
       lock.current = true;
-      await process(state.current.photoUri);
+      await process(state.current.photoUri, begin());
     }
   }
   const busy = saving || ["camera", "identifying", "searching"].includes(session.stage);
-  return <Context.Provider value={{ session, busy, historyVersion, capture, refine, retry, restore }}>{children}</Context.Provider>;
+  return <Context.Provider value={{ session, busy, historyVersion, capture, refine, retry, cancel, restore }}>{children}</Context.Provider>;
 }
 export function useScanSession() {
   const context = useContext(Context);

@@ -1,4 +1,5 @@
 import type { ComparisonInput, ShoppingOffer, PhotoMatch } from "../../shared/shopping";
+import { throwIfCanceled } from "../../shared/cancellation";
 
 export class ShoppingError extends Error {
   constructor(public status: number, public code: string, message: string) {
@@ -6,13 +7,15 @@ export class ShoppingError extends Error {
   }
 }
 
-export async function searchApi(params: Record<string, string>, options: { timeoutMs?: number } = {}) {
+export async function searchApi(params: Record<string, string>, options: { timeoutMs?: number; signal?: AbortSignal } = {}) {
+  throwIfCanceled(options.signal);
   const key = process.env.SEARCHAPI_API_KEY;
   if (!key) throw new ShoppingError(503, "NOT_CONFIGURED", "Shopping service is not configured yet.");
   const url = new URL("https://www.searchapi.io/api/v1/search");
   for (const [name, value] of Object.entries(params)) url.searchParams.set(name, value);
   const stage = params.engine === "google_lens" ? "Photo identification" : "Price search";
-  const signal = AbortSignal.timeout(options.timeoutMs ?? 60000);
+  const timeout = AbortSignal.timeout(options.timeoutMs ?? 60000);
+  const signal = options.signal ? AbortSignal.any([options.signal, timeout]) : timeout;
   try {
     const response = await fetch(url, {
       headers: { Authorization: `Bearer ${key}` },
@@ -25,12 +28,14 @@ export async function searchApi(params: Record<string, string>, options: { timeo
           : `${stage} is unavailable right now. Please retry.`);
     }
     const data = await response.json();
+    throwIfCanceled(options.signal);
     if (!data || typeof data !== "object" || data.error ||
         (data.search_metadata?.status && data.search_metadata.status !== "Success")) {
       throw new ShoppingError(502, "PROVIDER_ERROR", `${stage} returned an unsuccessful response. Please retry.`);
     }
     return data;
   } catch (error) {
+    throwIfCanceled(options.signal);
     if (error instanceof ShoppingError) throw error;
     if (signal.aborted) throw new ShoppingError(504, "PROVIDER_TIMEOUT", `${stage} timed out. Please retry this step.`);
     throw new ShoppingError(502, "PROVIDER_CONNECTION", `${stage} could not connect or read a response. Please retry.`);
