@@ -129,7 +129,7 @@ export function normalizeOffers(data: Record<string, unknown>, input: Omit<Compa
     const linkKind = /(^|\.)google\.[a-z.]+$/i.test(new URL(url).hostname) ? "comparison" : "store";
     offers.push({ title, seller, url, priceText, linkKind, imageUrl: productImageUrl(row.thumbnail) || productImageUrl(row.image), amount, currency: offerCurrency,
       delivery: text(row.delivery) || "Delivery cost not supplied",
-      condition, titleMatches, restricted });
+      condition, titleMatches, restricted, providerOrder: offers.length });
   }
   // Rank only comparable currency, title-matching, non-financed prices.
   const rankable = (o: ShoppingOffer) => o.titleMatches && !o.restricted && o.currency === currency && o.amount !== null;

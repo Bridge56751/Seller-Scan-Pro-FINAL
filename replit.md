@@ -56,6 +56,8 @@ The app uses **Keepa API** as the sole data source for all Amazon product data (
 
 ## User Preferences
 
+Default scan results to “Most accurate” (product-name matching and provider relevance, not a guarantee of visual identity). Retain optional low-to-high and high-to-low price sorting. Reset to accuracy for newly loaded results.
+
 Preferred communication style: Simple, everyday language.
 
 Preserve the user's existing Expo CLI login during startup, dependency installs, merges, and maintenance. Do not run Expo logout, replace the session with a managed account, delete Expo authentication state, or change its home directory without asking the user first. Never copy authentication files into the project or Git.

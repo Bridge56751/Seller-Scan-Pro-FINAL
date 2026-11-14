@@ -49,6 +49,7 @@ export type Identification = { matches: PhotoMatch[]; country: string };
 export type ShoppingOffer = {
   title: string; seller: string; url: string; priceText: string; imageUrl: string | null;
   linkKind?: "store" | "comparison";
+  providerOrder?: number;
   amount: number | null; currency: string | null; delivery: string;
   condition: string; titleMatches: boolean; restricted: boolean;
 };

@@ -7,6 +7,22 @@ const offer = (amount: number | null, overrides: Partial<ShoppingOffer> = {}): S
   imageUrl: null, currency: "USD", amount, delivery: "", condition: "new",
   titleMatches: true, restricted: false, ...overrides,
 });
+test("accuracy prioritizes matches and title relevance, not cheap prices", () => {
+  const source = [
+    offer(1, { title: "Bottle sleeve", titleMatches: false, providerOrder: 0 }),
+    offer(9, { title: "Blue bottle", providerOrder: 2 }),
+    offer(100, { title: "Blue bottle", providerOrder: 1 }),
+    offer(2, { title: "Blue bottle accessory", titleMatches: false, providerOrder: 3 }),
+  ];
+  assert.deepEqual(sortOffersByPrice(source, "USD", "accurate", "Blue bottle"),
+    [source[2], source[1], source[3], source[0]]);
+  assert.deepEqual(source.map(row => row.amount), [1, 9, 100, 2]);
+});
+test("accuracy supports older saved scans without provider order", () => {
+  const source = [offer(20), offer(10)];
+  assert.deepEqual(sortOffersByPrice(source, "USD", "accurate"), source);
+  assert.deepEqual(sortOffersByPrice([], "USD", "accurate"), []);
+});
 test("price control sorts numerically both ways without mutating saved results", () => {
   const source = [offer(100), offer(9), offer(25)];
   assert.deepEqual(sortOffersByPrice(source, "USD", "low").map(row => row.amount), [9, 25, 100]);

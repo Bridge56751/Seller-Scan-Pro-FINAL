@@ -22,7 +22,7 @@ export default function ShoppingComparison({ country, initialProduct = "", onBus
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<Comparison | null>(null);
   const [editingResult, setEditingResult] = useState(false);
-  const [priceSort, setPriceSort] = useState<PriceSort>("low");
+  const [priceSort, setPriceSort] = useState<PriceSort>("accurate");
   const lock = useRef(false);
   const parsed = comparisonSchema.safeParse({ product, size, color, quantity: Number(quantity), condition, country, confirmed });
   function changed() { setConfirmed(false); setResult(null); setError(null); }

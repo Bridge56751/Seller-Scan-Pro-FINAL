@@ -15,7 +15,7 @@ type Condition = "any" | "new" | "used";
 export default function ScanResultsScreen() {
   const { session, busy, capture, refine, retry, cancel } = useScanSession();
   const [showRefine, setShowRefine] = useState(false);
-  const [priceSort, setPriceSort] = useState<PriceSort>("low");
+  const [priceSort, setPriceSort] = useState<PriceSort>("accurate");
   const [query, setQuery] = useState(session.query);
   const [condition, setCondition] = useState<Condition>("any");
   const [localError, setLocalError] = useState<string | null>(null);
@@ -26,11 +26,12 @@ export default function ScanResultsScreen() {
   const hasSearch = !!session.result;
   const offers = session.result?.offers || [];
   const rankable = (offer: ShoppingOffer) => isComparablePrice(offer, session.result?.currency);
-  const sortedOffers = sortOffersByPrice(offers, session.result?.currency, priceSort);
+  const sortedOffers = sortOffersByPrice(offers, session.result?.currency, priceSort, session.query);
   const comparable = offers.filter(rankable);
   const lowest = comparable.length ? Math.min(...comparable.map(offer => offer.amount!)) : undefined;
 
   useEffect(() => { setQuery(session.query); }, [session.query]);
+  useEffect(() => { setPriceSort("accurate"); }, [session.result]);
 
   async function scanAgain() {
     if (busy || isWeb) return;
@@ -141,7 +142,7 @@ export default function ScanResultsScreen() {
           {!processing && hasSearch && offers.length > 0 && <>
             <View style={styles.sectionHeading}><Text style={styles.sectionTitle}>Possible matches</Text><Text style={styles.count}>{offers.length} {offers.length === 1 ? "listing" : "listings"}</Text></View>
             <PriceSortControl value={priceSort} onChange={setPriceSort} />
-            <Text style={styles.body}>All {session.result?.currency} prices sorted together. Other currencies and unavailable prices follow. Check the exact item and offer terms at the store.</Text>
+            <Text style={styles.body}>{priceSort === "accurate" ? "Closest product-name matches first, using search relevance to break ties. These are possible matches, not verified identical items." : `All ${session.result?.currency} prices sorted together. Other currencies and unavailable prices follow.`} Check the exact item and offer terms at the store.</Text>
             {sortedOffers.map((offer, index) => <ShoppingOfferCard key={`${offer.url}-${index}`} offer={offer} cheapest={rankable(offer) && offer.amount === lowest} onOpen={openListing} />)}
           </>}
 

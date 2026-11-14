@@ -6,16 +6,16 @@ export default function PriceSortControl({ value, onChange }: {
   value: PriceSort; onChange: (value: PriceSort) => void;
 }) {
   return <View style={styles.container}>
-    <Text style={styles.label}>Sort by price</Text>
+    <Text style={styles.label}>Sort results</Text>
     <View style={styles.options}>
-      {(["low", "high"] as const).map(option => <Pressable
+      {(["accurate", "low", "high"] as const).map(option => <Pressable
         key={option} accessibilityRole="button"
-        accessibilityLabel={option === "low" ? "Price: Low to High" : "Price: High to Low"}
+        accessibilityLabel={option === "accurate" ? "Most accurate" : option === "low" ? "Price: Low to High" : "Price: High to Low"}
         accessibilityState={{ selected: value === option }}
         onPress={() => onChange(option)}
         style={[styles.option, value === option && styles.selected]}
       ><Text style={[styles.text, value === option && styles.selectedText]}>
-        {option === "low" ? "Low to High" : "High to Low"}
+        {option === "accurate" ? "Most accurate" : option === "low" ? "Low to High" : "High to Low"}
       </Text></Pressable>)}
     </View>
   </View>;
