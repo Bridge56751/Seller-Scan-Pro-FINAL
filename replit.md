@@ -58,6 +58,10 @@ The app uses **Keepa API** as the sole data source for all Amazon product data (
 
 Preferred communication style: Simple, everyday language.
 
+Preserve the user's existing Expo CLI login during startup, dependency installs, merges, and maintenance. Do not run Expo logout, replace the session with a managed account, delete Expo authentication state, or change its home directory without asking the user first. Never copy authentication files into the project or Git.
+
+**Why:** The user explicitly asked not to be logged out again after repeated Expo Go sign-in problems. If Expo requires fresh authentication, explain that rather than silently switching accounts.
+
 ## System Architecture
 
 ### Frontend (Expo / React Native)
