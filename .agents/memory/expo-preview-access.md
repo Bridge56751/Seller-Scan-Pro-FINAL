@@ -19,6 +19,12 @@ The user confirmed the website preview became visible after the bind-address cor
 
 Use the user's own Expo account for preview authentication rather than automatically signing into Replit's managed account.
 
+For interactive CLI login in this remote workspace, use `npx expo login --no-browser`.
+
+**Why:** Browser approval redirected to a localhost callback on the user's phone rather than the remote CLI. The user completed the non-browser flow successfully, verified with `expo whoami`.
+
+**How to apply:** Let the user enter credentials directly into Shell prompts, then verify login and restart Expo. Never request or replay browser authorization callback codes.
+
 **Why:** The user explicitly selected this approach after the built-in QR and managed-account sign-in button both failed on their physical iPhone.
 
 **How to apply:** Preserve the user's authenticated CLI session on startup. Do not restore automatic managed-account login without asking. Do not store the user's account details or credentials in project files. The installed create-launch browser login uses a localhost callback inside the remote container, so its login URL cannot complete directly from the user's computer. Do not hand out that URL or ask the user to paste authorization codes; use an official supported login method instead.
