@@ -1,7 +1,7 @@
 import { isLiquidGlassAvailable } from "expo-glass-effect";
 import { Tabs } from "expo-router";
 import { NativeTabs } from "expo-router/native-tabs";
-import { Platform } from "react-native";
+import { Platform, Text } from "react-native";
 import React from "react";
 import { Feather, FontAwesome } from "@expo/vector-icons";
 import Colors from "@/constants/colors";
@@ -38,8 +38,15 @@ function ClassicTabLayout() {
   const requestScan = useCameraAction();
   return (
     <Tabs backBehavior="initialRoute"
-      screenOptions={{
+      screenOptions={({ route }) => ({
         headerShown: false,
+        tabBarShowLabel: true,
+        tabBarLabelPosition: "below-icon",
+        tabBarLabel: ({ color }) => (
+          <Text style={{ color, fontSize: 11, lineHeight: 16, fontWeight: "600" }}>
+            {{ index: "Scan", barcode: "Barcode", history: "History", settings: "Settings" }[route.name] ?? route.name}
+          </Text>
+        ),
         tabBarActiveTintColor: Colors.light.accent,
         tabBarInactiveTintColor: Colors.light.tabIconDefault,
         tabBarStyle: {
@@ -47,14 +54,14 @@ function ClassicTabLayout() {
           borderTopColor: Colors.light.border,
           borderTopWidth: 1,
           height: Platform.OS === "web" ? 84 : 85,
-          paddingBottom: Platform.OS === "web" ? 34 : 28,
+          paddingBottom: Platform.OS === "web" ? 16 : 28,
           paddingTop: 8,
         },
         tabBarLabelStyle: {
           fontSize: 11,
           fontWeight: "600" as const,
         },
-      }}
+      })}
     >
       <Tabs.Screen
         name="index"
