@@ -7,6 +7,8 @@ import { storePhoto, readPhoto, deletePhoto } from "../services/photo-store";
 import { randomUUID } from "node:crypto";
 import { findListings } from "../services/listing-search";
 import { throwIfCanceled } from "../../shared/cancellation";
+import { lookupBarcode } from "../services/barcode-lookup";
+import { normalizeBarcode } from "../../shared/barcode";
 
 const router = Router();
 const photoSchema = z.object({
@@ -57,7 +59,7 @@ function limit(_req: Request, res: Response, next: NextFunction) {
 router.use((req, res, next) => {
   res.setHeader("Cache-Control", "no-store");
   res.setHeader("Referrer-Policy", "no-referrer");
-  if (req.method === "POST" && ["/identify", "/search", "/compare"].includes(req.path)) {
+  if (req.method === "POST" && ["/identify", "/barcode", "/search", "/compare"].includes(req.path)) {
     const start = Date.now();
     const requestId = randomUUID();
     res.locals.timings = {};
@@ -127,6 +129,16 @@ router.post("/identify", limit, express.json({ limit: "5mb" }), async (req, res,
       console.warn("[Shopping] Photo cleanup delayed; link expires automatically."));
     res.locals.releaseSearch?.();
   }
+});
+
+router.post("/barcode", limit, express.json({ limit: "1kb" }), async (req, res, next) => {
+  try {
+    const input = z.object({ barcode: z.string().max(14).refine(value => !!normalizeBarcode(value)) }).strict().parse(req.body);
+    const product = await timed(res, "barcodeLookupMs", () => lookupBarcode(input.barcode, res.locals.scanSignal));
+    throwIfCanceled(res.locals.scanSignal);
+    res.json(product);
+  } catch (error) { next(error); }
+  finally { res.locals.releaseSearch?.(); }
 });
 
 // Results-first searches are suggestions, not a claim that the shopper confirmed a variant.

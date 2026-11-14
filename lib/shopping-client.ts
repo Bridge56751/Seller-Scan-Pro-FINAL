@@ -1,12 +1,13 @@
 import { getApiUrl } from "./query-client";
 import { prepareProductPhoto } from "./native-camera";
 import { throwIfCanceled } from "@/shared/cancellation";
+import type { BarcodeProduct } from "@/shared/barcode";
 import { type Identification, type Comparison, type ComparisonInput, type ListingSearchInput, type ListingSearch } from "@/shared/shopping";
 
 async function shoppingRequest<T>(route: string, body: unknown, signal?: AbortSignal): Promise<T> {
   throwIfCanceled(signal);
   const started = Date.now();
-  const stage = route === "identify" ? "Photo identification" : "Price search";
+  const stage = route === "identify" ? "Photo identification" : route === "barcode" ? "Barcode identification" : "Price search";
   const controller = new AbortController();
   const cancel = () => controller.abort();
   signal?.addEventListener("abort", cancel);
@@ -51,4 +52,7 @@ export function compareProduct(input: ComparisonInput) {
 }
 export function searchListings(input: ListingSearchInput, signal?: AbortSignal) {
   return shoppingRequest<ListingSearch>("search", input, signal);
+}
+export function identifyBarcode(barcode: string, signal?: AbortSignal) {
+  return shoppingRequest<BarcodeProduct>("barcode", { barcode }, signal);
 }

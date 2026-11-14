@@ -15,6 +15,8 @@ test("API guardrails reject invalid input without transmitting photos or searchi
     method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload),
   });
   try {
+    assert.equal((await post("barcode", { barcode: "036000291453" })).status, 400);
+    assert.equal((await post("barcode", { barcode: "https://example.com" })).status, 400);
     assert.equal((await post("identify", { image: "!".repeat(120), country: "US" })).status, 400);
     assert.equal((await post("compare", { ...body, confirmed: false })).status, 400);
     assert.equal((await post("search", { query: "", country: "US" })).status, 400);

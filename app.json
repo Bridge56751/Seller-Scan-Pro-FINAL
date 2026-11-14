@@ -12,7 +12,7 @@
       "bundleIdentifier": "com.sellerscan.pro",
       "buildNumber": "13",
       "infoPlist": {
-        "NSCameraUsageDescription": "Take product photos to find shopping matches. Accepted photos are sent to our server, SearchApi, and Google Lens for identification."
+        "NSCameraUsageDescription": "Scan product barcodes or take photos to find shopping matches. Photos use SearchApi and Google Lens; barcode numbers use UPCitemdb."
       }
     },
     "android": {
@@ -37,9 +37,18 @@
       ],
       "expo-font",
       [
+        "expo-camera",
+        {
+          "cameraPermission": "Scan product barcodes or take photos to find shopping matches. Photos use SearchApi and Google Lens; barcode numbers use UPCitemdb.",
+          "microphonePermission": false,
+          "recordAudioAndroid": false,
+          "barcodeScannerEnabled": true
+        }
+      ],
+      [
         "expo-image-picker",
         {
-          "cameraPermission": "Take product photos to find shopping matches. Accepted photos are sent to our server, SearchApi, and Google Lens for identification.",
+          "cameraPermission": "Scan product barcodes or take photos to find shopping matches. Photos use SearchApi and Google Lens; barcode numbers use UPCitemdb.",
           "photosPermission": false,
           "microphonePermission": false
         }

@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { ActivityIndicator, Image, Keyboard, KeyboardAvoidingView, Linking, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { Feather } from "@expo/vector-icons";
+import { Feather, FontAwesome } from "@expo/vector-icons";
 import { router } from "expo-router";
 import Colors from "@/constants/colors";
 import { useScanSession } from "@/lib/scan-session";
@@ -21,6 +21,9 @@ export default function ScanResultsScreen() {
   const [localError, setLocalError] = useState<string | null>(null);
   const [openingUrl, setOpeningUrl] = useState(false);
   const linkLock = useRef(false);
+  const [imageFailed, setImageFailed] = useState(false);
+  const isBarcode = session.source === "barcode" || !!session.barcode;
+  const productImage = isBarcode && session.productImageUrl && /^https:\/\//i.test(session.productImageUrl) ? session.productImageUrl : null;
   const isWeb = Platform.OS === "web";
   const processing = session.stage === "identifying" || session.stage === "searching";
   const hasSearch = !!session.result;
@@ -32,10 +35,15 @@ export default function ScanResultsScreen() {
 
   useEffect(() => { setQuery(session.query); }, [session.query]);
   useEffect(() => { setPriceSort("accurate"); }, [session.result]);
+  useEffect(() => { setImageFailed(false); }, [productImage]);
 
   async function scanAgain() {
     if (busy || isWeb) return;
     setLocalError(null);
+    if (isBarcode) {
+      router.replace("/barcode");
+      return;
+    }
     try {
       if (await capture()) {
         setShowRefine(false);
@@ -96,7 +104,15 @@ export default function ScanResultsScreen() {
       </View>
       <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === "ios" ? "padding" : undefined}>
         <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
-          {session.photoUri ? <View style={styles.product}>
+          {isBarcode ? <View style={styles.product}>
+            {productImage && !imageFailed ? <Image source={{ uri: productImage }} resizeMode="contain" style={styles.photo} accessibilityLabel="Possible product match from barcode lookup" onError={() => setImageFailed(true)} /> : <View style={[styles.photo, styles.barcodePlaceholder]}><FontAwesome name="barcode" size={38} color={Colors.light.accent} /></View>}
+            <View style={styles.productCopy}>
+              <Text style={styles.eyebrow}>BARCODE SCAN</Text>
+              <Text style={styles.productTitle} numberOfLines={4}>{session.query || (processing ? "Identifying your barcode…" : "Your scanned barcode")}</Text>
+              {!!session.barcode && <Text selectable style={styles.caption} accessibilityLabel={`Barcode ${session.barcode}`}>{session.barcode}</Text>}
+              <Text style={styles.caption}>Possible match · check the item at the store</Text>
+            </View>
+          </View> : session.photoUri ? <View style={styles.product}>
             <Image source={{ uri: session.photoUri }} resizeMode="contain" style={styles.photo} accessibilityLabel="Your scanned product photo" />
             <View style={styles.productCopy}>
               <Text style={styles.eyebrow}>YOUR SCAN</Text>
@@ -108,16 +124,16 @@ export default function ScanResultsScreen() {
             <Text style={styles.emptyTitle}>Your next find starts here</Text>
             <Text style={styles.body}>Scan a product to discover possible matches and compare store listings. Or search by name below.</Text>
           </View>}
-          {!session.photoUri && !!session.query && <View style={styles.productCopy}>
+          {!isBarcode && !session.photoUri && !!session.query && <View style={styles.productCopy}>
             <Text style={styles.eyebrow}>YOUR SEARCH</Text>
             <Text style={styles.productTitle}>{session.query}</Text>
           </View>}
 
-          {processing && <View accessibilityRole="progressbar" accessibilityLabel={session.stage === "identifying" ? "Finding possible visual matches" : "Searching store listings"} style={styles.progress}>
-            <View style={styles.progressTop}><ActivityIndicator color={Colors.light.accent} size="small" /><Text style={styles.progressTitle}>{session.stage === "identifying" ? "Finding possible matches" : "Searching store listings"}</Text></View>
-            <Text style={styles.body}>{session.stage === "identifying" ? "Looking for similar products in your photo. This can take up to a minute." : "Checking prices for the suggested product. Similar-looking items may differ."}</Text>
+          {processing && <View accessibilityRole="progressbar" accessibilityLabel={session.stage === "identifying" ? isBarcode ? "Identifying product from barcode" : "Finding possible visual matches" : "Searching store listings"} style={styles.progress}>
+            <View style={styles.progressTop}><ActivityIndicator color={Colors.light.accent} size="small" /><Text style={styles.progressTitle}>{session.stage === "identifying" ? isBarcode ? "Identifying your barcode" : "Finding possible matches" : "Searching store listings"}</Text></View>
+            <Text style={styles.body}>{session.stage === "identifying" ? isBarcode ? "Looking up this product barcode before searching store listings." : "Looking for similar products in your photo. This can take up to a minute." : isBarcode ? "Checking prices for the suggested product. Check the exact item and offer details at the store." : "Checking prices for the suggested product. Similar-looking items may differ."}</Text>
             <View style={styles.progressSteps}>
-              <Text style={[styles.progressStep, session.stage === "identifying" && styles.activeStep]}>1  Photo search</Text>
+              <Text style={[styles.progressStep, session.stage === "identifying" && styles.activeStep]}>{isBarcode ? "1  Barcode identification" : "1  Photo search"}</Text>
               <Feather name="chevron-right" size={14} color={Colors.light.textTertiary} />
               <Text style={[styles.progressStep, session.stage === "searching" && styles.activeStep]}>2  Store listings</Text>
             </View>
@@ -148,8 +164,8 @@ export default function ScanResultsScreen() {
 
           {!processing && session.stage === "ready" && offers.length === 0 && <View style={styles.empty}>
             <View style={styles.emptyIcon}><Feather name="search" size={28} color={Colors.light.accent} /></View>
-            <Text style={styles.emptyTitle}>{hasSearch ? "No listings found this time" : "No clear visual matches"}</Text>
-            <Text style={styles.body}>{hasSearch ? "Try a shorter product name or a different condition. You can also scan the label from another angle." : "Try a clearer photo of the product label, or enter a name below to search stores."}</Text>
+            <Text style={styles.emptyTitle}>{hasSearch ? "No listings found this time" : isBarcode ? "No product found for this barcode" : "No clear visual matches"}</Text>
+            <Text style={styles.body}>{isBarcode ? "Try another product barcode, or enter the product name below to search stores." : hasSearch ? "Try a shorter product name or a different condition. You can also scan the label from another angle." : "Try a clearer photo of the product label, or enter a name below to search stores."}</Text>
           </View>}
 
           <Pressable accessibilityRole="button" accessibilityState={{ expanded: showRefine, disabled: busy }} disabled={busy} onPress={openRefinement} style={({ pressed }) => [styles.refineToggle, (pressed || busy) && styles.dimmed]}>
@@ -164,14 +180,14 @@ export default function ScanResultsScreen() {
             <View style={styles.filters}>{(["any", "new", "used"] as const).map(value => <Pressable key={value} accessibilityRole="button" accessibilityState={{ selected: condition === value, disabled: busy }} disabled={busy} onPress={() => setCondition(value)} style={[styles.filter, condition === value && styles.selectedFilter]}><Text style={[styles.filterText, condition === value && styles.selectedFilterText]}>{value === "any" ? "Any condition" : value === "new" ? "New" : "Used"}</Text></Pressable>)}</View>
             <Pressable accessibilityRole="button" disabled={busy || query.trim().length < 3} accessibilityState={{ disabled: busy || query.trim().length < 3 }} onPress={() => search()} style={[styles.searchButton, (busy || query.trim().length < 3) && styles.dimmed]}><Text style={styles.primaryText}>Search Listings</Text><Feather name="arrow-right" size={18} color={Colors.light.surface} /></Pressable>
             {session.matches.filter(match => match.title !== session.query).length > 0 && <>
-              <Text style={styles.fieldLabel}>Or try another visual suggestion</Text>
+              <Text style={styles.fieldLabel}>{isBarcode ? "Or try another product suggestion" : "Or try another visual suggestion"}</Text>
               {session.matches.filter(match => match.title !== session.query).slice(0, 4).map((match, index) => <Pressable key={`${match.title}-${index}`} accessibilityRole="button" accessibilityLabel={`Search possible match: ${match.title}`} disabled={busy} onPress={() => search(match.title)} style={styles.suggestion}><Feather name="search" size={15} color={Colors.light.textSecondary} /><Text style={styles.suggestionText} numberOfLines={2}>{match.title}</Text><Feather name="arrow-up-right" size={16} color={Colors.light.accent} /></Pressable>)}
             </>}
           </View>}
           <Pressable accessibilityRole="link" onPress={() => router.push("/photo-privacy")} style={styles.privacy}><Text style={styles.privacyText}>Photo & Shopping Privacy</Text></Pressable>
         </ScrollView>
         <View style={styles.footer}>
-          {isWeb ? <Text style={styles.webNote}>Use the iPhone or Android app to scan with your native camera.</Text> : <Pressable accessibilityRole="button" accessibilityState={{ disabled: busy, busy }} disabled={busy} onPress={scanAgain} style={({ pressed }) => [styles.scanButton, (busy || pressed) && styles.dimmed]}><Feather name="camera" size={20} color={Colors.light.surface} /><Text style={styles.primaryText}>{busy ? "Scan in progress…" : session.photoUri ? "Scan Again" : "Scan a Product"}</Text></Pressable>}
+          {isWeb ? <Text style={styles.webNote}>Use the iPhone or Android app to scan with your native camera.</Text> : <Pressable accessibilityRole="button" accessibilityState={{ disabled: busy, busy }} disabled={busy} onPress={scanAgain} style={({ pressed }) => [styles.scanButton, (busy || pressed) && styles.dimmed]}>{isBarcode ? <FontAwesome name="barcode" size={20} color={Colors.light.surface} /> : <Feather name="camera" size={20} color={Colors.light.surface} />}<Text style={styles.primaryText}>{busy ? "Scan in progress…" : isBarcode || session.photoUri ? "Scan Again" : "Scan a Product"}</Text></Pressable>}
         </View>
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -188,6 +204,7 @@ const styles = StyleSheet.create({
   content: { padding: 20, paddingBottom: 28, gap: 14 },
   product: { flexDirection: "row", gap: 16, padding: 14, borderRadius: 16, backgroundColor: Colors.light.surface, borderWidth: 1, borderColor: Colors.light.border },
   photo: { width: 104, height: 128, backgroundColor: Colors.light.surfaceElevated, borderRadius: 10 },
+  barcodePlaceholder: { alignItems: "center", justifyContent: "center" },
   productCopy: { flex: 1, gap: 8, justifyContent: "center" },
   eyebrow: { fontSize: 10, fontWeight: "700", letterSpacing: 1.5, color: Colors.light.accent },
   productTitle: { fontSize: 17, lineHeight: 23, fontWeight: "700", letterSpacing: -0.3, color: Colors.light.text },

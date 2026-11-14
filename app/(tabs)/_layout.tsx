@@ -3,7 +3,7 @@ import { Tabs } from "expo-router";
 import { NativeTabs } from "expo-router/native-tabs";
 import { Platform } from "react-native";
 import React from "react";
-import { Feather } from "@expo/vector-icons";
+import { Feather, FontAwesome } from "@expo/vector-icons";
 import Colors from "@/constants/colors";
 import { useCameraAction } from "@/lib/use-camera-action";
 
@@ -17,6 +17,10 @@ function NativeTabLayout() {
       <NativeTabs.Trigger name="index" disabled listeners={{ tabPress: () => { void requestScan(); } }}>
         <NativeTabs.Trigger.Icon sf={{ default: "camera", selected: "camera.fill" }} />
         <NativeTabs.Trigger.Label>Scan</NativeTabs.Trigger.Label>
+      </NativeTabs.Trigger>
+      <NativeTabs.Trigger name="barcode">
+        <NativeTabs.Trigger.Icon sf={{ default: "barcode.viewfinder", selected: "barcode.viewfinder" }} />
+        <NativeTabs.Trigger.Label>Barcode</NativeTabs.Trigger.Label>
       </NativeTabs.Trigger>
       <NativeTabs.Trigger name="history">
         <NativeTabs.Trigger.Icon sf={{ default: "clock", selected: "clock.fill" }} />
@@ -59,6 +63,15 @@ function ClassicTabLayout() {
           title: "Scan",
           tabBarIcon: ({ focused }) => (
             <Feather name="camera" size={22} color={focused ? Colors.light.accent : Colors.light.tabIconDefault} />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="barcode"
+        options={{
+          title: "Barcode",
+          tabBarIcon: ({ focused }) => (
+            <FontAwesome name="barcode" size={22} color={focused ? Colors.light.accent : Colors.light.tabIconDefault} />
           ),
         }}
       />

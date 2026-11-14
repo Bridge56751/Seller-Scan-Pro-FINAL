@@ -1,7 +1,8 @@
 import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from "react";
 import { Platform } from "react-native";
 import { captureProductPhoto } from "./native-camera";
-import { identifyPhoto, searchListings } from "./shopping-client";
+import { identifyPhoto, identifyBarcode, searchListings } from "./shopping-client";
+import { normalizeBarcode } from "@/shared/barcode";
 import type { ListingSearch, PhotoMatch } from "@/shared/shopping";
 import { manipulateAsync, SaveFormat } from "expo-image-manipulator";
 import { randomUUID } from "expo-crypto";
@@ -10,6 +11,9 @@ import { photoSearchQueries } from "@/shared/photo-search-query";
 import { discardTemporaryPhoto } from "./temporary-photo";
 
 export type ScanSession = {
+  source?: "photo" | "barcode";
+  barcode?: string | null;
+  productImageUrl?: string | null;
   photoUri: string | null;
   stage: "idle" | "camera" | "identifying" | "searching" | "ready" | "error" | "canceled";
   matches: PhotoMatch[];
@@ -19,10 +23,11 @@ export type ScanSession = {
   needsSettings: boolean;
   historyWarning?: string | null;
 };
-const empty: ScanSession = { photoUri: null, stage: "idle", matches: [], query: "", result: null, error: null, needsSettings: false };
+const empty: ScanSession = { source: "photo", barcode: null, productImageUrl: null, photoUri: null, stage: "idle", matches: [], query: "", result: null, error: null, needsSettings: false };
 const Context = createContext<{
   session: ScanSession; busy: boolean; historyVersion: number;
   capture: (onFailure?: (message: string, needsSettings: boolean) => void) => Promise<boolean>;
+  startBarcode: (barcode: string) => boolean;
   refine: (query: string, condition?: "any" | "new" | "used") => Promise<void>;
   retry: () => Promise<void>;
   cancel: () => void;
@@ -58,7 +63,7 @@ export function ScanSessionProvider({ children }: { children: ReactNode }) {
     // A canceled refinement must not discard the shopper's existing results.
     patch({ ...previous.current, stage: "canceled", error: null });
   }
-  const lastStage = useRef<"identify" | "search">("identify");
+  const lastStage = useRef<"identify" | "barcode" | "search">("identify");
   const conditionRef = useRef<"any" | "new" | "used">("any");
   const historyRef = useRef<{ id: string; timestamp: number; thumbnail: string | null; saved: boolean } | null>(null);
   const patch = (value: Partial<ScanSession>) => {
@@ -87,6 +92,7 @@ export function ScanSessionProvider({ children }: { children: ReactNode }) {
         id: info.id, timestamp: info.timestamp, photoUri: info.thumbnail,
         query: current.query, matches: current.matches, result: current.result,
         error: current.error, condition,
+        source: current.source, barcode: current.barcode, productImageUrl: current.productImageUrl,
       }, info.saved);
       info.saved = true;
       if (!isCurrent(op)) return;
@@ -100,9 +106,10 @@ export function ScanSessionProvider({ children }: { children: ReactNode }) {
     if (lock.current) return false;
     historyRef.current = { id: item.id, timestamp: item.timestamp, thumbnail: item.photoUri, saved: true };
     conditionRef.current = item.condition;
-    lastStage.current = item.query ? "search" : "identify";
+    lastStage.current = item.query ? "search" : item.barcode ? "barcode" : "identify";
     patch({ ...empty, photoUri: item.photoUri, query: item.query, matches: item.matches,
-      result: item.result, error: item.error, stage: item.error ? "error" : "ready", historyWarning: null });
+      result: item.result, error: item.error, stage: item.error ? "error" : "ready", historyWarning: null,
+      source: item.source ?? "photo", barcode: item.barcode ?? null, productImageUrl: item.productImageUrl ?? null });
     return true;
   }
 
@@ -133,6 +140,29 @@ export function ScanSessionProvider({ children }: { children: ReactNode }) {
     if (!isCurrent(op)) return;
     await saveHistory(op);
     if (isCurrent(op)) { lock.current = false; operation.current = null; }
+  }
+  async function processBarcode(barcode: string, op: AbortController) {
+    lastStage.current = "barcode";
+    patch({ stage: "identifying", error: null });
+    try {
+      const product = await identifyBarcode(barcode, op.signal);
+      if (!isCurrent(op)) return;
+      patch({ query: product.query, productImageUrl: product.imageUrl });
+      // Preserve the identified variant; don't silently broaden to a different product.
+      await search(op, product.query, "any", false);
+    } catch (error) {
+      if (isCurrent(op)) patch({ stage: "error", error: error instanceof Error ? error.message : "Could not look up this barcode." });
+    } finally { await finish(op); }
+  }
+  function startBarcode(raw: string) {
+    const barcode = normalizeBarcode(raw);
+    if (lock.current || !barcode) return false;
+    lock.current = true;
+    historyRef.current = { id: randomUUID(), timestamp: Date.now(), thumbnail: null, saved: false };
+    conditionRef.current = "any";
+    patch({ ...empty, source: "barcode", barcode });
+    void processBarcode(barcode, begin());
+    return true;
   }
   async function capture(onFailure?: (message: string, needsSettings: boolean) => void) {
     if (lock.current || Platform.OS === "web") return false;
@@ -181,13 +211,16 @@ export function ScanSessionProvider({ children }: { children: ReactNode }) {
     if (lock.current) return;
     if (lastStage.current === "search" && state.current.query) {
       await refine(state.current.query, conditionRef.current);
+    } else if (state.current.barcode) {
+      lock.current = true;
+      await processBarcode(state.current.barcode, begin());
     } else if (state.current.photoUri) {
       lock.current = true;
       await process(state.current.photoUri, begin());
     }
   }
   const busy = saving || ["camera", "identifying", "searching"].includes(session.stage);
-  return <Context.Provider value={{ session, busy, historyVersion, capture, refine, retry, cancel, restore }}>{children}</Context.Provider>;
+  return <Context.Provider value={{ session, busy, historyVersion, capture, startBarcode, refine, retry, cancel, restore }}>{children}</Context.Provider>;
 }
 export function useScanSession() {
   const context = useContext(Context);

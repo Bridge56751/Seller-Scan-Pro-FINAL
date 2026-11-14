@@ -1,6 +1,7 @@
 import type { ListingSearch, PhotoMatch } from "../shared/shopping";
 
 export type PhotoScanHistoryItem = {
+  source?: "photo" | "barcode"; barcode?: string | null; productImageUrl?: string | null;
   id: string; timestamp: number; photoUri: string | null; query: string;
   matches: PhotoMatch[]; result: ListingSearch | null;
   error: string | null; condition: "any" | "new" | "used";

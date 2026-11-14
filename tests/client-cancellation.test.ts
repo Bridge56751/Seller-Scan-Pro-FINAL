@@ -5,6 +5,7 @@ import { runInNewContext } from "node:vm";
 import ts from "typescript";
 import { throwIfCanceled } from "../shared/cancellation";
 import { photoSearchQueries } from "../shared/photo-search-query";
+import { normalizeBarcode } from "../shared/barcode";
 
 // Run the real mobile modules with native I/O and hooks replaced, not their logic.
 function load(path: string, modules: Record<string, unknown>) {
@@ -29,6 +30,7 @@ function sessionHarness() {
   const hooks: any[] = [];
   let index = 0;
   const identified: ReturnType<typeof deferred>[] = [];
+  const barcodes: ReturnType<typeof deferred>[] = [];
   const searched: ReturnType<typeof deferred>[] = [];
   const signals: AbortSignal[] = [];
   const saved: any[] = [];
@@ -47,6 +49,9 @@ function sessionHarness() {
     "react-native": { Platform: { OS: "ios" } },
     "./native-camera": { captureProductPhoto: async () => ({ status: "captured", uri: "file:///photo.jpg" }) },
     "./shopping-client": {
+      identifyBarcode: (_code: string, signal: AbortSignal) => {
+        signals.push(signal); const d = deferred(); barcodes.push(d); return d.promise;
+      },
       identifyPhoto: (_uri: string, _country: string, signal: AbortSignal) => {
         signals.push(signal); const d = deferred(); identified.push(d); return d.promise;
       },
@@ -58,11 +63,56 @@ function sessionHarness() {
     "expo-crypto": { randomUUID: () => `scan-${identified.length}` },
     "./photo-scan-history": { photoScanHistory: { save: async (item: unknown) => saved.push(item) } },
     "@/shared/photo-search-query": { photoSearchQueries },
+    "@/shared/barcode": { normalizeBarcode },
     "./temporary-photo": { discardTemporaryPhoto: () => {} },
   });
   const view = () => { index = 0; return module.ScanSessionProvider({ children: null }).value; };
-  return { view, identified, searched, saved, signals };
+  return { view, identified, barcodes, searched, saved, signals };
 }
+
+test("barcode scans start once, search identified product, and save to history", async () => {
+  const h = sessionHarness();
+  assert.equal(h.view().startBarcode("036000291452"), true);
+  assert.equal(h.view().startBarcode("036000291452"), false);
+  assert.equal(h.view().session.stage, "identifying");
+  h.barcodes[0].resolve({ query: "Test Paper", imageUrl: "https://example.com/p.jpg" });
+  await flush();
+  assert.equal(h.searched.length, 1);
+  h.searched[0].resolve({ query: "Test Paper", offers: [] });
+  await flush();
+  assert.equal(h.view().session.stage, "ready");
+  assert.equal(h.saved[0].source, "barcode");
+  assert.equal(h.saved[0].barcode, "036000291452");
+  assert.equal(h.saved[0].photoUri, null);
+});
+test("canceling barcode identification ignores late success and starts no shopping request", async () => {
+  const h = sessionHarness();
+  h.view().startBarcode("036000291452");
+  h.view().cancel();
+  h.barcodes[0].resolve({ query: "Test Paper", imageUrl: null });
+  await flush();
+  assert.equal(h.signals[0].aborted, true);
+  assert.equal(h.saved.length, 0);
+  assert.equal(h.searched.length, 0);
+  assert.equal(h.view().busy, false);
+});
+test("failed barcode lookup can retry and saved barcode scans restore without a lookup", async () => {
+  const h = sessionHarness();
+  h.view().startBarcode("036000291452");
+  h.barcodes[0].reject(new Error("Barcode not found"));
+  await flush();
+  assert.equal(h.view().session.stage, "error");
+  const pending = h.view().retry();
+  assert.equal(h.barcodes.length, 2);
+  h.barcodes[1].resolve({ query: "Test Paper", imageUrl: null });
+  await flush();
+  h.searched[0].resolve({ query: "Test Paper", offers: [] });
+  await pending;
+  assert.equal(h.view().restore(h.saved.at(-1)), true);
+  assert.equal(h.view().session.source, "barcode");
+  assert.equal(h.view().session.barcode, "036000291452");
+  assert.equal(h.barcodes.length, 2);
+});
 
 test("cancel identification, immediately recapture, and ignore old success/finally", async () => {
   const h = sessionHarness();

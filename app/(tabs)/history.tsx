@@ -2,7 +2,7 @@ import { StyleSheet, Text, View, FlatList, Pressable, Alert, Platform, Image } f
 import { useState, useCallback, useRef } from "react";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { router, useFocusEffect } from "expo-router";
-import { Feather } from "@expo/vector-icons";
+import { Feather, FontAwesome } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import Colors from "@/constants/colors";
 import { photoScanHistory, type PhotoScanHistoryItem } from "@/lib/photo-scan-history";
@@ -52,24 +52,27 @@ function HistoryRow({ item, onPress, onDelete, busy, deleting }: {
   const price = savedPrice(item);
   const [imageFailed, setImageFailed] = useState(false);
   const count = item.result?.offers.length ?? 0;
+  const isBarcode = item.source === "barcode" || !!item.barcode;
+  const imageUri = isBarcode ? item.productImageUrl && /^https:\/\//i.test(item.productImageUrl) ? item.productImageUrl : null : item.photoUri;
   return (
     <View style={styles.historyRow}>
       <Pressable
         accessibilityRole="button"
-        accessibilityLabel={`Open saved scan: ${title}`}
+        accessibilityLabel={`Open saved ${isBarcode ? "barcode" : "photo"} scan: ${title}`}
         accessibilityHint={busy ? "Wait for your current scan to finish" : "View saved results without searching again"}
         disabled={busy || deleting}
         onPress={onPress}
         style={({ pressed }) => [styles.rowOpen, (busy || deleting) && { opacity: 0.55 }, pressed && { opacity: 0.9 }]}
       >
       <View style={styles.rowImageWrap}>
-        {item.photoUri && !imageFailed ? (
-          <Image source={{ uri: item.photoUri }} style={styles.rowImage} resizeMode="cover" onError={() => setImageFailed(true)} />
-        ) : <Feather name="camera" size={24} color={Colors.light.textTertiary} />}
+        {imageUri && !imageFailed ? (
+          <Image source={{ uri: imageUri }} style={styles.rowImage} resizeMode="cover" onError={() => setImageFailed(true)} />
+        ) : isBarcode ? <FontAwesome name="barcode" size={24} color={Colors.light.textTertiary} /> : <Feather name="camera" size={24} color={Colors.light.textTertiary} />}
       </View>
       <View style={styles.rowContent}>
         <Text style={styles.rowTitle} numberOfLines={1}>{title}</Text>
         <View style={styles.rowMeta}>
+          {isBarcode ? <FontAwesome name="barcode" size={12} color={Colors.light.accent} accessibilityLabel="Barcode scan" /> : <Feather name="camera" size={12} color={Colors.light.textTertiary} accessibilityLabel="Photo scan" />}
           <Text style={styles.rowTime}>{count} {count === 1 ? "listing" : "listings"}</Text>
           <Text style={styles.rowTime} accessibilityLabel={new Date(item.timestamp).toLocaleString()}>{getTimeAgo(item.timestamp)}</Text>
         </View>
@@ -170,7 +173,7 @@ export default function HistoryScreen() {
           <Feather name="trash-2" size={16} color={Colors.light.danger} />
         </Pressable>
       </View>
-      <Text style={styles.historyNote}>Your latest 50 photo scans are saved on this device. Prices are saved snapshots, not live offers.</Text>
+      <Text style={styles.historyNote}>Your latest 50 scans are saved on this device. Prices are saved snapshots, not live offers.</Text>
       {busy ? <Text style={styles.historyNote}>A scan is in progress. You can open saved results when it finishes.</Text> : null}
       {error ? <View style={styles.errorBanner}>
         <Text style={styles.errorText}>{error}</Text>
@@ -190,7 +193,7 @@ export default function HistoryScreen() {
         <View style={styles.emptyState}>
           <Feather name="clock" size={32} color={Colors.light.textTertiary} />
           <Text style={styles.emptyTitle}>{error ? "History unavailable" : "No saved scans yet"}</Text>
-          <Text style={styles.emptyText}>{error ? "Retry above to load the scans saved on this device." : "Photograph a product to find places to buy it for less. Your saved scans will appear here."}</Text>
+          <Text style={styles.emptyText}>{error ? "Retry above to load the scans saved on this device." : "Photograph a product or scan its barcode to find places to buy it for less. Your saved scans will appear here."}</Text>
         </View>
       ) : (
         <FlatList

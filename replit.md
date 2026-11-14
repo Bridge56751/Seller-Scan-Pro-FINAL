@@ -2,6 +2,8 @@
 
 ## Current scope override
 
+Barcode scanning is a separate bottom navigation tab alongside the unchanged photo Scan action. Use on-device Expo Camera detection, then UPCitemdb's free trial lookup for identity and the existing shopping service for offers. Do not add a paid barcode plan without approval. Unknown codes and quota failures should be explicit, never fabricated or silently replaced with another product. Barcode scans belong in the existing local History and retain cancellation support. **Why:** The user approved the free-tier approach and specifically requested a separate bottom button.
+
 The new product direction is a shopper-focused price comparison app: identify goods using native-camera photos (not barcodes), then compare real shopping prices. This supersedes the earlier seller-profit direction. Preserve the existing UI's visual style and mobile layout; the user explicitly said “BUT LEAVE THE UI.” The user has now approved SearchApi.io (not SerpApi). Do not invent prices or reconnect removed providers.
 
 **Why:** The user changed course to AI/API-assisted photo scanning for shoppers finding the cheapest marketplace, and explicitly wants to keep the UI they like.
