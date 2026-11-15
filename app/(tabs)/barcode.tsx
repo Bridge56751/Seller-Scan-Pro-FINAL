@@ -8,6 +8,7 @@ import Colors from "@/constants/colors";
 import { useScanSession } from "@/lib/scan-session";
 import { normalizeBarcode } from "@/shared/barcode";
 import { createCameraActivationGate } from "@/shared/camera-activation";
+import ScanBrandHeader from "@/components/ScanBrandHeader";
 
 const supportedTypes = ["ean13", "ean8", "upc_a", "itf14"] as const;
 const scannerSettings = { barcodeTypes: [...supportedTypes] };
@@ -130,7 +131,8 @@ export default function BarcodeScreen() {
   }
 
   return (
-    <SafeAreaView style={styles.container} edges={["top", "left", "right"]}>
+    <SafeAreaView style={styles.container} edges={["left", "right"]}>
+      <ScanBrandHeader />
       <ScrollView contentContainerStyle={styles.content}>
         <View style={styles.heading}>
           <Text style={styles.title}>Scan a barcode</Text>

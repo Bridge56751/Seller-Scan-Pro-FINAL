@@ -9,6 +9,7 @@ import ShoppingOfferCard from "@/components/shopping/ShoppingOfferCard";
 import type { ShoppingOffer } from "@/shared/shopping";
 import PriceSortControl from "@/components/shopping/PriceSortControl";
 import ScanLoading from "@/components/shopping/ScanLoading";
+import ScanBrandHeader from "@/components/ScanBrandHeader";
 import { isComparablePrice, sortOffersByPrice, type PriceSort } from "@/shared/offer-sorting";
 
 type Condition = "any" | "new" | "used";
@@ -97,7 +98,8 @@ export default function ScanResultsScreen() {
   }
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={styles.container} edges={["left", "right", "bottom"]}>
+      <ScanBrandHeader />
       <View style={styles.header}>
         <Pressable accessibilityRole="button" accessibilityLabel="Back" onPress={() => router.canGoBack() ? router.back() : router.replace("/history")} style={styles.back}><Feather name="arrow-left" size={22} color={Colors.light.text} /></Pressable>
         <Text style={styles.headerTitle}>Scan Results</Text>
