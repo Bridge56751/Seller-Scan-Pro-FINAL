@@ -42,3 +42,17 @@ mtime_ms = 1794102159629
 storage_uri = "gcs://replit-rams-assets-janeway/rams/assets/repl:f50d4f3c-c5e5-4cfd-ae2d-34532804679e/3814370d-ae25-4f7c-8988-882ad09b0a47/bc4271d8-473c-475c-b40e-dace4766e8cd"
 storage_version_token = "1794102163978024"
 content_type = "image/png"
+
+[[outputs]]
+id = "vTLIbntb_Ie9TI6mrT7VI"
+uri = "file://attached_assets/expo-access/expo-go-qr.png"
+type = "image"
+title = "Open Seller Scan in Expo Go"
+description = "Scan this QR code with your iPhone Camera and open the link in Expo Go."
+logical_id = "4f627073-02b8-4879-8752-04ae1f9fcb10"
+content_hash = "sha256:3a975e3b8ea43b82165662858b0ff007800e182bf75c02867fb8d64c4d278c34"
+size = 9555
+mtime_ms = 1794778932364
+storage_uri = "gcs://replit-rams-assets-janeway/rams/assets/repl:f50d4f3c-c5e5-4cfd-ae2d-34532804679e/4f627073-02b8-4879-8752-04ae1f9fcb10/d5ae0a37-04b6-44c3-8530-223f86fc7a93"
+storage_version_token = "1794778938229191"
+content_type = "image/png"
