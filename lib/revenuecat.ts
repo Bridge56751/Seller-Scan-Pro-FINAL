@@ -4,6 +4,7 @@ import { fetch } from "expo/fetch";
 import Constants, { ExecutionEnvironment } from "expo-constants";
 import { registerDevice, getVerifiedTestStatus } from "./device-client";
 import { isPurchaseCancelled } from "@/shared/billing-errors";
+import { selectProMonthlyPackage, type ProPaywallPlan } from "@/shared/paywall-plan";
 
 let Purchases: any = null;
 let isConfigured = false;
@@ -80,37 +81,45 @@ function hasProAccess(customerInfo: any): boolean {
   return false;
 }
 
-export async function purchaseSubscription(): Promise<{ success: boolean; error?: string }> {
-  if (isTestStore) return { success: false, error: "Use Settings → Billing Test for simulated purchases. Live subscriptions remain paused." };
+export async function loadProPaywallPlan(): Promise<ProPaywallPlan> {
+  if (!await configureRevenueCat()) throw new Error(configurationError);
+  if (Platform.OS !== "ios" && !isTestStore) throw new Error("Subscriptions are available in the iPhone app.");
+  const monthly = selectProMonthlyPackage(await Purchases.getOfferings(), isTestStore);
+  return { productId: monthly.product.identifier, price: monthly.product.priceString,
+    period: "month", mode: isTestStore ? "test" : "native" };
+}
+
+let nativePurchaseInFlight = false;
+export async function purchaseSubscription(expectedProductId?: string): Promise<{ success: boolean; error?: string }> {
+  if (nativePurchaseInFlight) return { success: false, error: "A purchase is already in progress." };
+  nativePurchaseInFlight = true;
+  try {
+  if (!await configureRevenueCat()) return { success: false, error: configurationError };
+  if (isTestStore) return { success: false, error: "This preview uses simulated purchases, not the App Store." };
+  if (Platform.OS !== "ios") return { success: false, error: "Subscriptions are available in the iPhone app." };
   const RC = await loadPurchasesModule();
   if (!RC || !isConfigured) {
     return { success: false, error: "RevenueCat not configured" };
   }
 
-  try {
     const offerings = await RC.getOfferings();
-    const currentOffering = offerings.current;
-
-    if (!currentOffering) {
-      return { success: false, error: "No offerings available" };
+    const monthly = selectProMonthlyPackage(offerings, false);
+    if (expectedProductId && monthly.product.identifier !== expectedProductId) {
+      return { success: false, error: "The plan has changed. Reload pricing before subscribing." };
     }
-
-    const monthly = currentOffering.monthly || currentOffering.availablePackages[0];
-    if (!monthly) {
-      return { success: false, error: "No subscription package found" };
-    }
-
-    const { customerInfo } = await RC.purchasePackage(monthly);
-    return { success: hasProAccess(customerInfo) };
+    await RC.purchasePackage(monthly);
+    // Completion is not proof of entitlement: AuthProvider verifies on our server.
+    return { success: true };
   } catch (e: any) {
-    if (e.userCancelled) {
+    if (isPurchaseCancelled(e)) {
       return { success: false, error: "cancelled" };
     }
     return { success: false, error: e.message || "Purchase failed" };
-  }
+  } finally { nativePurchaseInFlight = false; }
 }
 
 export async function restorePurchases(): Promise<{ success: boolean; isPro: boolean; error?: string }> {
+  if (!await configureRevenueCat()) return { success: false, isPro: false, error: configurationError };
   if (isTestStore) return { success: false, isPro: false, error: "Use Billing Test to restore test purchases. Real App Store purchases require a native build." };
   const RC = await loadPurchasesModule();
   if (!RC || !isConfigured) {

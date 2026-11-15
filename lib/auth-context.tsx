@@ -12,7 +12,7 @@ interface AuthContextValue {
   scanCount:number; freeScansLeft:number; freePhotoScansLeft:number; freeBarcodeScansLeft:number;
   rcReady:boolean; verificationError:string|null;
   refreshDevice:()=>Promise<void>;
-  purchaseSubscription:()=>Promise<{success:boolean;error?:string}>;
+  purchaseSubscription:(expectedProductId?:string)=>Promise<{success:boolean;error?:string}>;
   restorePurchases:()=>Promise<{success:boolean;isPro:boolean;error?:string}>;
 }
 const AuthContext=createContext<AuthContextValue|null>(null);
@@ -44,12 +44,13 @@ export function AuthProvider({children}:{children:ReactNode}) {
     const timer=setInterval(()=>{if(AppState.currentState==="active")void refreshDevice();},300000);
     return ()=>{listener.remove();clearInterval(timer);};
   },[refreshDevice]);
-  const purchaseSubscription=useCallback(async()=>{
-    const purchased=await rcPurchaseSubscription();
+  const purchaseSubscription=useCallback(async(expectedProductId?:string)=>{
+    const purchased=await rcPurchaseSubscription(expectedProductId);
     if(!purchased.success)return purchased;
     try {
       const verified=await getVerifiedStatus(true);
       setDevice({...verified,deviceId:await getDeviceId()});
+      setVerificationError(null);
       return verified.isPaid ? {success:true} : {success:false,error:"The purchase has not been verified by RevenueCat yet. Refresh your status or restore purchases."};
     }catch{await refreshDevice();return {success:false,error:"Purchase verification is unavailable. No paid access was granted. Please retry."};}
   },[refreshDevice]);
@@ -59,6 +60,7 @@ export function AuthProvider({children}:{children:ReactNode}) {
     try {
       const verified=await getVerifiedStatus(true);
       setDevice({...verified,deviceId:await getDeviceId()});
+      setVerificationError(null);
       return {success:true,isPro:verified.isPaid};
     }catch{await refreshDevice();return {success:false,isPro:false,error:"Restored purchases could not be verified. Please retry."};}
   },[refreshDevice]);
