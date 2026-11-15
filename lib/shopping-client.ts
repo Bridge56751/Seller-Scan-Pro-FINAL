@@ -1,5 +1,7 @@
 import { getApiUrl } from "./query-client";
 import { prepareProductPhoto } from "./native-camera";
+import { registerDevice } from "./device-client";
+import { getDeviceCredentials } from "./device-id";
 import { throwIfCanceled } from "@/shared/cancellation";
 import type { BarcodeProduct } from "@/shared/barcode";
 import { type Identification, type Comparison, type ComparisonInput, type ListingSearchInput, type ListingSearch } from "@/shared/shopping";
@@ -13,8 +15,17 @@ async function shoppingRequest<T>(route: string, body: unknown, signal?: AbortSi
   signal?.addEventListener("abort", cancel);
   const timeout = setTimeout(() => controller.abort(), 90000);
   try {
+    const headers: Record<string, string> = { "Content-Type": "application/json" };
+    if (route === "identify") {
+      await registerDevice();
+      const credentials = await getDeviceCredentials();
+      headers["X-Device-Id"] = credentials.deviceId;
+      headers["X-Device-Key"] = credentials.key;
+      throwIfCanceled(signal);
+      if (controller.signal.aborted) throw new DOMException("Request timed out", "AbortError");
+    }
     const response = await fetch(new URL(`/api/shopping/${route}`, getApiUrl()).href, {
-      method: "POST", headers: { "Content-Type": "application/json" },
+      method: "POST", headers,
       body: JSON.stringify(body), signal: controller.signal,
     });
     const data = await response.json().catch(() => null);

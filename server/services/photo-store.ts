@@ -1,44 +1,80 @@
-import { Pool } from "pg";
-import { randomBytes, createCipheriv, createDecipheriv } from "node:crypto";
-import { setInterval } from "node:timers";
+import { randomUUID } from "node:crypto";
 
-// Shared storage makes temporary links work across backend replicas.
-const pool = new Pool({ connectionString: process.env.DATABASE_URL, max: 4,
-  connectionTimeoutMillis: 5000, query_timeout: 10000, statement_timeout: 10000 });
-const TTL_MS = 120000;
+export const PHOTO_BUCKET = "temporary-scan-photos";
+const TTL_SECONDS = 120;
 
-export async function storePhoto(bytes: Buffer) {
-  const id = randomBytes(16).toString("hex");
-  const key = randomBytes(32);
-  const iv = randomBytes(12);
-  const cipher = createCipheriv("aes-256-gcm", key, iv);
-  const ciphertext = Buffer.concat([cipher.update(bytes), cipher.final()]);
-  const payload = Buffer.concat([iv, cipher.getAuthTag(), ciphertext]).toString("base64");
-  await pool.query("INSERT INTO shopping_photos (id, payload, expires_at) VALUES ($1, $2, $3)",
-    [id, payload, new Date(Date.now() + TTL_MS)]);
-  // Encryption key exists only in the unguessable short-lived capability URL, not the database.
-  return { id, token: `${id}.${key.toString("hex")}` };
+// The secret stays on the server. Never include provider errors or signed links in logs.
+export async function storageRequest(path: string, init: RequestInit = {}) {
+  const origin = process.env.EXPO_PUBLIC_SUPABASE_URL;
+  const key = process.env.SUPABASE_SECRET_KEY;
+  if (!origin || !key) throw new Error("Private photo storage is not configured");
+  const response = await fetch(`${origin}/storage/v1${path}`, {
+    ...init,
+    headers: { apikey: key, Authorization: `Bearer ${key}`, ...init.headers },
+    signal: AbortSignal.timeout(10000),
+  });
+  if (!response.ok) throw new Error(`Private photo storage failed (${response.status})`);
+  return response;
 }
 
-export async function readPhoto(token: string): Promise<Buffer | null> {
-  if (!/^[a-f0-9]{32}\.[a-f0-9]{64}$/.test(token)) return null;
-  const [id, key] = token.split(".");
-  const result = await pool.query("SELECT payload FROM shopping_photos WHERE id = $1 AND expires_at > NOW()", [id]);
-  if (!result.rows[0]) return null;
+export async function storePhoto(bytes: Buffer) {
+  const id = `${Date.now()}-${randomUUID()}.jpg`;
   try {
-    const payload = Buffer.from(result.rows[0].payload, "base64");
-    const decipher = createDecipheriv("aes-256-gcm", Buffer.from(key, "hex"), payload.subarray(0, 12));
-    decipher.setAuthTag(payload.subarray(12, 28));
-    return Buffer.concat([decipher.update(payload.subarray(28)), decipher.final()]);
-  } catch { return null; }
+    await storageRequest(`/object/${PHOTO_BUCKET}/${id}`, {
+      method: "POST", headers: { "Content-Type": "image/jpeg", "Cache-Control": "no-store" },
+      body: new Uint8Array(bytes),
+    });
+    const response = await storageRequest(`/object/sign/${PHOTO_BUCKET}/${id}`, {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ expiresIn: TTL_SECONDS }),
+    });
+    const data = await response.json();
+    if (typeof data.signedURL !== "string" || !data.signedURL.startsWith("/object/sign/")) {
+      throw new Error("Invalid photo link");
+    }
+    return { id, url: `${process.env.EXPO_PUBLIC_SUPABASE_URL}/storage/v1${data.signedURL}` };
+  } catch (error) {
+    await deletePhoto(id).catch(() => {});
+    throw error;
+  }
 }
 
 export async function deletePhoto(id: string) {
-  await pool.query("DELETE FROM shopping_photos WHERE id = $1", [id]);
+  await storageRequest(`/object/${PHOTO_BUCKET}`, {
+    method: "DELETE", headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ prefixes: [id] }),
+  });
 }
 
-const cleanup = setInterval(() => {
-  pool.query("DELETE FROM shopping_photos WHERE expires_at <= NOW()")
-    .catch(() => console.warn("[Shopping] Temporary photo cleanup failed; expired links remain inaccessible."));
-}, 60000);
-(cleanup as unknown as NodeJS.Timeout).unref();
+// Persistent object names let any replica recover cleanup after crashes/restarts.
+// Only this dedicated bucket is touched; customer History is never deleted.
+let cleaning = false;
+export async function cleanupPhotos() {
+  if (cleaning) return;
+  cleaning = true;
+  try {
+    for (let page = 0; page < 10; page++) {
+      const response = await storageRequest(`/object/list/${PHOTO_BUCKET}`, {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ prefix: "", limit: 100, offset: 0, sortBy: { column: "name", order: "asc" } }),
+      });
+      const objects = await response.json() as { name: string }[];
+      const expired = objects.filter(object => /^\d{13}-[\da-f-]+\.jpg$/.test(object.name) &&
+        Number(object.name.slice(0, 13)) < Date.now() - TTL_SECONDS * 1000).map(object => object.name);
+      if (!expired.length) break;
+      await storageRequest(`/object/${PHOTO_BUCKET}`, {
+        method: "DELETE", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ prefixes: expired }),
+      });
+      if (objects.length < 100) break;
+    }
+  } finally { cleaning = false; }
+}
+
+export function startPhotoCleanup() {
+  const run = () => void cleanupPhotos().catch(() =>
+    console.warn("[Shopping] Temporary photo cleanup delayed; signed links expire automatically."));
+  run();
+  const timer = setInterval(run, 60000);
+  timer.unref();
+}

@@ -1,19 +1,19 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { Pool } from "pg";
-import { randomBytes } from "node:crypto";
+import { randomBytes, createHash } from "node:crypto";
 import type { AddressInfo } from "node:net";
 import express from "express";
 import sharp from "sharp";
 
-test("fresh schema supports identification, image fetch, cleanup and confirmed comparison", async () => {
-  const schema = `shopping_test_${randomBytes(8).toString("hex")}`;
-  const db = new Pool({ connectionString: process.env.DATABASE_URL });
-  // The identifier is generated locally from hex, never from user input.
-  await db.query(`CREATE SCHEMA ${schema}`);
-  await db.query(`CREATE TABLE ${schema}.shopping_photos (id text PRIMARY KEY, payload text NOT NULL, expires_at timestamptz NOT NULL)`);
-  const priorOptions = process.env.PGOPTIONS;
-  process.env.PGOPTIONS = `-c search_path=${schema}`;
+test("authenticated photo identification uses private storage and cleans up success and cancellation", async () => {
+  const deviceId = `test_${randomBytes(16).toString("hex")}`;
+  const key = randomBytes(32).toString("hex");
+  const hash = (s: string) => createHash("sha256").update(s).digest("hex");
+  const db = new Pool({ connectionString: process.env.SUPABASE_DATABASE_URL });
+  await db.query(`INSERT INTO device_customers(device_hash,credential_hash,customer_id,test_customer_id)
+    VALUES($1,$2,$3,$4)`, [hash(deviceId),hash(key),deviceId,`${deviceId}_test`]);
+  const headers = { "Content-Type": "application/json", "X-Device-Id": deviceId, "X-Device-Key": key };
   const { default: shopping } = await import("../server/routes/shopping");
   const app = express();
   app.use("/api/shopping", shopping);
@@ -29,8 +29,8 @@ test("fresh schema supports identification, image fetch, cleanup and confirmed c
     if (target.hostname !== "www.searchapi.io") return originalFetch(url, init);
     if (target.searchParams.get("engine") === "google_lens") {
       assert.equal(target.searchParams.get("search_type"), "visual_matches");
-      imagePath = new URL(target.searchParams.get("url")!).pathname;
-      const response = await originalFetch(`${origin}${imagePath}`);
+      imagePath = target.searchParams.get("url")!;
+      const response = await originalFetch(imagePath);
       assert.equal(response.status, 200);
       const bytes = Buffer.from(await response.arrayBuffer());
       const meta = await sharp(bytes).metadata();
@@ -51,12 +51,18 @@ test("fresh schema supports identification, image fetch, cleanup and confirmed c
   try {
     const image = await sharp({ create: { width: 20, height: 20, channels: 3, background: "blue" } }).jpeg().toBuffer();
     const post = (route: string, body: unknown) => originalFetch(`${origin}/api/shopping/${route}`, {
-      method: "POST", headers: { "Content-Type": "application/json", "X-Forwarded-Host": process.env.REPLIT_DEV_DOMAIN! },
+      method: "POST", headers,
       body: JSON.stringify(body),
     });
     const invalid = await post("identify", { image: image.toString("base64"), country: "invalid" });
     assert.equal(invalid.status, 400);
     assert.equal(imageFetched, false, "invalid requests must not send the photo to a provider");
+    const unauthorized = await originalFetch(`${origin}/api/shopping/identify`, {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ image: image.toString("base64"), country: "US" }),
+    });
+    assert.equal(unauthorized.status, 401);
+    assert.equal(imageFetched, false);
     const identified = await post("identify", { image: image.toString("base64"), country: "US" });
     assert.equal(identified.status, 200);
     const matches = await identified.json();
@@ -64,11 +70,12 @@ test("fresh schema supports identification, image fetch, cleanup and confirmed c
     assert.equal(imageFetched, true);
     // Cleanup follows the response; wait for completion rather than assuming socket timing.
     for (let n = 0; n < 20; n++) {
-      const result = await db.query(`SELECT count(*)::int AS count FROM ${schema}.shopping_photos`);
+      const result = await db.query("SELECT count(*)::int AS count FROM storage.objects WHERE bucket_id='temporary-scan-photos' AND name=$1",
+        [new URL(imagePath).pathname.split("/").at(-1)]);
       if (result.rows[0].count === 0) break;
-      await new Promise(resolve => setTimeout(resolve, 25));
+      await new Promise(resolve => setTimeout(resolve, 100));
     }
-    assert.equal((await originalFetch(`${origin}${imagePath}`)).status, 404);
+    assert.equal((await originalFetch(imagePath)).ok, false);
     // A visual suggestion can search immediately without pretending the user confirmed a variant.
     const suggested = await post("search", { query: matches.matches[0].title, country: "US" });
     assert.equal(suggested.status, 200);
@@ -95,6 +102,7 @@ test("fresh schema supports identification, image fetch, cleanup and confirmed c
       let providerCalls = 0;
       global.fetch = async (url, init) => {
         if (new URL(String(url)).hostname !== "www.searchapi.io") return originalFetch(url, init);
+        if (stage === "identify") imagePath = new URL(String(url)).searchParams.get("url")!;
         providerCalls++;
         assert.equal(init!.signal!.aborted, false);
         providerStarted();
@@ -106,7 +114,7 @@ test("fresh schema supports identification, image fetch, cleanup and confirmed c
       const controller = new AbortController();
       const pending = originalFetch(`${origin}/api/shopping/${stage}`, {
         method: "POST",
-        headers: { "Content-Type": "application/json", "X-Forwarded-Host": process.env.REPLIT_DEV_DOMAIN! },
+        headers,
         body: JSON.stringify(stage === "identify" ? { image: image.toString("base64"), country: "US" } :
           { query: "Stanley Quencher H2.0 FlowState 40 oz insulated stainless steel travel tumbler", country: "US", automatic: true }),
         signal: controller.signal,
@@ -120,18 +128,19 @@ test("fresh schema supports identification, image fetch, cleanup and confirmed c
         timer.unref();
       })]);
       for (let n = 0; n < 40; n++) {
-        const remaining = await db.query(`SELECT count(*)::int AS count FROM ${schema}.shopping_photos`);
+        const remaining = await db.query("SELECT count(*)::int AS count FROM storage.objects WHERE bucket_id='temporary-scan-photos' AND name=$1",
+          [new URL(imagePath).pathname.split("/").at(-1)]);
         if (remaining.rows[0].count === 0) break;
-        await new Promise(resolve => setTimeout(resolve, 25));
+        await new Promise(resolve => setTimeout(resolve, 100));
       }
-      assert.equal((await db.query(`SELECT count(*)::int AS count FROM ${schema}.shopping_photos`)).rows[0].count, 0);
+      assert.equal((await db.query("SELECT count(*)::int AS count FROM storage.objects WHERE bucket_id='temporary-scan-photos' AND name=$1",
+        [new URL(imagePath).pathname.split("/").at(-1)])).rows[0].count, 0);
       assert.equal(providerCalls, 1, "disconnect must not launch a fallback");
     }
   } finally {
     global.fetch = originalFetch;
-    if (priorOptions === undefined) delete process.env.PGOPTIONS; else process.env.PGOPTIONS = priorOptions;
     await new Promise<void>(resolve => server.close(() => resolve()));
-    await db.query(`DROP SCHEMA ${schema} CASCADE`);
+    await db.query("DELETE FROM device_customers WHERE device_hash=$1", [hash(deviceId)]);
     await db.end();
   }
 });

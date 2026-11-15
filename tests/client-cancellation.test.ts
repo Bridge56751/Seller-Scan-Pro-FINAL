@@ -174,6 +174,8 @@ test("cancel refinement preserves previous results and saved history", async () 
 test("cancel during native photo preparation does not upload afterward", async () => {
   const prepare = deferred<string>();
   const module = load("lib/shopping-client.ts", {
+    "./device-client": { registerDevice: async () => ({}) },
+    "./device-id": { getDeviceCredentials: async () => ({ deviceId: "test", key: "test" }) },
     "./query-client": { getApiUrl: () => "https://example.com" },
     "./native-camera": { prepareProductPhoto: () => prepare.promise },
     "@/shared/cancellation": { throwIfCanceled },
@@ -194,6 +196,8 @@ test("client abort reaches fetch and remains cancellation rather than timeout", 
   };
   try {
     const module = load("lib/shopping-client.ts", {
+      "./device-client": { registerDevice: async () => ({}) },
+      "./device-id": { getDeviceCredentials: async () => ({ deviceId: "test", key: "test" }) },
       "./query-client": { getApiUrl: () => "https://example.com" },
       "./native-camera": {},
       "@/shared/cancellation": { throwIfCanceled },

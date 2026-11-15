@@ -26,9 +26,10 @@ export function AuthProvider({children}:{children:ReactNode}) {
     try {
       const identity=await registerDevice();
       setCustomerId(identity.customerId);
-      const configured=await configureRevenueCat();
-      setRcReady(configured);
-      const data=await getVerifiedStatus(true);
+      // SDK setup is independent of device status; don't hold the app's loading
+      // screen open while the purchase SDK contacts its service.
+      void configureRevenueCat().then(setRcReady).catch(() => setRcReady(false));
+      const data=await getVerifiedStatus();
       setDevice({...data,deviceId:await getDeviceId()});
       setVerificationError(null);
     } catch(error) {
@@ -40,7 +41,7 @@ export function AuthProvider({children}:{children:ReactNode}) {
   useEffect(()=>{
     void refreshDevice();
     const listener=AppState.addEventListener("change",state=>{if(state==="active")void refreshDevice();});
-    const timer=setInterval(()=>{if(AppState.currentState==="active")void refreshDevice();},60000);
+    const timer=setInterval(()=>{if(AppState.currentState==="active")void refreshDevice();},300000);
     return ()=>{listener.remove();clearInterval(timer);};
   },[refreshDevice]);
   const recordScan=useCallback(async()=>{

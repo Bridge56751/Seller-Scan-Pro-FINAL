@@ -3,7 +3,8 @@ import sharp from "sharp";
 import { z } from "zod";
 import { comparisonSchema, countryInfo, listingSearchSchema } from "../../shared/shopping";
 import { searchApi, ShoppingError, normalizeMatches, normalizeOffers, shoppingQuery } from "../services/searchapi";
-import { storePhoto, readPhoto, deletePhoto } from "../services/photo-store";
+import { storePhoto, deletePhoto, startPhotoCleanup } from "../services/photo-store";
+import { authenticateDevice, DeviceError } from "../services/device-customers";
 import { randomUUID } from "node:crypto";
 import { findListings } from "../services/listing-search";
 import { throwIfCanceled } from "../../shared/cancellation";
@@ -11,6 +12,7 @@ import { lookupBarcode } from "../services/barcode-lookup";
 import { normalizeBarcode } from "../../shared/barcode";
 
 const router = Router();
+startPhotoCleanup();
 const photoSchema = z.object({
   image: z.string().min(100).max(4 * 1024 * 1024).regex(/^[A-Za-z0-9+/]+={0,2}$/),
   country: z.string().length(2).transform(v => v.toUpperCase()),
@@ -21,20 +23,6 @@ function requireCountry(code: string) {
   if (!country) throw new ShoppingError(422, "REGION_UNAVAILABLE",
     "Comparisons are not available for this country yet. No US results have been substituted.");
   return country;
-}
-
-function publicOrigin(req: Request) {
-  const host = req.get("x-forwarded-host") || req.get("host") || "";
-  const allowed = [process.env.REPLIT_DEV_DOMAIN, process.env.REPLIT_INTERNAL_APP_DOMAIN, ...(process.env.REPLIT_DOMAINS || "").split(",")]
-    .filter(Boolean).flatMap(d => [d!.trim(), `${d!.trim()}:5000`]);
-  if (!allowed.includes(host)) throw new ShoppingError(503, "PHOTO_HOST_UNAVAILABLE",
-    "Photo matching requires this app’s public HTTPS address. Please use the app’s configured server.");
-  // The dev proxy drops the external port from forwarded Host. Expo owns port 443,
-  // while the image endpoint is on the separately exposed backend port.
-  if (process.env.NODE_ENV !== "production" && host.split(":")[0] === process.env.REPLIT_DEV_DOMAIN) {
-    return `https://${process.env.REPLIT_DEV_DOMAIN}:5000`;
-  }
-  return `https://${host}`;
 }
 
 // Bounded anonymous access; photo searches allow at most one empty-result fallback.
@@ -83,24 +71,14 @@ async function timed<T>(res: Response, stage: string, work: () => Promise<T>): P
   try { return await work(); }
   finally { res.locals.timings[stage] = Date.now() - start; }
 }
-router.get("/photo/:token", async (req, res, next) => {
-  try {
-    const bytes = await readPhoto(req.params.token);
-    if (!bytes) return res.sendStatus(404);
-    res.setHeader("X-Content-Type-Options", "nosniff");
-    res.setHeader("X-Robots-Tag", "noindex, nofollow, noarchive");
-    res.type("jpeg").send(bytes);
-  } catch (error) { next(error); }
-});
-
 router.post("/identify", limit, express.json({ limit: "5mb" }), async (req, res, next) => {
   let id: string | undefined;
   try {
     const input = photoSchema.parse(req.body);
+    await timed(res, "deviceAuthenticationMs", () => authenticateDevice(req));
     throwIfCanceled(res.locals.scanSignal);
     requireCountry(input.country);
     if (!process.env.SEARCHAPI_API_KEY) throw new ShoppingError(503, "NOT_CONFIGURED", "Shopping service is not configured yet.");
-    const origin = publicOrigin(req);
     const raw = Buffer.from(input.image, "base64");
     let image: Buffer;
     try {
@@ -117,7 +95,7 @@ router.post("/identify", limit, express.json({ limit: "5mb" }), async (req, res,
     throwIfCanceled(res.locals.scanSignal);
     const data = await timed(res, "identificationMs", () => searchApi({
       engine: "google_lens", search_type: "visual_matches", country: input.country,
-      hl: "en", url: `${origin}/api/shopping/photo/${stored.token}`,
+      hl: "en", url: stored.url,
     }, { signal: res.locals.scanSignal }));
     throwIfCanceled(res.locals.scanSignal);
     const matches = normalizeMatches(data);
@@ -186,6 +164,7 @@ router.use((error: unknown, _req: Request, res: Response, _next: NextFunction) =
     error: "Check the photo or product details and the selected country, then try again.",
   });
   if (error instanceof ShoppingError) return res.status(error.status).json({ code: error.code, error: error.message });
+  if (error instanceof DeviceError) return res.status(error.status).json({ error: error.message });
   if ((error as { type?: string })?.type === "entity.too.large") return res.status(413).json({ error: "Photo is too large. Please retake it." });
   console.warn("[Shopping] Request failed."); // No image data, tokens, provider responses or secrets.
   res.status(500).json({ error: "Could not complete the search. Please try again." });
