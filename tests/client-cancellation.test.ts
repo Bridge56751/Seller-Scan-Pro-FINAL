@@ -128,10 +128,9 @@ test("cancel identification, immediately recapture, and ignore old success/final
   assert.equal(h.saved.length, 0);
   assert.equal(h.view().busy, true, "old finally cannot unlock new scan");
   assert.equal(await h.view().capture(), false);
-  h.identified[1].resolve({ matches: [{ title: "New product" }] });
+  h.identified[1].resolve({ matches: [{ title: "New product" }], result: { query: "New product", offers: [] } });
   await flush();
-  h.searched[0].resolve({ query: "New product", offers: [] });
-  await flush();
+  assert.equal(h.searched.length, 0, "photo scan must not make an automatic Shopping request");
   assert.equal(h.view().session.query, "New product");
   assert.equal(h.saved.length, 1);
   assert.equal(h.saved[0].query, "New product");
@@ -140,8 +139,10 @@ test("cancel identification, immediately recapture, and ignore old success/final
 test("cancel listing search and ignore late rejection while new scan runs", async () => {
   const h = sessionHarness();
   await h.view().capture();
-  h.identified[0].resolve({ matches: [{ title: "First product" }] });
+  h.identified[0].resolve({ matches: [{ title: "First product" }], result: { query: "First product", offers: [] } });
   await flush();
+  const initialHistory = h.saved.length;
+  void h.view().refine("Another product");
   assert.equal(h.view().session.stage, "searching");
   h.view().cancel();
   assert.equal(h.signals[1].aborted, true);
@@ -150,7 +151,7 @@ test("cancel listing search and ignore late rejection while new scan runs", asyn
   await flush();
   assert.equal(h.view().session.stage, "identifying");
   assert.equal(h.view().session.error, null);
-  assert.equal(h.saved.length, 0);
+  assert.equal(h.saved.length, initialHistory);
 });
 
 test("cancel refinement preserves previous results and saved history", async () => {

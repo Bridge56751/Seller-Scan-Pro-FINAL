@@ -38,7 +38,7 @@ export default function ShoppingOfferCard({ offer, cheapest, onOpen }: Props) {
       </View>
       <Text numberOfLines={3} style={styles.title}>{offer.title}</Text>
       <View style={styles.priceRow}>
-        <Text style={styles.price}>{offer.priceText?.trim() || "Price unavailable"}</Text>
+        <Text style={styles.price}>{offer.priceText?.trim() || "No price listed"}</Text>
         {!!offer.currency && <Text style={styles.currency}>{offer.currency}</Text>}
       </View>
       <Pressable

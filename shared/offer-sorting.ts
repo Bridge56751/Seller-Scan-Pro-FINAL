@@ -7,6 +7,11 @@ export function isComparablePrice(offer: ShoppingOffer, currency?: string) {
 }
 export function sortOffersByPrice(offers: ShoppingOffer[], currency: string | undefined, order: PriceSort, query = "") {
   if (order === "accurate") {
+    if (offers.some(offer => offer.matchSource === "lens")) {
+      // Prioritize provided prices, preserving visual relevance within each group.
+      return [...offers].sort((a,b) => Number(!!b.priceText?.trim()) - Number(!!a.priceText?.trim()) ||
+        (a.providerOrder ?? offers.indexOf(a)) - (b.providerOrder ?? offers.indexOf(b)));
+    }
     const words = (value: string) => value.normalize("NFKD").replace(/\p{M}/gu, "").toLowerCase().match(/[\p{L}\p{N}]+/gu) ?? [];
     const tokens = [...new Set(words(query))];
     const coverage = (offer: ShoppingOffer) => {
@@ -23,7 +28,7 @@ export function sortOffersByPrice(offers: ShoppingOffer[], currency: string | un
   return [...offers].sort((a, b) => {
     // Price sorting is independent of match confidence and promotional restrictions.
     // Never compare raw amounts from different currencies as if they were equivalent.
-    const group = (offer: ShoppingOffer) => !hasPrice(offer) ? 2 :
+    const group = (offer: ShoppingOffer) => !hasPrice(offer) ? (offer.priceText?.trim() ? 2 : 3) :
       currency && offer.currency === currency ? 0 : 1;
     const difference = group(a) - group(b);
     if (difference) return difference;

@@ -45,11 +45,12 @@ export const listingSearchSchema = z.object({
 export type ListingSearchInput = z.input<typeof listingSearchSchema>;
 export type ListingSearch = Comparison & { query: string; matchStatus: "possible"; fallbackUsed?: boolean };
 export type PhotoMatch = { title: string; source: string; url: string | null; imageUrl: string | null };
-export type Identification = { matches: PhotoMatch[]; country: string };
+export type Identification = { matches: PhotoMatch[]; country: string; result: ListingSearch };
 export type ShoppingOffer = {
   title: string; seller: string; url: string; priceText: string; imageUrl: string | null;
   linkKind?: "store" | "comparison";
   providerOrder?: number;
+  matchSource?: "lens";
   amount: number | null; currency: string | null; delivery: string;
   condition: string; titleMatches: boolean; restricted: boolean;
 };

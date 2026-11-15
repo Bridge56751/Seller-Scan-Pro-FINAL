@@ -172,7 +172,7 @@ export default function ScanResultsScreen() {
           {!processing && <>
           <Pressable accessibilityRole="button" accessibilityState={{ expanded: showRefine, disabled: busy }} disabled={busy} onPress={openRefinement} style={({ pressed }) => [styles.refineToggle, (pressed || busy) && styles.dimmed]}>
             <Feather name="sliders" size={18} color={Colors.light.accent} />
-            <Text style={styles.refineToggleText}>{showRefine ? "Hide Search Details" : session.query ? "Refine Search / Wrong Item?" : "Search by Product Name"}</Text>
+            <Text style={styles.refineToggleText}>{showRefine ? "Hide Search Details" : !isBarcode ? "Find more prices with Google Shopping" : session.query ? "Refine Search / Wrong Item?" : "Search by Product Name"}</Text>
             <Feather name={showRefine ? "chevron-up" : "chevron-down"} size={17} color={Colors.light.accent} />
           </Pressable>
           {showRefine && <View style={styles.refineCard}>

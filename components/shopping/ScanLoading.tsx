@@ -14,7 +14,7 @@ type ScanLoadingProps = {
 export default function ScanLoading({ stage, isBarcode, imageUri, query, onCancel }: ScanLoadingProps) {
   const [failedUri, setFailedUri] = useState<string | null>(null);
   const searching = stage === "searching";
-  const title = searching ? "Finding store listings" : isBarcode ? "Looking up your barcode" : "Identifying your item";
+  const title = searching ? "Finding store listings" : isBarcode ? "Looking up your barcode" : "Finding visual matches";
 
   return (
     <View style={styles.card}>
@@ -37,7 +37,7 @@ export default function ScanLoading({ stage, isBarcode, imageUri, query, onCance
         {searching && !!query && <Text style={styles.query} numberOfLines={2}>{query}</Text>}
       </View>
       <View style={styles.stages}>
-        {["Identify item", "Find stores"].map((label, index) => {
+        {(isBarcode || searching ? ["Identify item", "Find stores"] : ["Find visual matches"]).map((label, index) => {
           const current = searching ? index === 1 : index === 0;
           const complete = searching && index === 0;
           return (

@@ -7,7 +7,6 @@ import type { ListingSearch, PhotoMatch } from "@/shared/shopping";
 import { manipulateAsync, SaveFormat } from "expo-image-manipulator";
 import { randomUUID } from "expo-crypto";
 import { photoScanHistory, type PhotoScanHistoryItem } from "./photo-scan-history";
-import { photoSearchQueries } from "@/shared/photo-search-query";
 import { discardTemporaryPhoto } from "./temporary-photo";
 
 export type ScanSession = {
@@ -128,12 +127,10 @@ export function ScanSessionProvider({ children }: { children: ReactNode }) {
     lastStage.current = "identify";
     patch({ stage: "identifying", photoUri: uri, matches: [], result: null, query: "", error: null, errorCode: null, needsSettings: false });
     try {
-      const { matches, scanPermit } = await identifyPhoto(uri, "US", op.signal);
+      const { matches, result } = await identifyPhoto(uri, "US", op.signal);
       if (!isCurrent(op)) return;
-      patch({ matches });
-      const first = matches.find(match => match.title.trim().length >= 3);
-      if (first) await search(op, photoSearchQueries(first.title)[0], "any", true, scanPermit);
-      else patch({ stage: "ready" });
+      if (!result) throw new Error("Photo results could not be loaded. Please retry.");
+      patch({ matches, result, query: result.query, stage: "ready" });
     } catch (e) {
       if (isCurrent(op)) patch({ stage: "error", errorCode: (e as {code?:string})?.code, error: e instanceof Error ? e.message : "Could not search this photo. Please try again." });
     } finally { await finish(op); }

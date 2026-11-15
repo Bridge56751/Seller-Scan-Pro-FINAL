@@ -2,7 +2,7 @@ import express, { Router, type Request, type Response, type NextFunction } from 
 import sharp from "sharp";
 import { z } from "zod";
 import { comparisonSchema, countryInfo, listingSearchSchema } from "../../shared/shopping";
-import { searchApi, ShoppingError, normalizeMatches, normalizeOffers, shoppingQuery } from "../services/searchapi";
+import { searchApi, ShoppingError, normalizeMatches, normalizeOffers, normalizeLensOffers, shoppingQuery } from "../services/searchapi";
 import { storePhoto, deletePhoto, startPhotoCleanup } from "../services/photo-store";
 import { authenticateDevice, DeviceError } from "../services/device-customers";
 import { reserveScan, ScanLimitError } from "../services/scan-rate-limits";
@@ -103,7 +103,10 @@ router.post("/identify", limit, express.json({ limit: "5mb" }), async (req, res,
     throwIfCanceled(res.locals.scanSignal);
     const matches = normalizeMatches(data);
     res.locals.timings.matchCount = matches.length;
-    res.json({ matches, country: input.country, scanPermit: allowance.scanPermit });
+    res.json({ matches, country: input.country, scanPermit: allowance.scanPermit,
+      result: { ...normalizeLensOffers(data), country: input.country,
+        currency: countryInfo(input.country)![2], fetchedAt: new Date().toISOString(),
+        query: matches[0]?.title || "", matchStatus: "possible" } });
   } catch (error) { next(error); }
   finally {
     if (id) await deletePhoto(id).catch(() =>

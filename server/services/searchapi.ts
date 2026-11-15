@@ -74,6 +74,34 @@ export function normalizeMatches(data: Record<string, unknown>): PhotoMatch[] {
     return [{ title, source: text(row.source) || "Visual search result", url: safeUrl(row.link), imageUrl: productImageUrl(row.thumbnail) }];
   }).slice(0, 8);
 }
+
+/** Keep Lens's visual ordering and original destinations, including unpriced pages. */
+export function normalizeLensOffers(data: Record<string, unknown>) {
+  const seen = new Set<string>();
+  const offers: ShoppingOffer[] = [];
+  let excluded = 0;
+  for (const [index, row] of rows(data.visual_matches).entries()) {
+    const title = text(row.title).trim();
+    const url = safeUrl(row.link);
+    if (!title || !url) { excluded++; continue; }
+    if (seen.has(url)) continue;
+    seen.add(url);
+    const rawPrice = text(row.price).trim();
+    const priceText = /\d/.test(rawPrice) ? rawPrice : "";
+    const amount = priceText && typeof row.extracted_price === "number" &&
+      Number.isFinite(row.extracted_price) && row.extracted_price >= 0 ? row.extracted_price : null;
+    // Do not guess currency from ambiguous dollar symbols or infer an absent price.
+    const currency = /^[A-Z]{3}$/.test(text(row.currency).toUpperCase())
+      ? text(row.currency).toUpperCase() : null;
+    offers.push({
+      title, url, seller: text(row.source) || new URL(url).hostname,
+      imageUrl: productImageUrl(row.thumbnail), priceText, amount,
+      currency: priceText ? currency : null, providerOrder: index, matchSource: "lens",
+      delivery: "", condition: "", titleMatches: false, restricted: false, linkKind: "store",
+    });
+  }
+  return { offers, excluded };
+}
 export const isNotApplicable = (v: string) => /^(n\/a|na|none|not applicable)$/i.test(v.trim());
 const normalize = (v: string) => v.normalize("NFKD").replace(/\p{M}/gu, "").toLowerCase().replace(/[^\p{L}\p{N}]/gu, "");
 

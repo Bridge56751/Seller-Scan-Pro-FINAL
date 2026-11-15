@@ -69,6 +69,9 @@ test("authenticated photo identification uses private storage and cleans up succ
     assert.equal(identified.status, 200);
     const matches = await identified.json();
     assert.equal(matches.matches[0].title, "Sony WH-1000XM5 Black");
+    assert.ok(Array.isArray(matches.result.offers));
+    assert.equal(matches.result.matchStatus, "possible");
+    assert.ok(matches.result.offers.every((offer: any) => offer.matchSource === "lens"));
     assert.equal(imageFetched, true);
     // Cleanup follows the response; wait for completion rather than assuming socket timing.
     for (let n = 0; n < 20; n++) {

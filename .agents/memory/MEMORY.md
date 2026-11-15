@@ -1,4 +1,4 @@
-- [Photo matching](searchapi-photo-matching.md) — Lens product-tab removal requires visual suggestions then a separate shopping query; automatic results remain uncertain.
+- [Photo matching](searchapi-photo-matching.md) — photo scans show Lens visual matches directly, priced first; Shopping is optional and matches remain uncertain.
 - [Dependency compatibility](dependency-compatibility.md) — fix blocked transitive packages without forcing a major mobile SDK migration.
 - [Expo Go preview access](expo-preview-access.md) — a plain development QR can fail iOS account checks even when bundles and manifests pass.
 - [Expo navigation](expo-navigation.md) — SDK 58 native action tabs and default-route configuration differ from classic navigator examples.
