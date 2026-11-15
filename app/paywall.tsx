@@ -182,14 +182,6 @@ export default function PaywallScreen() {
             ))}
           </View>
 
-          <View style={styles.allowance}>
-            <Feather name="check-circle" size={17} color={C.accent} />
-            <View style={styles.flex}>
-              <Text style={styles.allowanceTitle}>Up to 1,000 scans per UTC month</Text>
-              <Text style={styles.allowanceText}>10 scans per minute. Monthly allowance resets on the first day of each month at 00:00 UTC.</Text>
-            </View>
-          </View>
-
           <View style={styles.planCard}>
             <View style={styles.planTop}>
               <Text style={styles.planName}>{testMode ? "Test monthly plan" : "Monthly membership"}</Text>
@@ -266,6 +258,13 @@ export default function PaywallScreen() {
             <Pressable accessibilityRole="link" onPress={() => void openLink(TERMS_URL)} style={({ pressed }) => [styles.legalButton, pressed && styles.pressed]}>
               <Text style={styles.legalLink}>Terms of Use (EULA)</Text>
             </Pressable>
+          </View>
+          <View style={styles.allowance}>
+            <Feather name="check-circle" size={17} color={C.accent} />
+            <View style={styles.flex}>
+              <Text style={styles.allowanceTitle}>Up to 1,000 scans per UTC month</Text>
+              <Text style={styles.allowanceText}>10 scans per minute. Monthly allowance resets on the first day of each month at 00:00 UTC.</Text>
+            </View>
           </View>
         </View>
       </ScrollView>
