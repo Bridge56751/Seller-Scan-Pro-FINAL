@@ -64,7 +64,7 @@ export default function ScanLoading({ stage, isBarcode, imageUri, query, onCance
 
 const styles = StyleSheet.create({
   card: { backgroundColor: Colors.light.surface, borderRadius: 20, borderWidth: 1, borderColor: Colors.light.borderLight, paddingHorizontal: 24, paddingTop: 28, paddingBottom: 12, alignItems: "center", gap: 24 },
-  thumbnail: { width: 104, height: 112, borderRadius: 12, backgroundColor: Colors.light.surfaceElevated },
+  thumbnail: { width: "100%", maxWidth: 260, aspectRatio: 1, borderRadius: 16, backgroundColor: Colors.light.surfaceElevated },
   placeholder: { width: 88, height: 88, borderRadius: 24, backgroundColor: Colors.light.accentDim, justifyContent: "center", alignItems: "center" },
   copy: { alignItems: "center", gap: 8, width: "100%" },
   title: { fontSize: 22, lineHeight: 29, fontWeight: "600", letterSpacing: -0.5, color: Colors.light.text, textAlign: "center" },
