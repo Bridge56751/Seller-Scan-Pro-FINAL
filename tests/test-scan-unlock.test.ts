@@ -14,7 +14,8 @@ test("test scan approval is exact, server-only, and never production",()=>{
   assert.equal(testScansApproved("ss_test_other",env),false);
   assert.equal(testScansApproved("ss_test_approved",{...env,NODE_ENV:"production"}),false);
   assert.equal(testScansApproved("ss_test_approved",{...env,REPLIT_DEPLOYMENT:"1"}),false);
-  assert.equal(testScansApproved("ss_test_approved",{...env,REPLIT_ENVIRONMENT:"production"}),false);
+  assert.equal(testScansApproved("ss_test_approved",{...env,REPLIT_ENVIRONMENT:"production"}),true);
+  assert.equal(testScansApproved("ss_test_approved",{...env,REPLIT_ENVIRONMENT:"production",REPLIT_DEPLOYMENT:"1"}),false);
   assert.equal(testScansApproved("ss_test_approved",{NODE_ENV:"development"}),false);
 });
 
@@ -34,7 +35,8 @@ test("approved verified tester scans past free limits without paid access; caps 
     process.env.NODE_ENV="development";
     process.env.TEST_SCAN_CUSTOMER_IDS=testId;
     delete process.env.REPLIT_DEPLOYMENT;
-    delete process.env.REPLIT_ENVIRONMENT;
+    // Reproduce the actual workspace platform marker, not a published app.
+    process.env.REPLIT_ENVIRONMENT="production";
     for(const [customer,tid] of [[id,testId],[other,`ss_test_${randomUUID()}`]]){
       await db.query("INSERT INTO device_customers(device_hash,credential_hash,customer_id,test_customer_id) VALUES($1,$2,$1,$3)",[customer,"a".repeat(64),tid]);
       await db.query(`INSERT INTO customer_scan_limits(customer_id,month_start,free_photo_used,free_barcode_used)

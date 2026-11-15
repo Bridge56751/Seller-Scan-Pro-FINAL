@@ -173,7 +173,7 @@ router.post("/compare", limit, express.json({ limit: "8kb" }), async (req, res, 
 router.use((error: unknown, _req: Request, res: Response, _next: NextFunction) => {
   res.locals.releaseSearch?.();
   if (res.locals.scanSignal?.aborted || res.destroyed) return;
-  res.locals.failureCode = error instanceof ShoppingError ? error.code :
+  res.locals.failureCode = error instanceof ShoppingError || error instanceof ScanLimitError ? error.code :
     error instanceof z.ZodError ? "INVALID_INPUT" : "REQUEST_FAILED";
   if (error instanceof z.ZodError) return res.status(400).json({
     error: "Check the photo or product details and the selected country, then try again.",
