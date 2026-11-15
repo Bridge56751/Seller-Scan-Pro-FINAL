@@ -1,5 +1,6 @@
 import { Router } from "express";
-import { authenticateDevice, recordDeviceScan, DeviceError } from "../services/device-customers";
+import { authenticateDevice, DeviceError } from "../services/device-customers";
+import { scanAllowances } from "../services/scan-rate-limits";
 import { verifyRevenueCat } from "../services/verify-revenuecat";
 
 const router = Router();
@@ -25,8 +26,10 @@ router.post("/api/device/status", async (req,res,next) => {
   try {
     const device = await authenticateDevice(req);
     const access = await verifyRevenueCat(device.customer_id, false, req.query.refresh === "true");
-    res.json({customerId:device.customer_id,isPaid:access.hasAccess,scanCount:device.scan_count,
-      freeScansLeft:Math.max(0,5-device.scan_count),billingVerified:true,expirationDate:access.expirationDate});
+    const allowance = await scanAllowances(device.customer_id);
+    res.json({customerId:device.customer_id,isPaid:access.hasAccess,...allowance,
+      freeScansLeft:allowance.freePhotoScansLeft+allowance.freeBarcodeScansLeft,
+      billingVerified:true,expirationDate:access.expirationDate});
   } catch(error){next(error);}
 });
 router.post("/api/device/billing-test", async (req,res,next) => {
@@ -37,13 +40,10 @@ router.post("/api/device/billing-test", async (req,res,next) => {
     res.json({customerId:device.test_customer_id,hasTestAccess:access.hasAccess,expirationDate:access.expirationDate});
   } catch(error){next(error);}
 });
-router.post("/api/device/record-scan", async (req,res,next) => {
-  try {
-    const device = await authenticateDevice(req);
-    const access = await verifyRevenueCat(device.customer_id);
-    const result = await recordDeviceScan(device,access.hasAccess);
-    res.json({...result,isPaid:access.hasAccess,freeScansLeft:Math.max(0,5-result.scanCount)});
-  } catch(error){next(error);}
+router.post("/api/device/record-scan", (_req,res) => {
+  // Older clients cannot separately report/authorize scans. The shopping routes
+  // are the only authority and reserve usage before any provider calls.
+  res.status(410).json({error:"Scan usage is now recorded automatically by the scan service. Please update the app."});
 });
 router.use("/api/device", (error:unknown,_req:any,res:any,_next:any) => {
   res.status(error instanceof DeviceError ? error.status : 503).json({

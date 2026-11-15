@@ -6,8 +6,10 @@ import { randomBytes, createHash } from "node:crypto";
 import type { AddressInfo } from "node:net";
 import deviceRouter from "../server/routes/device";
 import shoppingRouter from "../server/routes/shopping";
+import { mockPaidCustomer } from "./billing-fixture";
 
-test("HTTP abuse audit: credentials and counters hold, but fresh registration creates a new allowance", async () => {
+test("HTTP abuse audit: authenticated paid customers retain independent caps and credentials cannot reset them", async t => {
+  mockPaidCustomer(t);
   const db = new Pool({ connectionString: process.env.SUPABASE_DATABASE_URL });
   const hash = (s:string) => createHash("sha256").update(s).digest("hex");
   const ids = [0,1].map(() => `audit_${randomBytes(16).toString("hex")}`);
@@ -54,12 +56,13 @@ test("HTTP abuse audit: credentials and counters hold, but fresh registration cr
     assert.equal((await post("/api/shopping/search",0,query,{"X-Scan-Permit":randomBytes(16).toString("hex")})).status,409);
     assert.equal(providerCalls,0,"Rejected requests must not reach paid providers");
 
-    // Known open boundary, intentionally documented rather than claiming device attestation.
+    // A separate identity has separate counters. This test mocks verified paid
+    // access for both; free-user access is covered by free-scan-allowances.test.ts.
     const fresh = await post("/api/device/register",1);
     assert.equal(fresh.status,200);
     assert.notEqual((await fresh.json()).customerId,customer);
     assert.equal((await post("/api/shopping/search",1,query)).status,200,
-      "A caller can currently acquire fresh quota by registering another device identity");
+      "A second verified subscriber has an independent allowance");
     assert.equal(providerCalls,1,"The proof uses a fake provider, never a paid lookup");
     assert.equal((await post("/api/shopping/search",0,query)).status,429);
 

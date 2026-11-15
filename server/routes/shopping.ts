@@ -89,7 +89,7 @@ router.post("/identify", limit, express.json({ limit: "5mb" }), async (req, res,
       throw new ShoppingError(400, "INVALID_IMAGE", "That photo could not be read. Please take another photo.");
     }
     throwIfCanceled(res.locals.scanSignal);
-    const allowance = await reserveScan(device.customer_id, true);
+    const allowance = await reserveScan(device.customer_id, true, undefined, "photo");
     throwIfCanceled(res.locals.scanSignal);
     const stored = await timed(res, "photoStorageMs", () => storePhoto(image)).catch(() => {
       throw new ShoppingError(503, "PHOTO_STORAGE_UNAVAILABLE", "Your photo could not be prepared for identification. Please retry.");
@@ -117,7 +117,7 @@ router.post("/barcode", limit, express.json({ limit: "1kb" }), async (req, res, 
     const input = z.object({ barcode: z.string().max(14).refine(value => !!normalizeBarcode(value)) }).strict().parse(req.body);
     const device = await authenticateDevice(req);
     throwIfCanceled(res.locals.scanSignal);
-    const allowance = await reserveScan(device.customer_id, true);
+    const allowance = await reserveScan(device.customer_id, true, undefined, "barcode");
     throwIfCanceled(res.locals.scanSignal);
     const product = await timed(res, "barcodeLookupMs", () => lookupBarcode(input.barcode, res.locals.scanSignal));
     throwIfCanceled(res.locals.scanSignal);

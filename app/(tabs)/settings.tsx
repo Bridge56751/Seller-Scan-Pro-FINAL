@@ -1,19 +1,19 @@
 import { View, Text, StyleSheet, Pressable, ScrollView, Platform, Linking, Alert, ActivityIndicator } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Feather } from "@expo/vector-icons";
-import { router } from "expo-router";
+import { router, useFocusEffect } from "expo-router";
 import { useState } from "react";
+import { useCallback } from "react";
 import Colors from "@/constants/colors";
 import { useAuth } from "@/lib/auth-context";
-
-const FREE_SCAN_LIMIT = 5;
 
 const PRIVACY_POLICY_URL = "https://sellerscanpro.com/privacy.html";
 const TERMS_OF_SERVICE_URL = "https://www.apple.com/legal/internet-services/itunes/dev/stdeula/";
 
 export default function SettingsScreen() {
   const insets = useSafeAreaInsets();
-  const { isPaid, scanCount, freeScansLeft, restorePurchases, customerId, verificationError, refreshDevice } = useAuth();
+  const { isPaid, isLoading, scanCount, freePhotoScansLeft, freeBarcodeScansLeft, restorePurchases, customerId, verificationError, refreshDevice } = useAuth();
+  useFocusEffect(useCallback(() => { void refreshDevice(); },[refreshDevice]));
   const [restoring, setRestoring] = useState(false);
   const webTopInset = Platform.OS === "web" ? 67 : 0;
   const webBottomInset = Platform.OS === "web" ? 34 : 0;
@@ -22,7 +22,6 @@ export default function SettingsScreen() {
     Linking.openURL(url);
   };
 
-  const scansRemaining = "Currently disabled";
   const accountType = isPaid ? "Pro" : "Free";
 
   return (
@@ -66,11 +65,15 @@ export default function SettingsScreen() {
             <View style={styles.divider} />
 
             <View style={styles.statRow}>
-              <Text style={styles.statLabel}>Scans remaining</Text>
-              <Text style={styles.statValue}>{scansRemaining}</Text>
+              <Text style={styles.statLabel}>Free photo scan</Text>
+              <Text style={styles.statValue}>{isLoading ? "Checking…" : verificationError ? "Unavailable" : `${freePhotoScansLeft} of 1 left`}</Text>
             </View>
             <View style={styles.statRow}>
-              <Text style={styles.statLabel}>Total scans</Text>
+              <Text style={styles.statLabel}>Free barcode scan</Text>
+              <Text style={styles.statValue}>{isLoading ? "Checking…" : verificationError ? "Unavailable" : `${freeBarcodeScansLeft} of 1 left`}</Text>
+            </View>
+            <View style={styles.statRow}>
+              <Text style={styles.statLabel}>Scans since allowance update</Text>
               <Text style={styles.statValue}>{scanCount}</Text>
             </View>
           </View>
@@ -85,8 +88,8 @@ export default function SettingsScreen() {
               <View style={styles.upgradeLeft}>
                 <Feather name="zap" size={20} color="#FFFFFF" />
                 <View style={styles.upgradeTextContainer}>
-                  <Text style={styles.upgradeTitle}>Legacy Seller Tools Paused</Text>
-                  <Text style={styles.upgradeSubtitle}>New subscriptions are paused</Text>
+                  <Text style={styles.upgradeTitle}>Your Scan Allowance</Text>
+                  <Text style={styles.upgradeSubtitle}>1 free photo scan + 1 free barcode scan</Text>
                 </View>
               </View>
               <Feather name="chevron-right" size={20} color="rgba(255,255,255,0.7)" />

@@ -20,6 +20,7 @@ export type ScanSession = {
   query: string;
   result: ListingSearch | null;
   error: string | null;
+  errorCode?: string | null;
   needsSettings: boolean;
   historyWarning?: string | null;
 };
@@ -72,6 +73,7 @@ export function ScanSessionProvider({ children }: { children: ReactNode }) {
   };
   async function saveHistory(op: AbortController) {
     if (!isCurrent(op)) return;
+    if (state.current.errorCode === "SUBSCRIPTION_REQUIRED") return;
     const info = historyRef.current;
     if (!info) return;
     const current = state.current;
@@ -117,14 +119,14 @@ export function ScanSessionProvider({ children }: { children: ReactNode }) {
     if (!isCurrent(op)) return;
     lastStage.current = "search";
     conditionRef.current = condition;
-    patch({ query, stage: "searching", error: null, result: null });
+    patch({ query, stage: "searching", error: null, errorCode: null, result: null });
     const result = await searchListings({ query, country: "US", condition, automatic }, op.signal, scanPermit);
     if (!isCurrent(op)) return;
     patch({ result, query: result.query, stage: "ready" });
   }
   async function process(uri: string, op: AbortController) {
     lastStage.current = "identify";
-    patch({ stage: "identifying", photoUri: uri, matches: [], result: null, query: "", error: null, needsSettings: false });
+    patch({ stage: "identifying", photoUri: uri, matches: [], result: null, query: "", error: null, errorCode: null, needsSettings: false });
     try {
       const { matches, scanPermit } = await identifyPhoto(uri, "US", op.signal);
       if (!isCurrent(op)) return;
@@ -133,7 +135,7 @@ export function ScanSessionProvider({ children }: { children: ReactNode }) {
       if (first) await search(op, photoSearchQueries(first.title)[0], "any", true, scanPermit);
       else patch({ stage: "ready" });
     } catch (e) {
-      if (isCurrent(op)) patch({ stage: "error", error: e instanceof Error ? e.message : "Could not search this photo. Please try again." });
+      if (isCurrent(op)) patch({ stage: "error", errorCode: (e as {code?:string})?.code, error: e instanceof Error ? e.message : "Could not search this photo. Please try again." });
     } finally { await finish(op); }
   }
   async function finish(op: AbortController) {
@@ -143,7 +145,7 @@ export function ScanSessionProvider({ children }: { children: ReactNode }) {
   }
   async function processBarcode(barcode: string, op: AbortController) {
     lastStage.current = "barcode";
-    patch({ stage: "identifying", error: null });
+    patch({ stage: "identifying", error: null, errorCode: null });
     try {
       const product = await identifyBarcode(barcode, op.signal);
       if (!isCurrent(op)) return;
@@ -151,7 +153,7 @@ export function ScanSessionProvider({ children }: { children: ReactNode }) {
       // Preserve the identified variant; don't silently broaden to a different product.
       await search(op, product.query, "any", false, product.scanPermit);
     } catch (error) {
-      if (isCurrent(op)) patch({ stage: "error", error: error instanceof Error ? error.message : "Could not look up this barcode." });
+      if (isCurrent(op)) patch({ stage: "error", errorCode: (error as {code?:string})?.code, error: error instanceof Error ? error.message : "Could not look up this barcode." });
     } finally { await finish(op); }
   }
   function startBarcode(raw: string) {
@@ -204,7 +206,7 @@ export function ScanSessionProvider({ children }: { children: ReactNode }) {
     lock.current = true;
     const op = begin();
     try { await search(op, clean, condition); }
-    catch (e) { if (isCurrent(op)) patch({ stage: "error", error: e instanceof Error ? e.message : "Could not search listings." }); }
+    catch (e) { if (isCurrent(op)) patch({ stage: "error", errorCode: (e as {code?:string})?.code, error: e instanceof Error ? e.message : "Could not search listings." }); }
     finally { await finish(op); }
   }
   async function retry() {

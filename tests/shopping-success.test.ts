@@ -5,8 +5,10 @@ import { randomBytes, createHash } from "node:crypto";
 import type { AddressInfo } from "node:net";
 import express from "express";
 import sharp from "sharp";
+import { mockPaidCustomer } from "./billing-fixture";
 
-test("authenticated photo identification uses private storage and cleans up success and cancellation", async () => {
+test("authenticated photo identification uses private storage and cleans up success and cancellation", async t => {
+  mockPaidCustomer(t);
   const deviceId = `test_${randomBytes(16).toString("hex")}`;
   const key = randomBytes(32).toString("hex");
   const hash = (s: string) => createHash("sha256").update(s).digest("hex");

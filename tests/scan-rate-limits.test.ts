@@ -3,8 +3,10 @@ import assert from "node:assert/strict";
 import { Pool } from "pg";
 import { randomUUID } from "node:crypto";
 import { reserveScan, ScanLimitError } from "../server/services/scan-rate-limits";
+import { mockPaidCustomer } from "./billing-fixture";
 
-test("durable customer limits handle races, UTC rollover, and single-use search permits", async () => {
+test("durable customer limits handle races, UTC rollover, and single-use search permits", async t => {
+  mockPaidCustomer(t);
   const db = new Pool({ connectionString: process.env.SUPABASE_DATABASE_URL });
   const customer = `limit_test_${randomUUID()}`;
   const other = `limit_test_${randomUUID()}`;

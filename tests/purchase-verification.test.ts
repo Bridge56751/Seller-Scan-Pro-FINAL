@@ -25,3 +25,7 @@ test("Test Store receipts cannot unlock production; Apple sandbox receipts canno
 test("Cancellation of auto-renewal does not revoke an already-paid current period",()=>{
   assert.equal(subscriptionAccess([{...valid,auto_renewal_status:"will_not_renew"}],"seller-pro","production",now).hasAccess,true);
 });
+test("Verification cache expiry respects an earlier subscription end",()=>{
+  assert.equal(subscriptionAccess([{...valid,ends_at:now+1000}],"seller-pro","production",now).expirationDate,
+    new Date(now+1000).toISOString());
+});

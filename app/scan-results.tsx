@@ -129,6 +129,10 @@ export default function ScanResultsScreen() {
             <Text style={styles.productTitle}>{session.query}</Text>
           </View>}
 
+          {session.errorCode === "SUBSCRIPTION_REQUIRED" && <Pressable accessibilityRole="button"
+            onPress={() => router.push("/paywall")} style={styles.searchButton}>
+            <Text style={styles.primaryText}>Scan Allowance & Restore Purchases</Text>
+          </Pressable>}
           {processing && <View accessibilityRole="progressbar" accessibilityLabel={session.stage === "identifying" ? isBarcode ? "Identifying product from barcode" : "Finding possible visual matches" : "Searching store listings"} style={styles.progress}>
             <View style={styles.progressTop}><ActivityIndicator color={Colors.light.accent} size="small" /><Text style={styles.progressTitle}>{session.stage === "identifying" ? isBarcode ? "Identifying your barcode" : "Finding possible matches" : "Searching store listings"}</Text></View>
             <Text style={styles.body}>{session.stage === "identifying" ? isBarcode ? "Looking up this product barcode before searching store listings." : "Looking for similar products in your photo. This can take up to a minute." : isBarcode ? "Checking prices for the suggested product. Check the exact item and offer details at the store." : "Checking prices for the suggested product. Similar-looking items may differ."}</Text>

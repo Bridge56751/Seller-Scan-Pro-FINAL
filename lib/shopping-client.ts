@@ -6,6 +6,9 @@ import { throwIfCanceled } from "@/shared/cancellation";
 import type { BarcodeProduct } from "@/shared/barcode";
 import { type Identification, type Comparison, type ComparisonInput, type ListingSearchInput, type ListingSearch } from "@/shared/shopping";
 
+export class ShoppingRequestError extends Error {
+  constructor(message: string, public code?: string) { super(message); }
+}
 async function shoppingRequest<T>(route: string, body: unknown, signal?: AbortSignal, scanPermit?: string): Promise<T> {
   throwIfCanceled(signal);
   const started = Date.now();
@@ -31,7 +34,7 @@ async function shoppingRequest<T>(route: string, body: unknown, signal?: AbortSi
     });
     const data = await response.json().catch(() => null);
     throwIfCanceled(signal);
-    if (!response.ok) throw new Error(data?.error || "The shopping service is unavailable. Please try again.");
+    if (!response.ok) throw new ShoppingRequestError(data?.error || "The shopping service is unavailable. Please try again.", data?.code);
     if (!data) throw new Error("The shopping service returned an unreadable response.");
     return data as T;
   } catch (error) {

@@ -3,7 +3,8 @@ import { getApiUrl } from "./query-client";
 import { fetch } from "expo/fetch";
 
 export type CustomerIdentity = {customerId:string;testCustomerId:string};
-export type DeviceStatus = {customerId:string;isPaid:boolean;scanCount:number;freeScansLeft:number;billingVerified:boolean;expirationDate:string|null};
+export type DeviceStatus = {customerId:string;isPaid:boolean;scanCount:number;freeScansLeft:number;
+  freePhotoScansLeft:number;freeBarcodeScansLeft:number;billingVerified:boolean;expirationDate:string|null};
 let identity: Promise<CustomerIdentity> | undefined;
 
 export async function deviceRequest<T>(path:string):Promise<T> {

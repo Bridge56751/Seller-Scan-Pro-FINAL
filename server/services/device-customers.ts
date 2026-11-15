@@ -37,8 +37,3 @@ export async function authenticateDevice(req: Request, register = false): Promis
   }
   return { device_hash: row.device_hash, customer_id: row.customer_id, test_customer_id: row.test_customer_id, scan_count: row.scan_count };
 }
-export async function recordDeviceScan(device: DeviceCustomer, isPaid: boolean) {
-  const result = await pool.query(`UPDATE device_customers SET scan_count=scan_count+1
-    WHERE device_hash=$1 AND ($2::boolean OR scan_count<5) RETURNING scan_count`, [device.device_hash,isPaid]);
-  return { allowed: !!result.rows[0], scanCount: result.rows[0]?.scan_count ?? device.scan_count };
-}

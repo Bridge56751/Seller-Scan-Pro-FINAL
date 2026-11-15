@@ -1,7 +1,7 @@
 import { createContext, useContext, useState, useEffect, useCallback, ReactNode } from "react";
 import { AppState } from "react-native";
 import { getDeviceId } from "./device-id";
-import { registerDevice, getVerifiedStatus, deviceRequest, type DeviceStatus } from "./device-client";
+import { registerDevice, getVerifiedStatus, type DeviceStatus } from "./device-client";
 import { configureRevenueCat, restorePurchases as rcRestorePurchases, purchaseSubscription as rcPurchaseSubscription } from "./revenuecat";
 
 type DeviceState = DeviceStatus & {deviceId:string};
@@ -9,8 +9,8 @@ interface AuthContextValue {
   device: DeviceState|null;
   customerId: string|null;
   isLoading:boolean; isReady:boolean; isPaid:boolean;
-  scanCount:number; freeScansLeft:number; rcReady:boolean; verificationError:string|null;
-  recordScan:()=>Promise<{allowed:boolean;freeScansLeft:number}>;
+  scanCount:number; freeScansLeft:number; freePhotoScansLeft:number; freeBarcodeScansLeft:number;
+  rcReady:boolean; verificationError:string|null;
   refreshDevice:()=>Promise<void>;
   purchaseSubscription:()=>Promise<{success:boolean;error?:string}>;
   restorePurchases:()=>Promise<{success:boolean;isPro:boolean;error?:string}>;
@@ -44,13 +44,6 @@ export function AuthProvider({children}:{children:ReactNode}) {
     const timer=setInterval(()=>{if(AppState.currentState==="active")void refreshDevice();},300000);
     return ()=>{listener.remove();clearInterval(timer);};
   },[refreshDevice]);
-  const recordScan=useCallback(async()=>{
-    try {
-      const data=await deviceRequest<{allowed:boolean;freeScansLeft:number}>("record-scan");
-      await refreshDevice();
-      return data;
-    }catch{await refreshDevice();return {allowed:false,freeScansLeft:0};}
-  },[refreshDevice]);
   const purchaseSubscription=useCallback(async()=>{
     const purchased=await rcPurchaseSubscription();
     if(!purchased.success)return purchased;
@@ -70,8 +63,9 @@ export function AuthProvider({children}:{children:ReactNode}) {
     }catch{await refreshDevice();return {success:false,isPro:false,error:"Restored purchases could not be verified. Please retry."};}
   },[refreshDevice]);
   return <AuthContext.Provider value={{device,customerId,isLoading,isReady:!!device,isPaid:device?.isPaid===true,
-    scanCount:device?.scanCount??0,freeScansLeft:device?.freeScansLeft??0,rcReady,verificationError,
-    recordScan,refreshDevice,purchaseSubscription,restorePurchases}}>{children}</AuthContext.Provider>;
+    scanCount:device?.scanCount??0,freeScansLeft:device?.freeScansLeft??0,
+    freePhotoScansLeft:device?.freePhotoScansLeft??0,freeBarcodeScansLeft:device?.freeBarcodeScansLeft??0,
+    rcReady,verificationError,refreshDevice,purchaseSubscription,restorePurchases}}>{children}</AuthContext.Provider>;
 }
 export function useAuth(){
   const context=useContext(AuthContext);
