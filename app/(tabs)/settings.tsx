@@ -220,6 +220,27 @@ export default function SettingsScreen() {
           </View>
         </View>
 
+        {__DEV__ && (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Development</Text>
+            <View style={styles.card}>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="Billing Test"
+                accessibilityHint="Opens RevenueCat Test Store testing. No real charges."
+                style={({ pressed }) => [styles.menuRow, pressed && { backgroundColor: Colors.light.background }]}
+                onPress={() => router.push("/billing-test")}
+              >
+                <View style={styles.menuLeft}>
+                  <Feather name="tool" size={18} color={Colors.light.textSecondary} />
+                  <Text style={styles.menuText}>Billing Test</Text>
+                </View>
+                <Feather name="chevron-right" size={16} color={Colors.light.textTertiary} />
+              </Pressable>
+            </View>
+          </View>
+        )}
+
         <Text style={styles.versionText}>Seller Scan v1.0.0</Text>
       </ScrollView>
     </View>

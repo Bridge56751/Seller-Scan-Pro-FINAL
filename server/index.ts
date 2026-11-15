@@ -2,6 +2,7 @@ import express from "express";
 import type { Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import deviceRouter from "./routes/device";
+import { billingConfig } from "./services/billing-config";
 import shoppingRouter from "./routes/shopping";
 import * as fs from "fs";
 import * as path from "path";
@@ -246,9 +247,10 @@ function setupErrorHandler(app: express.Application) {
     });
   });
 
-  app.get("/api/config/revenuecat", (_req, res) => {
-    const apiKey = process.env.REVENUECAT_API_KEY || "";
-    res.json({ apiKey });
+  app.get("/api/config/revenuecat", (req, res) => {
+    res.setHeader("Cache-Control", "no-store");
+    const config = billingConfig(req.query.mode === "test", process.env);
+    res.status(config.status).json(config.body);
   });
 
   configureExpoAndLanding(app);
