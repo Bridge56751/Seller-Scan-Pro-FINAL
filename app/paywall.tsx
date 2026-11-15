@@ -149,16 +149,6 @@ export default function PaywallScreen() {
       </View>
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scroll}>
         <View style={styles.content}>
-          {testMode && (
-            <View style={styles.testBanner}>
-              <Feather name="tool" size={19} color={C.warning} />
-              <View style={styles.flex}>
-                <Text style={styles.testTitle}>Test Store · preview only</Text>
-                <Text style={styles.testText}>No real charges. Test subscriptions do not unlock real scans.</Text>
-              </View>
-            </View>
-          )}
-
           <View style={styles.hero}>
             <Image source={require("@/assets/images/logo.png")} accessibilityLabel="Seller Scan logo" style={styles.heroIcon} resizeMode="contain" />
             <Text accessibilityRole="header" style={styles.title}>Seller Scan <Text style={styles.pro}>Pro</Text></Text>
@@ -276,9 +266,6 @@ const styles = StyleSheet.create({
   scroll: { flexGrow: 1, paddingHorizontal: 20, paddingBottom: 24 },
   content: { width: "100%", maxWidth: 480, alignSelf: "center" },
   flex: { flex: 1 },
-  testBanner: { padding: 14, borderRadius: 14, backgroundColor: C.warningBg, borderWidth: 1, borderColor: C.warningDim, flexDirection: "row", gap: 11, marginTop: 8 },
-  testTitle: { color: C.text, fontSize: 14, fontWeight: "700", marginBottom: 4 },
-  testText: { color: C.textSecondary, fontSize: 13, lineHeight: 19 },
   hero: { alignItems: "center", paddingTop: 22, paddingBottom: 26 },
   heroIcon: { height: 70, width: 70, borderRadius: 23, marginBottom: 18 },
   title: { fontSize: 23, fontWeight: "700", color: C.text, letterSpacing: -0.5 },
