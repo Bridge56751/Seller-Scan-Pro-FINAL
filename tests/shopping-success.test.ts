@@ -50,8 +50,8 @@ test("authenticated photo identification uses private storage and cleans up succ
   };
   try {
     const image = await sharp({ create: { width: 20, height: 20, channels: 3, background: "blue" } }).jpeg().toBuffer();
-    const post = (route: string, body: unknown) => originalFetch(`${origin}/api/shopping/${route}`, {
-      method: "POST", headers,
+    const post = (route: string, body: unknown, permit?: string) => originalFetch(`${origin}/api/shopping/${route}`, {
+      method: "POST", headers: {...headers,...(permit ? {"X-Scan-Permit":permit} : {})},
       body: JSON.stringify(body),
     });
     const invalid = await post("identify", { image: image.toString("base64"), country: "invalid" });
@@ -77,12 +77,15 @@ test("authenticated photo identification uses private storage and cleans up succ
     }
     assert.equal((await originalFetch(imagePath)).ok, false);
     // A visual suggestion can search immediately without pretending the user confirmed a variant.
-    const suggested = await post("search", { query: matches.matches[0].title, country: "US" });
+    const suggested = await post("search", { query: matches.matches[0].title, country: "US" }, matches.scanPermit);
     assert.equal(suggested.status, 200);
     const suggestions = await suggested.json();
     assert.equal(suggestions.matchStatus, "possible");
     assert.equal(suggestions.query, matches.matches[0].title);
     assert.equal(suggestions.offers[0].amount, 299);
+    assert.equal((await db.query("SELECT monthly_count FROM customer_scan_limits WHERE customer_id=$1",[deviceId])).rows[0].monthly_count,1,
+      "Identification and follow-up price lookup count as one scan");
+    assert.equal((await post("search", {query:matches.matches[0].title,country:"US"}, matches.scanPermit)).status,409);
     assert.equal(searchedConditions.at(-1), null, "photo search must not silently assume new condition");
     const refined = await post("search", { query: matches.matches[0].title, country: "US", condition: "used" });
     assert.equal(refined.status, 200);
@@ -137,6 +140,25 @@ test("authenticated photo identification uses private storage and cleans up succ
         [new URL(imagePath).pathname.split("/").at(-1)])).rows[0].count, 0);
       assert.equal(providerCalls, 1, "disconnect must not launch a fallback");
     }
+    // Reject over-limit calls on every provider route, before touching any provider.
+    await db.query("UPDATE customer_scan_limits SET monthly_count=1000 WHERE customer_id=$1",[deviceId]);
+    let overLimitCalls = 0;
+    global.fetch = async (url,init) => {
+      if (new URL(String(url)).hostname !== "127.0.0.1") overLimitCalls++;
+      return originalFetch(url,init);
+    };
+    for (const [route,body] of [
+      ["identify",{image:image.toString("base64"),country:"US"}],
+      ["barcode",{barcode:"036000291452"}],
+      ["search",{query:"Water bottle",country:"US"}],
+      ["compare",{product:"Water bottle",size:"N/A",color:"N/A",quantity:1,condition:"new",country:"US",confirmed:true}],
+    ] as const) {
+      const blocked = await post(route,body);
+      assert.equal(blocked.status,429);
+      assert.ok(Number(blocked.headers.get("retry-after"))>0);
+      assert.equal((await blocked.json()).code,"MONTHLY_SCAN_LIMIT");
+    }
+    assert.equal(overLimitCalls,0);
   } finally {
     global.fetch = originalFetch;
     await new Promise<void>(resolve => server.close(() => resolve()));

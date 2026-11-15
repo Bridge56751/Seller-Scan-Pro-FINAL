@@ -5,6 +5,7 @@ import { comparisonSchema, countryInfo, listingSearchSchema } from "../../shared
 import { searchApi, ShoppingError, normalizeMatches, normalizeOffers, shoppingQuery } from "../services/searchapi";
 import { storePhoto, deletePhoto, startPhotoCleanup } from "../services/photo-store";
 import { authenticateDevice, DeviceError } from "../services/device-customers";
+import { reserveScan, ScanLimitError } from "../services/scan-rate-limits";
 import { randomUUID } from "node:crypto";
 import { findListings } from "../services/listing-search";
 import { throwIfCanceled } from "../../shared/cancellation";
@@ -75,7 +76,7 @@ router.post("/identify", limit, express.json({ limit: "5mb" }), async (req, res,
   let id: string | undefined;
   try {
     const input = photoSchema.parse(req.body);
-    await timed(res, "deviceAuthenticationMs", () => authenticateDevice(req));
+    const device = await timed(res, "deviceAuthenticationMs", () => authenticateDevice(req));
     throwIfCanceled(res.locals.scanSignal);
     requireCountry(input.country);
     if (!process.env.SEARCHAPI_API_KEY) throw new ShoppingError(503, "NOT_CONFIGURED", "Shopping service is not configured yet.");
@@ -87,6 +88,8 @@ router.post("/identify", limit, express.json({ limit: "5mb" }), async (req, res,
     } catch {
       throw new ShoppingError(400, "INVALID_IMAGE", "That photo could not be read. Please take another photo.");
     }
+    throwIfCanceled(res.locals.scanSignal);
+    const allowance = await reserveScan(device.customer_id, true);
     throwIfCanceled(res.locals.scanSignal);
     const stored = await timed(res, "photoStorageMs", () => storePhoto(image)).catch(() => {
       throw new ShoppingError(503, "PHOTO_STORAGE_UNAVAILABLE", "Your photo could not be prepared for identification. Please retry.");
@@ -100,7 +103,7 @@ router.post("/identify", limit, express.json({ limit: "5mb" }), async (req, res,
     throwIfCanceled(res.locals.scanSignal);
     const matches = normalizeMatches(data);
     res.locals.timings.matchCount = matches.length;
-    res.json({ matches, country: input.country });
+    res.json({ matches, country: input.country, scanPermit: allowance.scanPermit });
   } catch (error) { next(error); }
   finally {
     if (id) await deletePhoto(id).catch(() =>
@@ -112,9 +115,13 @@ router.post("/identify", limit, express.json({ limit: "5mb" }), async (req, res,
 router.post("/barcode", limit, express.json({ limit: "1kb" }), async (req, res, next) => {
   try {
     const input = z.object({ barcode: z.string().max(14).refine(value => !!normalizeBarcode(value)) }).strict().parse(req.body);
+    const device = await authenticateDevice(req);
+    throwIfCanceled(res.locals.scanSignal);
+    const allowance = await reserveScan(device.customer_id, true);
+    throwIfCanceled(res.locals.scanSignal);
     const product = await timed(res, "barcodeLookupMs", () => lookupBarcode(input.barcode, res.locals.scanSignal));
     throwIfCanceled(res.locals.scanSignal);
-    res.json(product);
+    res.json({ ...product, scanPermit: allowance.scanPermit });
   } catch (error) { next(error); }
   finally { res.locals.releaseSearch?.(); }
 });
@@ -124,6 +131,10 @@ router.post("/search", limit, express.json({ limit: "8kb" }), async (req, res, n
   try {
     const input = listingSearchSchema.parse(req.body);
     const country = requireCountry(input.country);
+    const device = await authenticateDevice(req);
+    throwIfCanceled(res.locals.scanSignal);
+    await reserveScan(device.customer_id, false, req.get("x-scan-permit"));
+    throwIfCanceled(res.locals.scanSignal);
     const result = await timed(res, "listingSearchMs", () => findListings(input, country[2], searchApi,
       (attempt, ms, offers) => {
         res.locals.timings[`attempt${attempt}Ms`] = ms;
@@ -142,6 +153,10 @@ router.post("/compare", limit, express.json({ limit: "8kb" }), async (req, res, 
   try {
     const input = comparisonSchema.parse(req.body);
     const country = requireCountry(input.country);
+    const device = await authenticateDevice(req);
+    throwIfCanceled(res.locals.scanSignal);
+    await reserveScan(device.customer_id);
+    throwIfCanceled(res.locals.scanSignal);
     const data = await timed(res, "listingSearchMs", () => searchApi({
       engine: "google_shopping", q: shoppingQuery(input), gl: input.country.toLowerCase(),
       hl: "en", condition: input.condition, link: "raw",
@@ -165,6 +180,10 @@ router.use((error: unknown, _req: Request, res: Response, _next: NextFunction) =
   });
   if (error instanceof ShoppingError) return res.status(error.status).json({ code: error.code, error: error.message });
   if (error instanceof DeviceError) return res.status(error.status).json({ error: error.message });
+  if (error instanceof ScanLimitError) {
+    if (error.retryAfter) res.setHeader("Retry-After", String(error.retryAfter));
+    return res.status(error.status).json({ code: error.code, error: error.message, retryAfter: error.retryAfter });
+  }
   if ((error as { type?: string })?.type === "entity.too.large") return res.status(413).json({ error: "Photo is too large. Please retake it." });
   console.warn("[Shopping] Request failed."); // No image data, tokens, provider responses or secrets.
   res.status(500).json({ error: "Could not complete the search. Please try again." });

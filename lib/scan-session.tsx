@@ -113,12 +113,12 @@ export function ScanSessionProvider({ children }: { children: ReactNode }) {
     return true;
   }
 
-  async function search(op: AbortController, query: string, condition: "any" | "new" | "used" = "any", automatic = false) {
+  async function search(op: AbortController, query: string, condition: "any" | "new" | "used" = "any", automatic = false, scanPermit?: string) {
     if (!isCurrent(op)) return;
     lastStage.current = "search";
     conditionRef.current = condition;
     patch({ query, stage: "searching", error: null, result: null });
-    const result = await searchListings({ query, country: "US", condition, automatic }, op.signal);
+    const result = await searchListings({ query, country: "US", condition, automatic }, op.signal, scanPermit);
     if (!isCurrent(op)) return;
     patch({ result, query: result.query, stage: "ready" });
   }
@@ -126,11 +126,11 @@ export function ScanSessionProvider({ children }: { children: ReactNode }) {
     lastStage.current = "identify";
     patch({ stage: "identifying", photoUri: uri, matches: [], result: null, query: "", error: null, needsSettings: false });
     try {
-      const { matches } = await identifyPhoto(uri, "US", op.signal);
+      const { matches, scanPermit } = await identifyPhoto(uri, "US", op.signal);
       if (!isCurrent(op)) return;
       patch({ matches });
       const first = matches.find(match => match.title.trim().length >= 3);
-      if (first) await search(op, photoSearchQueries(first.title)[0], "any", true);
+      if (first) await search(op, photoSearchQueries(first.title)[0], "any", true, scanPermit);
       else patch({ stage: "ready" });
     } catch (e) {
       if (isCurrent(op)) patch({ stage: "error", error: e instanceof Error ? e.message : "Could not search this photo. Please try again." });
@@ -149,7 +149,7 @@ export function ScanSessionProvider({ children }: { children: ReactNode }) {
       if (!isCurrent(op)) return;
       patch({ query: product.query, productImageUrl: product.imageUrl });
       // Preserve the identified variant; don't silently broaden to a different product.
-      await search(op, product.query, "any", false);
+      await search(op, product.query, "any", false, product.scanPermit);
     } catch (error) {
       if (isCurrent(op)) patch({ stage: "error", error: error instanceof Error ? error.message : "Could not look up this barcode." });
     } finally { await finish(op); }

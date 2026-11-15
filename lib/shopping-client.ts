@@ -6,7 +6,7 @@ import { throwIfCanceled } from "@/shared/cancellation";
 import type { BarcodeProduct } from "@/shared/barcode";
 import { type Identification, type Comparison, type ComparisonInput, type ListingSearchInput, type ListingSearch } from "@/shared/shopping";
 
-async function shoppingRequest<T>(route: string, body: unknown, signal?: AbortSignal): Promise<T> {
+async function shoppingRequest<T>(route: string, body: unknown, signal?: AbortSignal, scanPermit?: string): Promise<T> {
   throwIfCanceled(signal);
   const started = Date.now();
   const stage = route === "identify" ? "Photo identification" : route === "barcode" ? "Barcode identification" : "Price search";
@@ -16,11 +16,12 @@ async function shoppingRequest<T>(route: string, body: unknown, signal?: AbortSi
   const timeout = setTimeout(() => controller.abort(), 90000);
   try {
     const headers: Record<string, string> = { "Content-Type": "application/json" };
-    if (route === "identify") {
+    {
       await registerDevice();
       const credentials = await getDeviceCredentials();
       headers["X-Device-Id"] = credentials.deviceId;
       headers["X-Device-Key"] = credentials.key;
+      if (scanPermit) headers["X-Scan-Permit"] = scanPermit;
       throwIfCanceled(signal);
       if (controller.signal.aborted) throw new DOMException("Request timed out", "AbortError");
     }
@@ -56,14 +57,14 @@ export async function identifyPhoto(uri: string, country: string, signal?: Abort
   catch { throwIfCanceled(signal); throw new Error("This photo could not be prepared. Please take another photo."); }
   finally { console.info("[Shopping timing]", JSON.stringify({ step: "photoPreparation", durationMs: Date.now() - start })); }
   throwIfCanceled(signal);
-  return shoppingRequest<Identification>("identify", { image, country }, signal);
+  return shoppingRequest<Identification & { scanPermit: string }>("identify", { image, country }, signal);
 }
 export function compareProduct(input: ComparisonInput) {
   return shoppingRequest<Comparison>("compare", input);
 }
-export function searchListings(input: ListingSearchInput, signal?: AbortSignal) {
-  return shoppingRequest<ListingSearch>("search", input, signal);
+export function searchListings(input: ListingSearchInput, signal?: AbortSignal, scanPermit?: string) {
+  return shoppingRequest<ListingSearch>("search", input, signal, scanPermit);
 }
 export function identifyBarcode(barcode: string, signal?: AbortSignal) {
-  return shoppingRequest<BarcodeProduct>("barcode", { barcode }, signal);
+  return shoppingRequest<BarcodeProduct & { scanPermit: string }>("barcode", { barcode }, signal);
 }

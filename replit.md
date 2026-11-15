@@ -48,6 +48,8 @@ The user requested removal of Keepa, Amazon-hosted product images, and unpkg. Do
 
 ## Current shopping implementation
 
+- All provider-backed shopping routes require device credentials and enforce 1,000 started scans per customer per UTC calendar month and 10 per rolling minute using atomic Supabase reservations. Limits apply to free and paid customers; no RevenueCat lookup is added to the scan path. Photo/barcode identification includes one single-use price-search permit. Retries and manual refinements count as new scans; attempts already started are not refunded on failure/cancellation because upstream calls may be billable. Opening the camera without submitting or reopening History does not count. These abuse caps are separate from the still-unwired five-free-scan entitlement rule. **Why:** The user requested monthly and per-minute API abuse protection without slowing scans with subscription verification.
+
 The user clarified that scanning should not ask for country: scan a product, show comparable listings, and help find the cheapest place to buy the same item. Use US listings by default in the scan flow and label the market, without a country-selection step. Keep the product-match check lightweight; detailed corrections are optional.
 
 - Scan uses SearchApi's Google Lens `visual_matches`, followed automatically by a Google Shopping query for the leading usable suggestion. These are labeled possible matches with optional refinement. The user removed the standalone Search tab without a replacement; keep refinement inside scan results. History is the starting screen, and Scan remains a camera-only action.
