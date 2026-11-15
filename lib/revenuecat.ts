@@ -3,6 +3,7 @@ import { getApiUrl } from "./query-client";
 import { fetch } from "expo/fetch";
 import Constants, { ExecutionEnvironment } from "expo-constants";
 import { getBillingTestIdentity } from "./billing-test-identity";
+import { isPurchaseCancelled } from "@/shared/billing-errors";
 
 let Purchases: any = null;
 let isConfigured = false;
@@ -190,8 +191,8 @@ export async function purchaseBillingTest(): Promise<{ cancelled: boolean; state
       const { customerInfo } = await RC.purchasePackage(monthly);
       return { cancelled: false, state: testState(monthly, customerInfo) };
     } catch (error: any) {
-      if (error.userCancelled) return { cancelled: true, state: testState(monthly, await RC.getCustomerInfo()) };
-      throw error;
+      if (isPurchaseCancelled(error)) return { cancelled: true, state: testState(monthly, await RC.getCustomerInfo()) };
+      throw new Error(typeof error?.message === "string" ? error.message : "The test purchase failed. No production access was unlocked.");
     }
   } finally { testPurchaseInFlight = false; }
 }
