@@ -2,6 +2,8 @@
 
 ## Current scope override
 
+The released app is iOS-only. **Why:** The user stated, “this is only going to be an ios app.” Preserve web/Expo previews for development, but target iOS for production device-abuse protections.
+
 The RevenueCat project for this app is **Seller Scan**, not **Lens Lingo**. Do not modify Lens Lingo when configuring or testing this app's billing. **Why:** The user explicitly identified Lens Lingo as another project.
 
 RevenueCat testing uses a separate `REVENUECAT_TEST_STORE_API_KEY` in development Expo Go/web, with a separate persistent test-customer identity. Keep the existing Apple SDK key unchanged. Test entitlements must never set the app's paid state or bypass scan limits, and the test-key endpoint must reject production requests. The development-only Settings → Billing Test screen exercises live Test Store purchases; it is not a production paywall. **Why:** The user approved a no-real-charge purchase test without changing Apple billing or enabling live subscriptions.
