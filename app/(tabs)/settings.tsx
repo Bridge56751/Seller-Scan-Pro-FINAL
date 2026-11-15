@@ -85,8 +85,8 @@ export default function SettingsScreen() {
               <View style={styles.upgradeLeft}>
                 <Feather name="zap" size={20} color="#FFFFFF" />
                 <View style={styles.upgradeTextContainer}>
-                  <Text style={styles.upgradeTitle}>Your Scan Allowance</Text>
-                  <Text style={styles.upgradeSubtitle}>1 free photo scan + 1 free barcode scan</Text>
+                  <Text style={styles.upgradeTitle}>Upgrade to Seller Scan Pro</Text>
+                  <Text style={styles.upgradeSubtitle}>Get more photo and barcode scans</Text>
                 </View>
               </View>
               <Feather name="chevron-right" size={20} color="rgba(255,255,255,0.7)" />
