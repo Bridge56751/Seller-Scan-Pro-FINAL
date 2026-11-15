@@ -147,12 +147,6 @@ export default function BarcodeScreen() {
           </View>
         </View>}
         {message && <View style={styles.feedback}><Feather name="info" size={18} color={Colors.light.accent} /><Text accessibilityLiveRegion="polite" style={styles.feedbackText}>{message}</Text></View>}
-        <View style={styles.tips}>
-          <Text style={styles.tipsTitle}>Line up the bars, not the product</Text>
-          <Text style={styles.body}>Use even lighting and keep the numbers and bars in view. Scanning starts automatically when a valid code is detected.</Text>
-          <Text style={styles.caption}>Supports EAN-13, EAN-8, UPC-A and ITF-14. QR codes and UPC-E are not supported. Check the product and offer details at the store; listings are possible matches.</Text>
-          <Text style={styles.caption}>Product lookup by UPCitemdb. Free lookup capacity is shared across the app; store searches use our existing shopping service.</Text>
-        </View>
       </ScrollView>
     </SafeAreaView>
   );
@@ -175,9 +169,6 @@ const styles = StyleSheet.create({
   cameraOverlay: { flex: 1, justifyContent: "center", alignItems: "center", gap: 24, padding: 20 },
   viewfinder: { width: "94%", height: "43%", borderRadius: 16, borderWidth: 3, borderColor: Colors.light.surface },
   cameraHint: { color: Colors.light.surface, backgroundColor: "rgba(26,29,38,0.8)", padding: 12, borderRadius: 8, fontSize: 12, lineHeight: 18, textAlign: "center" },
-  tips: { gap: 9, paddingHorizontal: 2 },
-  tipsTitle: { color: Colors.light.text, fontSize: 16, fontWeight: "600" },
-  caption: { fontSize: 12, lineHeight: 19, color: Colors.light.textTertiary },
   feedback: { flexDirection: "row", gap: 10, padding: 14, borderRadius: 12, backgroundColor: Colors.light.accentDim },
   feedbackText: { flex: 1, fontSize: 13, lineHeight: 20, color: Colors.light.textSecondary },
   skeleton: { width: "100%", height: 120, backgroundColor: Colors.light.borderLight, borderRadius: 12 },
