@@ -7,8 +7,10 @@ import { router, useFocusEffect } from "expo-router";
 import Colors from "@/constants/colors";
 import { useScanSession } from "@/lib/scan-session";
 import { normalizeBarcode } from "@/shared/barcode";
+import { createCameraActivationGate } from "@/shared/camera-activation";
 
 const supportedTypes = ["ean13", "ean8", "upc_a", "itf14"] as const;
+const scannerSettings = { barcodeTypes: [...supportedTypes] };
 
 export default function BarcodeScreen() {
   const { busy, startBarcode } = useScanSession();
@@ -19,6 +21,14 @@ export default function BarcodeScreen() {
   const [message, setMessage] = useState<string | null>(null);
   const [ready, setReady] = useState(false);
   const [cameraKey, setCameraKey] = useState(0);
+  const [cameraActive, setCameraActive] = useState(false);
+  const gateRef = useRef<ReturnType<typeof createCameraActivationGate> | null>(null);
+  if (!gateRef.current) gateRef.current = createCameraActivationGate(setCameraActive);
+  const gate = gateRef.current;
+  const focusRef = useRef(false);
+  const foregroundRef = useRef(AppState.currentState === "active");
+  const busyRef = useRef(busy);
+  busyRef.current = busy;
   const detectionLock = useRef(false);
   const requested = useRef(false);
   const permissionLock = useRef(false);
@@ -27,24 +37,34 @@ export default function BarcodeScreen() {
   const isWeb = Platform.OS === "web";
 
   useFocusEffect(useCallback(() => {
+    focusRef.current = true;
     detectionLock.current = false;
     setFocused(true);
     setMessage(null);
-    setReady(false);
-    if (!isWeb) void permissionRefresh.current().catch(() => setMessage("Camera permission could not be checked. Please try again."));
-    return () => { setFocused(false); detectionLock.current = true; };
-  }, [isWeb]));
+    if (!isWeb) void permissionRefresh.current().catch(() => {
+      if (focusRef.current) setMessage("Camera permission could not be checked. Please try again.");
+    });
+    return () => {
+      focusRef.current = false;
+      gate.stop();
+      setFocused(false);
+      detectionLock.current = true;
+    };
+  }, [isWeb, gate]));
 
   useEffect(() => {
     const subscription = AppState.addEventListener("change", state => {
+      foregroundRef.current = state === "active";
+      if (state !== "active") gate.stop();
       setActive(state === "active");
-      if (state === "active" && !isWeb) {
-        void permissionRefresh.current().catch(() => setMessage("Camera permission could not be checked. Please try again."));
+      if (state === "active" && !isWeb && focusRef.current) {
+        void permissionRefresh.current().catch(() => {
+          if (focusRef.current) setMessage("Camera permission could not be checked. Please try again.");
+        });
       }
-      if (state !== "active") setReady(false);
     });
-    return () => subscription.remove();
-  }, [isWeb]);
+    return () => { subscription.remove(); gate.stop(); };
+  }, [isWeb, gate]);
 
   const askPermission = useCallback(async () => {
     if (permissionLock.current) return;
@@ -61,10 +81,20 @@ export default function BarcodeScreen() {
     if (!permission.granted && permission.canAskAgain) void askPermission();
   }, [isWeb, focused, active, busy, permission, askPermission]);
 
-  const cameraMounted = !isWeb && focused && active && !!permission?.granted && !busy && !cameraError;
+  const wantsCamera = !isWeb && focused && active && !!permission?.granted && !busy && !cameraError;
+  useEffect(() => {
+    if (wantsCamera) gate.start();
+    else gate.stop();
+    return () => gate.stop();
+  }, [wantsCamera, cameraKey, gate]);
+  // iOS supports pausing the native session without repeatedly destroying its
+  // capture graph on every tab change. Other platforms keep conditional mounting.
+  const cameraMounted = !isWeb && !!permission?.granted && !cameraError &&
+    (Platform.OS === "ios" || (wantsCamera && cameraActive));
+  const canDetect = () => gate.isActive() && focusRef.current && foregroundRef.current && !busyRef.current;
 
   function detect(result: BarcodeScanningResult) {
-    if (!cameraMounted || detectionLock.current) return;
+    if (!canDetect() || detectionLock.current) return;
     if (!(supportedTypes as readonly string[]).includes(result.type)) {
       setMessage("This barcode format is not supported. Scan an EAN-13, EAN-8, UPC-A or ITF-14 product barcode instead.");
       return;
@@ -75,10 +105,12 @@ export default function BarcodeScreen() {
       return;
     }
     detectionLock.current = true;
+    gate.stop();
     setMessage(null);
     if (startBarcode(code)) router.push("/scan-results");
     else {
       detectionLock.current = false;
+      if (focusRef.current && foregroundRef.current && !busyRef.current) gate.start();
       setMessage("A new lookup could not start. Wait for the current scan to finish, then try again.");
     }
   }
@@ -89,6 +121,7 @@ export default function BarcodeScreen() {
   }
 
   function retryCamera() {
+    gate.stop();
     setCameraError(false);
     setReady(false);
     setMessage(null);
@@ -106,15 +139,17 @@ export default function BarcodeScreen() {
         {isWeb ? <View style={styles.state}>
           <Feather name="smartphone" size={34} color={Colors.light.accent} />
           <Text style={styles.stateTitle}>Scan in the mobile app</Text>
-          <Text style={styles.centered}>Live barcode scanning is available in the iPhone and Android app. Your browser preview does not use the camera.</Text>
-        </View> : busy ? <View style={styles.state}>
+          <Text style={styles.centered}>Live barcode scanning is available in the iPhone app. Your browser preview does not use the camera.</Text>
+        </View> : null}
+        {!isWeb && busy && <View style={styles.state}>
           <Feather name="search" size={34} color={Colors.light.accent} />
           <Text style={styles.stateTitle}>A scan is already in progress</Text>
           <Text style={styles.centered}>The camera is paused while we work on your current scan.</Text>
           <Pressable accessibilityRole="button" onPress={() => router.push("/scan-results")} style={styles.button}>
             <Text style={styles.buttonText}>Return to Current Results</Text>
           </Pressable>
-        </View> : !permission ? <View accessibilityRole="progressbar" accessibilityLabel="Checking camera permission" style={styles.state}>
+        </View>}
+        {isWeb ? null : !permission ? <View accessibilityRole="progressbar" accessibilityLabel="Checking camera permission" style={styles.state}>
           <View style={styles.skeleton} />
           <Text style={styles.centered}>Checking camera access…</Text>
           <Pressable accessibilityRole="button" onPress={askPermission} style={styles.secondaryButton}><Text style={styles.link}>Retry Camera Access</Text></Pressable>
@@ -130,20 +165,25 @@ export default function BarcodeScreen() {
           <Text accessibilityRole="alert" style={styles.stateTitle}>The camera could not start</Text>
           <Text style={styles.centered}>Close any other app using the camera, then try again.</Text>
           <Pressable accessibilityRole="button" onPress={retryCamera} style={styles.button}><Text style={styles.buttonText}>Retry Camera</Text></Pressable>
-        </View> : <View style={styles.cameraFrame}>
+        </View> : <View style={[styles.cameraFrame, busy && styles.hiddenCamera]}>
           {cameraMounted && <CameraView
             key={cameraKey}
             style={StyleSheet.absoluteFill}
             facing="back"
-            barcodeScannerSettings={{ barcodeTypes: [...supportedTypes] }}
+            active={wantsCamera && cameraActive}
+            barcodeScannerSettings={scannerSettings}
             onBarcodeScanned={detect}
             onCameraReady={() => setReady(true)}
-            onMountError={() => { setCameraError(true); setReady(false); }}
+            onMountError={() => {
+              if (!focusRef.current || !foregroundRef.current || busyRef.current) return;
+              gate.stop();
+              setCameraError(true); setReady(false);
+            }}
             accessibilityLabel="Live back camera for product barcode scanning"
           />}
           <View pointerEvents="none" style={styles.cameraOverlay}>
             <View style={styles.viewfinder} />
-            <Text style={styles.cameraHint}>{ready && cameraMounted ? "Keep the entire barcode inside the frame" : "Preparing camera…"}</Text>
+            <Text style={styles.cameraHint}>{ready && cameraActive ? "Keep the entire barcode inside the frame" : "Preparing camera…"}</Text>
           </View>
         </View>}
         {message && <View style={styles.feedback}><Feather name="info" size={18} color={Colors.light.accent} /><Text accessibilityLiveRegion="polite" style={styles.feedbackText}>{message}</Text></View>}
@@ -166,6 +206,7 @@ const styles = StyleSheet.create({
   secondaryButton: { minHeight: 44, padding: 12, justifyContent: "center" },
   link: { color: Colors.light.accent, fontWeight: "600", fontSize: 14 },
   cameraFrame: { width: "100%", aspectRatio: 1, maxHeight: 430, borderRadius: 18, overflow: "hidden", backgroundColor: Colors.light.text },
+  hiddenCamera: { display: "none" },
   cameraOverlay: { flex: 1, justifyContent: "center", alignItems: "center", gap: 24, padding: 20 },
   viewfinder: { width: "94%", height: "43%", borderRadius: 16, borderWidth: 3, borderColor: Colors.light.surface },
   cameraHint: { color: Colors.light.surface, backgroundColor: "rgba(26,29,38,0.8)", padding: 12, borderRadius: 8, fontSize: 12, lineHeight: 18, textAlign: "center" },
