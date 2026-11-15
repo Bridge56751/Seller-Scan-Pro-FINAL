@@ -164,10 +164,6 @@ export default function PaywallScreen() {
             <Text accessibilityRole="header" style={styles.title}>Seller Scan <Text style={styles.pro}>Pro</Text></Text>
             <Text style={styles.headline}>A second look.{"\n"}A better buy.</Text>
             <Text style={styles.subtitle}>Spot something you like? Find it, compare prices, and see where to buy it for less.</Text>
-            <View style={styles.noAccount}>
-              <Feather name="shield" size={14} color={C.accent} />
-              <Text style={styles.noAccountText}>No sign-in required</Text>
-            </View>
           </View>
 
           <View style={styles.benefits}>
@@ -289,8 +285,6 @@ const styles = StyleSheet.create({
   pro: { color: C.accent },
   headline: { fontSize: 35, lineHeight: 41, letterSpacing: -1.2, fontWeight: "800", color: C.text, textAlign: "center", marginTop: 12 },
   subtitle: { color: C.textSecondary, fontSize: 15, lineHeight: 23, textAlign: "center", marginTop: 13, maxWidth: 330 },
-  noAccount: { flexDirection: "row", gap: 6, alignItems: "center", marginTop: 15 },
-  noAccountText: { color: C.accent, fontSize: 12, fontWeight: "600" },
   benefits: { borderRadius: 18, backgroundColor: C.surface, paddingHorizontal: 17 },
   benefit: { flexDirection: "row", gap: 13, paddingVertical: 18, alignItems: "flex-start" },
   benefitBorder: { borderTopWidth: 1, borderTopColor: C.borderLight },
