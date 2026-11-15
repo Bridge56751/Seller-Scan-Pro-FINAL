@@ -5,3 +5,4 @@
 - [Scan cancellation](scan-cancellation.md) — cancellation preserves prior results and must not save a failure or start another paid request.
 - [Billing test compatibility](billing-test-compatibility.md) — Test Store cancellation differs between Web and native SDKs; test purchases must stay isolated.
 - [Replit environment markers](replit-environment-markers.md) — the platform production marker also appears in workspaces; use the deployment marker for published-app checks.
+- [Camera focus](camera-focus.md) — Expo iOS autofocus “off” means continuous; “on” focuses once and locks.

@@ -22,6 +22,9 @@ export default function BarcodeScreen() {
   const [message, setMessage] = useState<string | null>(null);
   const [ready, setReady] = useState(false);
   const [cameraKey, setCameraKey] = useState(0);
+  const [refocusing, setRefocusing] = useState(false);
+  const [torch, setTorch] = useState(false);
+  const focusTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [cameraActive, setCameraActive] = useState(false);
   const gateRef = useRef<ReturnType<typeof createCameraActivationGate> | null>(null);
   if (!gateRef.current) gateRef.current = createCameraActivationGate(setCameraActive);
@@ -47,6 +50,10 @@ export default function BarcodeScreen() {
     });
     return () => {
       focusRef.current = false;
+      if (focusTimer.current) clearTimeout(focusTimer.current);
+      focusTimer.current = null;
+      setRefocusing(false);
+      setTorch(false);
       gate.stop();
       setFocused(false);
       detectionLock.current = true;
@@ -93,6 +100,16 @@ export default function BarcodeScreen() {
   const cameraMounted = !isWeb && !!permission?.granted && !cameraError &&
     (Platform.OS === "ios" || (wantsCamera && cameraActive));
   const canDetect = () => gate.isActive() && focusRef.current && foregroundRef.current && !busyRef.current;
+
+  function refocus() {
+    if (!canDetect() || refocusing) return;
+    setRefocusing(true);
+    // Expo iOS "on" is one-shot focus; always return to continuous ("off").
+    focusTimer.current = setTimeout(() => {
+      focusTimer.current = null;
+      setRefocusing(false);
+    }, 1200);
+  }
 
   function detect(result: BarcodeScanningResult) {
     if (!canDetect() || detectionLock.current) return;
@@ -172,6 +189,8 @@ export default function BarcodeScreen() {
             key={cameraKey}
             style={StyleSheet.absoluteFill}
             facing="back"
+            autofocus={refocusing && wantsCamera ? "on" : "off"}
+            enableTorch={torch && wantsCamera && cameraActive}
             active={wantsCamera && cameraActive}
             barcodeScannerSettings={scannerSettings}
             onBarcodeScanned={detect}
@@ -183,6 +202,14 @@ export default function BarcodeScreen() {
             }}
             accessibilityLabel="Live back camera for product barcode scanning"
           />}
+          <Pressable
+            style={StyleSheet.absoluteFill}
+            accessibilityRole="button"
+            accessibilityLabel="Refocus barcode camera"
+            accessibilityHint="Tap to refocus at the center. Move the barcode farther away if it stays blurry."
+            disabled={!cameraActive || refocusing}
+            onPress={refocus}
+          />
           <View pointerEvents="none" style={styles.cameraOverlay}>
             <View style={styles.shade} />
             <View style={styles.finderRow}>
@@ -196,9 +223,18 @@ export default function BarcodeScreen() {
               <View style={styles.shade} />
             </View>
             <View style={[styles.shade, styles.hintArea]}>
-              <Text accessibilityLiveRegion="polite" style={styles.cameraHint}>{ready && cameraActive ? "Fit the full barcode in the frame" : "Preparing camera…"}</Text>
+              <Text accessibilityLiveRegion="polite" style={styles.cameraHint}>{ready && cameraActive ? refocusing ? "Focusing…" : "Blurry? Move back a little. Tap to refocus." : "Preparing camera…"}</Text>
             </View>
           </View>
+          {cameraActive && <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={torch ? "Turn camera light off" : "Turn camera light on"}
+            accessibilityState={{ selected: torch }}
+            onPress={() => setTorch(value => !value)}
+            style={styles.torchButton}
+          >
+            <Feather name={torch ? "zap" : "zap-off"} size={21} color="#FFFFFF" />
+          </Pressable>}
         </View>}
         {message && <View style={styles.feedback}><Feather name="info" size={18} color={Colors.light.accent} /><Text accessibilityLiveRegion="polite" style={styles.feedbackText}>{message}</Text></View>}
       </ScrollView>
@@ -221,6 +257,7 @@ const styles = StyleSheet.create({
   link: { color: Colors.light.accent, fontWeight: "600", fontSize: 14 },
   cameraFrame: { width: "100%", aspectRatio: 1, maxHeight: 430, borderRadius: 18, overflow: "hidden", backgroundColor: Colors.light.text },
   hiddenCamera: { display: "none" },
+  torchButton: { position: "absolute", right: 12, top: 12, width: 44, height: 44, borderRadius: 22, backgroundColor: "rgba(0,0,0,0.65)", alignItems: "center", justifyContent: "center" },
   cameraOverlay: { flex: 1 },
   shade: { flex: 1, backgroundColor: "rgba(26,29,38,0.5)" },
   finderRow: { flexDirection: "row", height: "38%" },
