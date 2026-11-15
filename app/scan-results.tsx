@@ -157,12 +157,10 @@ export default function ScanResultsScreen() {
           {openingUrl && <Text accessibilityLiveRegion="polite" style={styles.caption}>Opening store listing…</Text>}
           {session.historyWarning && <Text accessibilityRole="alert" style={styles.error}>{session.historyWarning}</Text>}
           {session.result?.fallbackUsed && <Text style={styles.caption}>We used a shorter search to find these possible matches.</Text>}
-          {session.result && <Text style={styles.caption}>Prices checked {new Date(session.result.fetchedAt).toLocaleString()}. Saved prices may change.</Text>}
 
           {!processing && hasSearch && offers.length > 0 && <>
             <View style={styles.sectionHeading}><Text style={styles.sectionTitle}>Possible matches</Text><Text style={styles.count}>{offers.length} {offers.length === 1 ? "listing" : "listings"}</Text></View>
             <PriceSortControl value={priceSort} onChange={setPriceSort} />
-            <Text style={styles.body}>{priceSort === "accurate" ? "Closest product-name matches first, using search relevance to break ties. These are possible matches, not verified identical items." : `All ${session.result?.currency} prices sorted together. Other currencies and unavailable prices follow.`} Check the exact item and offer terms at the store.</Text>
             {sortedOffers.map((offer, index) => <ShoppingOfferCard key={`${offer.url}-${index}`} offer={offer} cheapest={rankable(offer) && offer.amount === lowest} onOpen={openListing} />)}
           </>}
 
