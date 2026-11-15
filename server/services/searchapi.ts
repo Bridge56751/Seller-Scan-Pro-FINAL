@@ -1,5 +1,6 @@
 import type { ComparisonInput, ShoppingOffer, PhotoMatch } from "../../shared/shopping";
 import { throwIfCanceled } from "../../shared/cancellation";
+import { isApprovedMarketplaceUrl } from "../../shared/marketplace-policy";
 
 export class ShoppingError extends Error {
   constructor(public status: number, public code: string, message: string) {
@@ -83,7 +84,7 @@ export function normalizeLensOffers(data: Record<string, unknown>) {
   for (const [index, row] of rows(data.visual_matches).entries()) {
     const title = text(row.title).trim();
     const url = safeUrl(row.link);
-    if (!title || !url) { excluded++; continue; }
+    if (!title || !url || !isApprovedMarketplaceUrl(url)) { excluded++; continue; }
     if (seen.has(url)) continue;
     seen.add(url);
     const rawPrice = text(row.price).trim();

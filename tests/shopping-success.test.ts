@@ -39,7 +39,7 @@ test("authenticated photo identification uses private storage and cleans up succ
       assert.equal(meta.format, "jpeg");
       assert.equal(meta.exif, undefined);
       imageFetched = true;
-      return Response.json({ visual_matches: [{ title: "Sony WH-1000XM5 Black", source: "Fixture retailer" }] });
+      return Response.json({ visual_matches: [{ title: "Sony WH-1000XM5 Black", source: "eBay", link: "https://www.ebay.com/itm/fixture" }] });
     }
     assert.match(target.searchParams.get("q")!, /Sony WH-1000XM5 Black/);
     assert.equal(target.searchParams.get("gl"), "us");

@@ -10,6 +10,7 @@ import type { ShoppingOffer } from "@/shared/shopping";
 import PriceSortControl from "@/components/shopping/PriceSortControl";
 import ScanLoading from "@/components/shopping/ScanLoading";
 import ScanBrandHeader from "@/components/ScanBrandHeader";
+import { isApprovedMarketplaceUrl } from "@/shared/marketplace-policy";
 import { isComparablePrice, sortOffersByPrice, type PriceSort } from "@/shared/offer-sorting";
 
 type Condition = "any" | "new" | "used";
@@ -29,7 +30,8 @@ export default function ScanResultsScreen() {
   const isWeb = Platform.OS === "web";
   const processing = session.stage === "identifying" || session.stage === "searching";
   const hasSearch = !!session.result;
-  const offers = session.result?.offers || [];
+  // Also apply the policy to old History entries and optional Shopping searches.
+  const offers = (session.result?.offers || []).filter(offer => isApprovedMarketplaceUrl(offer.url));
   const rankable = (offer: ShoppingOffer) => isComparablePrice(offer, session.result?.currency);
   const sortedOffers = sortOffersByPrice(offers, session.result?.currency, priceSort, session.query);
   const comparable = offers.filter(rankable);
@@ -165,7 +167,7 @@ export default function ScanResultsScreen() {
 
           {!processing && session.stage === "ready" && offers.length === 0 && <View style={styles.empty}>
             <View style={styles.emptyIcon}><Feather name="search" size={28} color={Colors.light.accent} /></View>
-            <Text style={styles.emptyTitle}>{hasSearch ? "No listings found this time" : isBarcode ? "No product found for this barcode" : "No clear visual matches"}</Text>
+            <Text style={styles.emptyTitle}>{hasSearch ? "No listings from approved stores" : isBarcode ? "No product found for this barcode" : "No clear visual matches"}</Text>
             <Text style={styles.body}>{isBarcode ? "Try another product barcode, or enter the product name below to search stores." : hasSearch ? "Try a shorter product name or a different condition. You can also scan the label from another angle." : "Try a clearer photo of the product label, or enter a name below to search stores."}</Text>
           </View>}
 

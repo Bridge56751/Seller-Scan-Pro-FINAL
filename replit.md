@@ -2,6 +2,8 @@
 
 ## Current scope override
 
+Marketplace selection: favor resale marketplaces (including eBay and Mercari), established retailers, and selected known official brand domains. Exclude Temu and unfamiliar destinations using actual URL hosts, not provider seller labels. Being listed does not verify an individual seller's authorization or authenticity. **Why:** The user wants comparable sources “like what a reseller would want to see.”
+
 The released app is iOS-only. **Why:** The user stated, “this is only going to be an ios app.” Preserve web/Expo previews for development, but target iOS for production device-abuse protections.
 
 The RevenueCat project for this app is **Seller Scan**, not **Lens Lingo**. Do not modify Lens Lingo when configuring or testing this app's billing. **Why:** The user explicitly identified Lens Lingo as another project.

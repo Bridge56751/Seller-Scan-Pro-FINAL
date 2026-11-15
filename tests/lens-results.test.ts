@@ -5,13 +5,13 @@ import { sortOffersByPrice } from "../shared/offer-sorting";
 
 test("Lens preserves priced and unpriced destinations and skips unsafe links",()=>{
   const {offers,excluded}=normalizeLensOffers({visual_matches:[
-    {title:"Bottle",source:"A",link:"https://a.example/item"},
-    {title:"Bottle",source:"B",link:"https://b.example/item",price:"$24*",extracted_price:24,currency:"USD"},
-    {title:"Bottle",source:"C",link:"https://c.example/item",price:"€8",extracted_price:8,currency:"EUR"},
-    {title:"Bottle",source:"D",link:"https://d.example/item",price:"$10",extracted_price:10,currency:"USD"},
-    {title:"Bottle",source:"E",link:"https://e.example/item",price:"$12*",extracted_price:12},
+    {title:"Bottle",source:"A",link:"https://www.ebay.com/itm/a"},
+    {title:"Bottle",source:"B",link:"https://www.mercari.com/us/item/b",price:"$24*",extracted_price:24,currency:"USD"},
+    {title:"Bottle",source:"C",link:"https://www.ebay.de/itm/c",price:"€8",extracted_price:8,currency:"EUR"},
+    {title:"Bottle",source:"D",link:"https://www.target.com/p/d",price:"$10",extracted_price:10,currency:"USD"},
+    {title:"Bottle",source:"E",link:"https://www.nike.com/t/e",price:"$12*",extracted_price:12},
     {title:"Bad",link:"javascript:alert(1)"},
-    {title:"Duplicate",link:"https://a.example/item"},
+    {title:"Duplicate",link:"https://www.ebay.com/itm/a"},
   ]});
   assert.equal(offers.length,5);
   assert.equal(excluded,1);
@@ -27,8 +27,8 @@ test("Lens preserves priced and unpriced destinations and skips unsafe links",()
 test("missing, invalid and unsafe Lens data cannot invent prices or images",()=>{
   assert.deepEqual(normalizeLensOffers({}).offers,[]);
   const {offers}=normalizeLensOffers({visual_matches:[
-    {title:"A",link:"https://a.example",extracted_price:9,currency:"USD",thumbnail:"https://unpkg.com/a.png"},
-    {title:"B",link:"https://b.example",price:"Contact seller",extracted_price:-1},
+    {title:"A",link:"https://www.ebay.com/itm/a",extracted_price:9,currency:"USD",thumbnail:"https://unpkg.com/a.png"},
+    {title:"B",link:"https://www.mercari.com/us/item/b",price:"Contact seller",extracted_price:-1},
   ]});
   assert.equal(offers[0].amount,null);
   assert.equal(offers[0].currency,null);
