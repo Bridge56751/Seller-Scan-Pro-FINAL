@@ -12,7 +12,7 @@ const TERMS_OF_SERVICE_URL = "https://www.apple.com/legal/internet-services/itun
 
 export default function SettingsScreen() {
   const insets = useSafeAreaInsets();
-  const { isPaid, isLoading, scanCount, freePhotoScansLeft, freeBarcodeScansLeft, restorePurchases, customerId, verificationError, refreshDevice } = useAuth();
+  const { isPaid, isLoading, scanCount, freePhotoScansLeft, freeBarcodeScansLeft, restorePurchases, verificationError, refreshDevice } = useAuth();
   useFocusEffect(useCallback(() => { void refreshDevice(); },[refreshDevice]));
   const [restoring, setRestoring] = useState(false);
   const webTopInset = Platform.OS === "web" ? 67 : 0;
@@ -54,9 +54,6 @@ export default function SettingsScreen() {
             <View style={styles.divider} />
 
             <View style={{ padding: 16, gap: 8 }}>
-              <Text style={styles.statLabel}>Customer ID</Text>
-              <Text selectable style={styles.userEmail}>{customerId || "Registering this device…"}</Text>
-              <Text style={styles.userEmail}>Automatically assigned to this device. No sign-in required.</Text>
               {verificationError && <Text accessibilityRole="alert" style={{ color: Colors.light.danger }}>{verificationError}</Text>}
               <Pressable accessibilityRole="button" onPress={() => void refreshDevice()}>
                 <Text style={{ color: Colors.light.accent }}>Refresh purchase status</Text>
