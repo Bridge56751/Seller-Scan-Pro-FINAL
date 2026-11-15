@@ -12,6 +12,8 @@ type BillingTestState = {
   hasTestAccess: boolean;
   expirationDate: string | null;
   customerId: string;
+  hasTestScanAccess: boolean;
+  testScanApproved: boolean;
 };
 
 type Action = "load" | "purchase" | "refresh" | "restore";
@@ -109,7 +111,7 @@ export default function BillingTestScreen() {
 
         <View style={styles.disclosure}>
           <Text style={styles.disclosureTitle}>Test only. No real charges.</Text>
-          <Text style={styles.body}>These actions test billing only. They do not unlock production access or change legacy purchases.</Text>
+          <Text style={styles.body}>Approved testers with an active test subscription can scan on the development server. Test purchases never unlock production access.</Text>
         </View>
 
         <View style={styles.section}>
@@ -142,8 +144,11 @@ export default function BillingTestScreen() {
             <Text style={styles.label}>Test access</Text>
             <Text style={styles.caption}>Verified by the server directly with RevenueCat.</Text>
             <Text style={[styles.status, state?.hasTestAccess && styles.activeStatus]}>
-              {state ? state.hasTestAccess ? "Active — test only" : "Not active" : "Not loaded"}
+              {state ? state.hasTestScanAccess ? "Active — development scans unlocked" : state.hasTestAccess ? "Active — billing test only" : "Not active" : "Not loaded"}
             </Text>
+            {state && <Text style={styles.body}>{state.testScanApproved
+              ? "This tester is approved for development scans. An active test subscription is required. The monthly and per-minute limits still apply."
+              : "This tester is not approved for development scans."}</Text>}
             <View style={styles.divider} />
             <Text style={styles.label}>Test customer ID</Text>
             <Text selectable style={styles.body}>{state?.customerId || "Not loaded"}</Text>

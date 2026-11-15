@@ -2,6 +2,8 @@ import { Router } from "express";
 import { authenticateDevice, DeviceError } from "../services/device-customers";
 import { scanAllowances } from "../services/scan-rate-limits";
 import { verifyRevenueCat } from "../services/verify-revenuecat";
+import { verifyScanAccess } from "../services/scan-access";
+import { testScansApproved } from "../../shared/test-scan-policy";
 
 const router = Router();
 // Limit registration/verification load; counters still live in the database.
@@ -25,9 +27,9 @@ router.post("/api/device/register", async (req,res,next) => {
 router.post("/api/device/status", async (req,res,next) => {
   try {
     const device = await authenticateDevice(req);
-    const access = await verifyRevenueCat(device.customer_id, false, req.query.refresh === "true");
+    const access = await verifyScanAccess(device.customer_id, req.query.refresh === "true");
     const allowance = await scanAllowances(device.customer_id);
-    res.json({customerId:device.customer_id,isPaid:access.hasAccess,...allowance,
+    res.json({customerId:device.customer_id,isPaid:access.isPaid,hasTestScanAccess:access.hasTestScanAccess,...allowance,
       freeScansLeft:allowance.freePhotoScansLeft+allowance.freeBarcodeScansLeft,
       billingVerified:true,expirationDate:access.expirationDate});
   } catch(error){next(error);}
@@ -37,7 +39,10 @@ router.post("/api/device/billing-test", async (req,res,next) => {
   try {
     const device = await authenticateDevice(req);
     const access = await verifyRevenueCat(device.test_customer_id,true,true);
-    res.json({customerId:device.test_customer_id,hasTestAccess:access.hasAccess,expirationDate:access.expirationDate});
+    res.json({customerId:device.test_customer_id,hasTestAccess:access.hasAccess,
+      testScanApproved:testScansApproved(device.test_customer_id),
+      hasTestScanAccess:testScansApproved(device.test_customer_id) && access.hasAccess,
+      expirationDate:access.expirationDate});
   } catch(error){next(error);}
 });
 router.post("/api/device/record-scan", (_req,res) => {

@@ -12,7 +12,7 @@ const TERMS_OF_SERVICE_URL = "https://www.apple.com/legal/internet-services/itun
 
 export default function SettingsScreen() {
   const insets = useSafeAreaInsets();
-  const { isPaid, isLoading, scanCount, freePhotoScansLeft, freeBarcodeScansLeft, restorePurchases, verificationError, refreshDevice } = useAuth();
+  const { isPaid, hasTestScanAccess, isLoading, scanCount, freePhotoScansLeft, freeBarcodeScansLeft, restorePurchases, verificationError, refreshDevice } = useAuth();
   useFocusEffect(useCallback(() => { void refreshDevice(); },[refreshDevice]));
   const [restoring, setRestoring] = useState(false);
   const webTopInset = Platform.OS === "web" ? 67 : 0;
@@ -22,7 +22,7 @@ export default function SettingsScreen() {
     Linking.openURL(url);
   };
 
-  const accountType = isPaid ? "Pro" : "Free";
+  const accountType = isPaid ? "Pro" : hasTestScanAccess ? "Tester" : "Free";
 
   return (
     <View style={styles.container}>

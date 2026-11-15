@@ -22,7 +22,7 @@ const benefits = [
 ];
 
 export default function PaywallScreen() {
-  const { isPaid, purchaseSubscription, restorePurchases } = useAuth();
+  const { isPaid, purchaseSubscription, restorePurchases, refreshDevice } = useAuth();
   const [plan, setPlan] = useState<ProPaywallPlan | null>(null);
   const [loading, setLoading] = useState(true);
   const [pricingError, setPricingError] = useState<string | null>(null);
@@ -87,7 +87,7 @@ export default function PaywallScreen() {
           } else {
             setTestSuccess(result.state.hasTestAccess);
             setNotice(result.state.hasTestAccess
-              ? { kind: "success", text: "Test subscription verified in the Test Store only. No real charges. Real scans have not been unlocked." }
+              ? { kind: "success", text: result.state.hasTestScanAccess ? "Test subscription verified. Development scans are unlocked for this approved tester. No real charges or production access." : "Test subscription verified. This tester is not approved for development scans. No real charges or production access." }
               : { kind: "error", text: "The Test Store has not verified test access yet. Try restoring test purchases.", retry: "restore" });
           }
         } else {
@@ -97,10 +97,11 @@ export default function PaywallScreen() {
           setNotice({
             kind: state.hasTestAccess ? "success" : "neutral",
             text: state.hasTestAccess
-              ? "Test subscription restored in the Test Store only. No real charges. Real scans have not been unlocked."
+              ? state.hasTestScanAccess ? "Test subscription restored. Development scans are unlocked for this approved tester. No real charges or production access." : "Test subscription restored. This tester is not approved for development scans. No real charges or production access."
               : "No active test subscription was found. Real App Store purchases can only be restored in the native app.",
           });
         }
+        await refreshDevice();
       } else if (action === "purchase" && plan) {
         const result = await purchaseSubscription(plan.productId);
         if (!mounted.current) return;
@@ -233,7 +234,7 @@ export default function PaywallScreen() {
 
           <Text style={styles.legalCopy}>
             {testMode
-              ? "This is a simulated Test Store purchase, not an App Store subscription. Test access is separate from Seller Scan Pro and cannot be used for real scans."
+              ? "This is a simulated Test Store purchase, not an App Store subscription. Only explicitly approved testers can unlock development scans. Production requires a real subscription."
               : "Payment is charged to your Apple Account at confirmation. Your monthly subscription automatically renews unless cancelled at least 24 hours before the current period ends. Your account is charged for renewal within 24 hours before the period ends. Manage or cancel in App Store account settings."}
           </Text>
           <View style={styles.legalLinks}>

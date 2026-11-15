@@ -8,7 +8,7 @@ type DeviceState = DeviceStatus & {deviceId:string};
 interface AuthContextValue {
   device: DeviceState|null;
   customerId: string|null;
-  isLoading:boolean; isReady:boolean; isPaid:boolean;
+  isLoading:boolean; isReady:boolean; isPaid:boolean; hasTestScanAccess:boolean;
   scanCount:number; freeScansLeft:number; freePhotoScansLeft:number; freeBarcodeScansLeft:number;
   rcReady:boolean; verificationError:string|null;
   refreshDevice:()=>Promise<void>;
@@ -65,6 +65,7 @@ export function AuthProvider({children}:{children:ReactNode}) {
     }catch{await refreshDevice();return {success:false,isPro:false,error:"Restored purchases could not be verified. Please retry."};}
   },[refreshDevice]);
   return <AuthContext.Provider value={{device,customerId,isLoading,isReady:!!device,isPaid:device?.isPaid===true,
+    hasTestScanAccess:device?.hasTestScanAccess===true,
     scanCount:device?.scanCount??0,freeScansLeft:device?.freeScansLeft??0,
     freePhotoScansLeft:device?.freePhotoScansLeft??0,freeBarcodeScansLeft:device?.freeBarcodeScansLeft??0,
     rcReady,verificationError,refreshDevice,purchaseSubscription,restorePurchases}}>{children}</AuthContext.Provider>;

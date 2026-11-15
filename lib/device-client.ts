@@ -3,7 +3,7 @@ import { getApiUrl } from "./query-client";
 import { fetch } from "expo/fetch";
 
 export type CustomerIdentity = {customerId:string;testCustomerId:string};
-export type DeviceStatus = {customerId:string;isPaid:boolean;scanCount:number;freeScansLeft:number;
+export type DeviceStatus = {customerId:string;isPaid:boolean;hasTestScanAccess:boolean;scanCount:number;freeScansLeft:number;
   freePhotoScansLeft:number;freeBarcodeScansLeft:number;billingVerified:boolean;expirationDate:string|null};
 let identity: Promise<CustomerIdentity> | undefined;
 
@@ -28,5 +28,5 @@ export async function getVerifiedStatus(refresh=false) {
 export async function getVerifiedTestStatus() {
   if (!__DEV__) throw new Error("Test verification is not available in this build.");
   await registerDevice();
-  return deviceRequest<{customerId:string;hasTestAccess:boolean;expirationDate:string|null}>("billing-test");
+  return deviceRequest<{customerId:string;hasTestAccess:boolean;testScanApproved:boolean;hasTestScanAccess:boolean;expirationDate:string|null}>("billing-test");
 }

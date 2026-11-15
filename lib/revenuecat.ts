@@ -150,6 +150,8 @@ export type BillingTestState = {
   productTitle: string; price: string; productIdentifier: string;
   hasTestAccess: boolean; expirationDate: string | null;
   customerId: string;
+  hasTestScanAccess: boolean;
+  testScanApproved: boolean;
 };
 
 async function testStore() {
@@ -176,6 +178,8 @@ async function testState(monthly: any): Promise<BillingTestState> {
     hasTestAccess: access.hasTestAccess,
     expirationDate: access.expirationDate,
     customerId: access.customerId,
+    hasTestScanAccess: access.hasTestScanAccess,
+    testScanApproved: access.testScanApproved,
   };
 }
 

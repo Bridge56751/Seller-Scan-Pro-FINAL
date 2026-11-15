@@ -1,6 +1,6 @@
 import { Pool } from "pg";
 import { randomUUID } from "node:crypto";
-import { verifyRevenueCat } from "./verify-revenuecat";
+import { verifyScanAccess, approvedTestIdentity } from "./scan-access";
 
 const pool = new Pool({ connectionString: process.env.SUPABASE_DATABASE_URL, max: 4,
   connectionTimeoutMillis: 10000, query_timeout: 10000, statement_timeout: 10000 });
@@ -19,10 +19,16 @@ export async function reserveScan(customerId: string, issuePermit = false, permi
   kind: "photo" | "barcode" | "search" = "search") {
   if (!process.env.SUPABASE_DATABASE_URL) throw new Error("Scan limits unavailable");
   // A follow-up permit was already authorized and counted. All new attempts use
-  // server-verified production access, normally served from the five-minute cache.
-  let isPaid = false;
+  // server-verified access (production, or approved development-only testing),
+  // normally served from the five-minute cache.
+  let hasScanAccess = false;
+  let testOnly = false;
   if (!permit) {
-    try { isPaid = (await verifyRevenueCat(customerId)).hasAccess; }
+    try {
+      const access = await verifyScanAccess(customerId);
+      hasScanAccess = access.isPaid || access.hasTestScanAccess;
+      testOnly = access.hasTestScanAccess && !access.isPaid;
+    }
     catch { throw new ScanLimitError(503,"BILLING_UNAVAILABLE",
       "Subscription verification is temporarily unavailable. No scan was used. Please retry."); }
   }
@@ -36,8 +42,11 @@ export async function reserveScan(customerId: string, issuePermit = false, permi
     if (permit) {
       if (!/^[\da-f]{8}-[\da-f]{4}-[\da-f]{4}-[\da-f]{4}-[\da-f]{12}$/i.test(permit))
         throw new ScanLimitError(409, "INVALID_SCAN_PERMIT", "This scan's price lookup is no longer available. Please retry.");
+      const candidate = await db.query("SELECT test_only FROM scan_search_permits WHERE id=$1 AND customer_id=$2",[permit,customerId]);
+      const allowTest = candidate.rows[0]?.test_only ? !!await approvedTestIdentity(customerId) : false;
       const claimed = await db.query(`UPDATE scan_search_permits SET used=true
-        WHERE id=$1 AND customer_id=$2 AND NOT used AND expires_at>clock_timestamp() RETURNING id`, [permit,customerId]);
+        WHERE id=$1 AND customer_id=$2 AND NOT used AND expires_at>clock_timestamp()
+        AND (NOT test_only OR $3) RETURNING id`, [permit,customerId,allowTest]);
       if (!claimed.rowCount)
         throw new ScanLimitError(409, "INVALID_SCAN_PERMIT", "This scan's price lookup has expired or was already used. Please retry.");
       await db.query("COMMIT");
@@ -55,7 +64,7 @@ export async function reserveScan(customerId: string, issuePermit = false, permi
     const month = new Date(row.month);
     const used = new Date(row.month_start).getTime() === month.getTime() ? row.monthly_count : 0;
     const recent: Date[] = row.recent;
-    if (!isPaid && (kind === "search" || (kind === "photo" ? row.free_photo_used : row.free_barcode_used))) {
+    if (!hasScanAccess && (kind === "search" || (kind === "photo" ? row.free_photo_used : row.free_barcode_used))) {
       throw new ScanLimitError(402, "SUBSCRIPTION_REQUIRED",
         kind === "search" ? "Additional price searches require an active subscription. Your first photo and barcode scans each include one price lookup." :
           `Your one free ${kind === "photo" ? "photo" : "barcode"} scan has been used. An active subscription is required for another. Restore an existing purchase in Settings.`);
@@ -75,11 +84,11 @@ export async function reserveScan(customerId: string, issuePermit = false, permi
       recent_scans=$4::timestamptz[], total_scans=total_scans+1,
       free_photo_used=free_photo_used OR $5,
       free_barcode_used=free_barcode_used OR $6 WHERE customer_id=$1`,
-    [customerId,month,used+1,[...recent,new Date(now)],!isPaid && kind==="photo",!isPaid && kind==="barcode"]);
+    [customerId,month,used+1,[...recent,new Date(now)],!hasScanAccess && kind==="photo",!hasScanAccess && kind==="barcode"]);
     const scanPermit = issuePermit ? randomUUID() : undefined;
     if (scanPermit) {
-      await db.query(`INSERT INTO scan_search_permits(id,customer_id,expires_at)
-        VALUES($1,$2,clock_timestamp()+interval '5 minutes')`, [scanPermit,customerId]);
+      await db.query(`INSERT INTO scan_search_permits(id,customer_id,expires_at,test_only)
+        VALUES($1,$2,clock_timestamp()+interval '5 minutes',$3)`, [scanPermit,customerId,testOnly]);
     }
     await db.query("DELETE FROM scan_search_permits WHERE customer_id=$1 AND expires_at<=clock_timestamp()", [customerId]);
     await db.query("COMMIT");
