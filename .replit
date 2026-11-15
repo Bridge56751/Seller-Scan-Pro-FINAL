@@ -76,6 +76,7 @@ ensurePreviewReachable = "/status"
 [userenv]
 
 [userenv.shared]
+EXPO_PUBLIC_SUPABASE_URL = "https://rntdosvvitcttrshubqz.supabase.co"
 
 [postMerge]
 path = "scripts/post-merge.sh"
