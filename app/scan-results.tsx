@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { ActivityIndicator, Image, Keyboard, KeyboardAvoidingView, Linking, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
+import { Image, Keyboard, KeyboardAvoidingView, Linking, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Feather, FontAwesome } from "@expo/vector-icons";
 import { router } from "expo-router";
@@ -8,6 +8,7 @@ import { useScanSession } from "@/lib/scan-session";
 import ShoppingOfferCard from "@/components/shopping/ShoppingOfferCard";
 import type { ShoppingOffer } from "@/shared/shopping";
 import PriceSortControl from "@/components/shopping/PriceSortControl";
+import ScanLoading from "@/components/shopping/ScanLoading";
 import { isComparablePrice, sortOffersByPrice, type PriceSort } from "@/shared/offer-sorting";
 
 type Condition = "any" | "new" | "used";
@@ -104,6 +105,13 @@ export default function ScanResultsScreen() {
       </View>
       <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === "ios" ? "padding" : undefined}>
         <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+          {processing ? <ScanLoading
+            stage={session.stage === "identifying" ? "identifying" : "searching"}
+            isBarcode={isBarcode}
+            imageUri={isBarcode ? productImage : session.photoUri}
+            query={session.query}
+            onCancel={cancel}
+          /> : <>
           {isBarcode ? <View style={styles.product}>
             {productImage && !imageFailed ? <Image source={{ uri: productImage }} resizeMode="contain" style={styles.photo} accessibilityLabel="Possible product match from barcode lookup" onError={() => setImageFailed(true)} /> : <View style={[styles.photo, styles.barcodePlaceholder]}><FontAwesome name="barcode" size={38} color={Colors.light.accent} /></View>}
             <View style={styles.productCopy}>
@@ -128,23 +136,12 @@ export default function ScanResultsScreen() {
             <Text style={styles.eyebrow}>YOUR SEARCH</Text>
             <Text style={styles.productTitle}>{session.query}</Text>
           </View>}
+          </>}
 
           {session.errorCode === "SUBSCRIPTION_REQUIRED" && <Pressable accessibilityRole="button"
             onPress={() => router.push("/paywall")} style={styles.searchButton}>
             <Text style={styles.primaryText}>Scan Allowance & Restore Purchases</Text>
           </Pressable>}
-          {processing && <View accessibilityRole="progressbar" accessibilityLabel={session.stage === "identifying" ? isBarcode ? "Identifying product from barcode" : "Finding possible visual matches" : "Searching store listings"} style={styles.progress}>
-            <View style={styles.progressTop}><ActivityIndicator color={Colors.light.accent} size="small" /><Text style={styles.progressTitle}>{session.stage === "identifying" ? isBarcode ? "Identifying your barcode" : "Finding possible matches" : "Searching store listings"}</Text></View>
-            <Text style={styles.body}>{session.stage === "identifying" ? isBarcode ? "Looking up this product barcode before searching store listings." : "Looking for similar products in your photo. This can take up to a minute." : isBarcode ? "Checking prices for the suggested product. Check the exact item and offer details at the store." : "Checking prices for the suggested product. Similar-looking items may differ."}</Text>
-            <View style={styles.progressSteps}>
-              <Text style={[styles.progressStep, session.stage === "identifying" && styles.activeStep]}>{isBarcode ? "1  Barcode identification" : "1  Photo search"}</Text>
-              <Feather name="chevron-right" size={14} color={Colors.light.textTertiary} />
-              <Text style={[styles.progressStep, session.stage === "searching" && styles.activeStep]}>2  Store listings</Text>
-            </View>
-            <Pressable accessibilityRole="button" accessibilityLabel="Cancel search" onPress={cancel} style={styles.inlineAction}>
-              <Text style={styles.linkText}>Cancel Search</Text>
-            </Pressable>
-          </View>}
           {session.stage === "canceled" && <Text accessibilityLiveRegion="polite" style={styles.body}>Search canceled. You can scan again or search by product name.</Text>}
 
           {(localError || session.error) && <View style={styles.errorBox}>
@@ -170,6 +167,7 @@ export default function ScanResultsScreen() {
             <Text style={styles.body}>{isBarcode ? "Try another product barcode, or enter the product name below to search stores." : hasSearch ? "Try a shorter product name or a different condition. You can also scan the label from another angle." : "Try a clearer photo of the product label, or enter a name below to search stores."}</Text>
           </View>}
 
+          {!processing && <>
           <Pressable accessibilityRole="button" accessibilityState={{ expanded: showRefine, disabled: busy }} disabled={busy} onPress={openRefinement} style={({ pressed }) => [styles.refineToggle, (pressed || busy) && styles.dimmed]}>
             <Feather name="sliders" size={18} color={Colors.light.accent} />
             <Text style={styles.refineToggleText}>{showRefine ? "Hide Search Details" : session.query ? "Refine Search / Wrong Item?" : "Search by Product Name"}</Text>
@@ -187,10 +185,11 @@ export default function ScanResultsScreen() {
             </>}
           </View>}
           <Pressable accessibilityRole="link" onPress={() => router.push("/photo-privacy")} style={styles.privacy}><Text style={styles.privacyText}>Photo & Shopping Privacy</Text></Pressable>
+          </>}
         </ScrollView>
-        <View style={styles.footer}>
+        {!processing && <View style={styles.footer}>
           {isWeb ? <Text style={styles.webNote}>Use the iPhone or Android app to scan with your native camera.</Text> : <Pressable accessibilityRole="button" accessibilityState={{ disabled: busy, busy }} disabled={busy} onPress={scanAgain} style={({ pressed }) => [styles.scanButton, (busy || pressed) && styles.dimmed]}>{isBarcode ? <FontAwesome name="barcode" size={20} color={Colors.light.surface} /> : <Feather name="camera" size={20} color={Colors.light.surface} />}<Text style={styles.primaryText}>{busy ? "Scan in progress…" : isBarcode || session.photoUri ? "Scan Again" : "Scan a Product"}</Text></Pressable>}
-        </View>
+        </View>}
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
@@ -211,12 +210,6 @@ const styles = StyleSheet.create({
   eyebrow: { fontSize: 10, fontWeight: "700", letterSpacing: 1.5, color: Colors.light.accent },
   productTitle: { fontSize: 17, lineHeight: 23, fontWeight: "700", letterSpacing: -0.3, color: Colors.light.text },
   caption: { fontSize: 11, lineHeight: 17, color: Colors.light.textSecondary },
-  progress: { padding: 20, borderRadius: 16, backgroundColor: Colors.light.surface, borderWidth: 1, borderColor: Colors.light.border, gap: 12 },
-  progressTop: { flexDirection: "row", gap: 10, alignItems: "center" },
-  progressTitle: { flex: 1, fontSize: 16, fontWeight: "600", color: Colors.light.text },
-  progressSteps: { flexDirection: "row", alignItems: "center", flexWrap: "wrap", gap: 8, paddingTop: 8 },
-  progressStep: { fontSize: 11, color: Colors.light.textSecondary },
-  activeStep: { color: Colors.light.accent, fontWeight: "700" },
   sectionHeading: { flexDirection: "row", alignItems: "baseline", justifyContent: "space-between", gap: 8, marginTop: 8 },
   sectionTitle: { fontSize: 22, fontWeight: "700", letterSpacing: -0.5, color: Colors.light.text },
   count: { fontSize: 12, color: Colors.light.textSecondary },
