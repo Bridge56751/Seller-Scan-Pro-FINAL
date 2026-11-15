@@ -2,6 +2,8 @@
 
 ## Current scope override
 
+The RevenueCat project for this app is **Seller Scan**, not **Lens Lingo**. Do not modify Lens Lingo when configuring or testing this app's billing. **Why:** The user explicitly identified Lens Lingo as another project.
+
 The user wants automatic device-ID authentication backed by Supabase and five free scans per device, without collecting personal information or requiring email/password sign-in. Do not add account registration or login screens. Preserve the existing app name and UI; do not rename it Odo. The Supabase migration is not yet implemented; preserve the existing database until the target and migration are verified. **Why:** The user explicitly corrected the proposed account-sign-in approach and app name.
 
 Barcode scanning is a separate bottom navigation tab alongside the unchanged photo Scan action. Use on-device Expo Camera detection, then UPCitemdb's free trial lookup for identity and the existing shopping service for offers. Do not add a paid barcode plan without approval. Unknown codes and quota failures should be explicit, never fabricated or silently replaced with another product. Barcode scans belong in the existing local History and retain cancellation support. **Why:** The user approved the free-tier approach and specifically requested a separate bottom button.
