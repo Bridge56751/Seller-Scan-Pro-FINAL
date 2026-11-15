@@ -11,6 +11,7 @@ type BillingTestState = {
   productIdentifier: string;
   hasTestAccess: boolean;
   expirationDate: string | null;
+  customerId: string;
 };
 
 type Action = "load" | "purchase" | "refresh" | "restore";
@@ -139,9 +140,13 @@ export default function BillingTestScreen() {
           <Text style={styles.sectionTitle}>Test access status</Text>
           <View style={styles.card}>
             <Text style={styles.label}>Test access</Text>
+            <Text style={styles.caption}>Verified by the server directly with RevenueCat.</Text>
             <Text style={[styles.status, state?.hasTestAccess && styles.activeStatus]}>
               {state ? state.hasTestAccess ? "Active — test only" : "Not active" : "Not loaded"}
             </Text>
+            <View style={styles.divider} />
+            <Text style={styles.label}>Test customer ID</Text>
+            <Text selectable style={styles.body}>{state?.customerId || "Not loaded"}</Text>
             <View style={styles.divider} />
             <Text style={styles.label}>Test expiration</Text>
             <Text selectable style={styles.body}>{state ? expirationLabel(state.expirationDate) : "Not loaded"}</Text>

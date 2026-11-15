@@ -13,7 +13,7 @@ const TERMS_OF_SERVICE_URL = "https://www.apple.com/legal/internet-services/itun
 
 export default function SettingsScreen() {
   const insets = useSafeAreaInsets();
-  const { isPaid, scanCount, freeScansLeft, restorePurchases, setPaid } = useAuth();
+  const { isPaid, scanCount, freeScansLeft, restorePurchases, customerId, verificationError, refreshDevice } = useAuth();
   const [restoring, setRestoring] = useState(false);
   const webTopInset = Platform.OS === "web" ? 67 : 0;
   const webBottomInset = Platform.OS === "web" ? 34 : 0;
@@ -52,6 +52,17 @@ export default function SettingsScreen() {
               </View>
             </View>
 
+            <View style={styles.divider} />
+
+            <View style={{ padding: 16, gap: 8 }}>
+              <Text style={styles.statLabel}>Customer ID</Text>
+              <Text selectable style={styles.userEmail}>{customerId || "Registering this device…"}</Text>
+              <Text style={styles.userEmail}>Automatically assigned to this device. No sign-in required.</Text>
+              {verificationError && <Text accessibilityRole="alert" style={{ color: Colors.light.danger }}>{verificationError}</Text>}
+              <Pressable accessibilityRole="button" onPress={() => void refreshDevice()}>
+                <Text style={{ color: Colors.light.accent }}>Refresh purchase status</Text>
+              </Pressable>
+            </View>
             <View style={styles.divider} />
 
             <View style={styles.statRow}>
@@ -164,12 +175,14 @@ export default function SettingsScreen() {
                 try {
                   const result = await restorePurchases();
                   if (result.isPro) {
-                    setPaid(true);
                     if (Platform.OS === "web") {
                       alert("Your Pro subscription has been restored!");
                     } else {
                       Alert.alert("Restored!", "Your Pro subscription has been restored.");
                     }
+                  } else if (result.error) {
+                    if (Platform.OS === "web") alert(result.error);
+                    else Alert.alert("Restore unavailable",result.error);
                   } else {
                     if (Platform.OS === "web") {
                       alert("No active subscription found.");

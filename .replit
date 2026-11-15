@@ -77,6 +77,10 @@ ensurePreviewReachable = "/status"
 
 [userenv.shared]
 EXPO_PUBLIC_SUPABASE_URL = "https://rntdosvvitcttrshubqz.supabase.co"
+REVENUECAT_APPLE_APP_ID = "appbfe187a6c1"
+REVENUECAT_PROJECT_ID = "projcafd31b0"
+REVENUECAT_PRO_ENTITLEMENT_ID = "entlff3f2a85d1"
+REVENUECAT_TEST_APP_ID = "app746dfc07f1"
 
 [postMerge]
 path = "scripts/post-merge.sh"

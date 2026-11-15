@@ -2,7 +2,7 @@ import { Platform } from "react-native";
 import { getApiUrl } from "./query-client";
 import { fetch } from "expo/fetch";
 import Constants, { ExecutionEnvironment } from "expo-constants";
-import { getBillingTestIdentity } from "./billing-test-identity";
+import { registerDevice, getVerifiedTestStatus } from "./device-client";
 import { isPurchaseCancelled } from "@/shared/billing-errors";
 
 let Purchases: any = null;
@@ -47,8 +47,16 @@ export async function configureRevenueCat(): Promise<boolean> {
       const RC = await loadPurchasesModule();
       if (!RC) throw new Error("The billing SDK could not load.");
       const apiKey = await fetchApiKey(test);
-      const appUserID = test ? await getBillingTestIdentity() : undefined;
-      await RC.configure({ apiKey, ...(appUserID ? { appUserID } : {}) });
+      const identity = await registerDevice();
+      const appUserID = test ? identity.testCustomerId : identity.customerId;
+      if (test) {
+        await RC.configure({ apiKey, appUserID });
+      } else {
+        // Preserve an existing anonymous native purchaser, then let RevenueCat alias it
+        // into this server-issued ID. This is SDK identity linking, not a user login.
+        await RC.configure({ apiKey });
+        if (await RC.getAppUserID() !== appUserID) await RC.logIn(appUserID);
+      }
       isTestStore = test;
       isConfigured = true;
       return true;
@@ -70,20 +78,6 @@ function hasProAccess(customerInfo: any): boolean {
     return true;
   }
   return false;
-}
-
-export async function checkSubscriptionStatus(): Promise<boolean> {
-  // Test transactions never grant production access or modify scan allowances.
-  if (isTestStore) return false;
-  const RC = await loadPurchasesModule();
-  if (!RC || !isConfigured) return false;
-
-  try {
-    const customerInfo = await RC.getCustomerInfo();
-    return hasProAccess(customerInfo);
-  } catch {
-    return false;
-  }
 }
 
 export async function purchaseSubscription(): Promise<{ success: boolean; error?: string }> {
@@ -146,6 +140,7 @@ export async function getOfferings(): Promise<any> {
 export type BillingTestState = {
   productTitle: string; price: string; productIdentifier: string;
   hasTestAccess: boolean; expirationDate: string | null;
+  customerId: string;
 };
 
 async function testStore() {
@@ -163,21 +158,22 @@ async function testPackage(RC: any) {
   return monthly;
 }
 
-function testState(monthly: any, customerInfo: any): BillingTestState {
-  const access = customerInfo.entitlements?.active?.["Seller Scan Pro"];
+async function testState(monthly: any): Promise<BillingTestState> {
+  const access = await getVerifiedTestStatus();
   return {
     productTitle: monthly.product.title,
     price: monthly.product.priceString,
     productIdentifier: monthly.product.identifier,
-    hasTestAccess: !!access?.isActive,
-    expirationDate: access?.expirationDate ?? null,
+    hasTestAccess: access.hasTestAccess,
+    expirationDate: access.expirationDate,
+    customerId: access.customerId,
   };
 }
 
 export async function loadBillingTest(): Promise<BillingTestState> {
   const RC = await testStore();
-  const [monthly, info] = await Promise.all([testPackage(RC), RC.getCustomerInfo()]);
-  return testState(monthly, info);
+  const monthly = await testPackage(RC);
+  return testState(monthly);
 }
 
 let testPurchaseInFlight = false;
@@ -188,10 +184,10 @@ export async function purchaseBillingTest(): Promise<{ cancelled: boolean; state
     const RC = await testStore();
     const monthly = await testPackage(RC);
     try {
-      const { customerInfo } = await RC.purchasePackage(monthly);
-      return { cancelled: false, state: testState(monthly, customerInfo) };
+      await RC.purchasePackage(monthly);
+      return { cancelled: false, state: await testState(monthly) };
     } catch (error: any) {
-      if (isPurchaseCancelled(error)) return { cancelled: true, state: testState(monthly, await RC.getCustomerInfo()) };
+      if (isPurchaseCancelled(error)) return { cancelled: true, state: await testState(monthly) };
       throw new Error(typeof error?.message === "string" ? error.message : "The test purchase failed. No production access was unlocked.");
     }
   } finally { testPurchaseInFlight = false; }
@@ -200,5 +196,6 @@ export async function purchaseBillingTest(): Promise<{ cancelled: boolean; state
 export async function restoreBillingTest(): Promise<BillingTestState> {
   const RC = await testStore();
   const monthly = await testPackage(RC);
-  return testState(monthly, await RC.restorePurchases());
+  await RC.restorePurchases();
+  return testState(monthly);
 }

@@ -1,170 +1,79 @@
-import { createContext, useContext, useState, useEffect, useMemo, useCallback, ReactNode } from "react";
-import { Platform } from "react-native";
-import { getApiUrl } from "./query-client";
-import { fetch } from "expo/fetch";
+import { createContext, useContext, useState, useEffect, useCallback, ReactNode } from "react";
+import { AppState } from "react-native";
 import { getDeviceId } from "./device-id";
-import { configureRevenueCat, checkSubscriptionStatus, restorePurchases as rcRestorePurchases, purchaseSubscription as rcPurchaseSubscription } from "./revenuecat";
+import { registerDevice, getVerifiedStatus, deviceRequest, type DeviceStatus } from "./device-client";
+import { configureRevenueCat, restorePurchases as rcRestorePurchases, purchaseSubscription as rcPurchaseSubscription } from "./revenuecat";
 
-const FREE_SCAN_LIMIT = 5;
-
-interface DeviceState {
-  deviceId: string;
-  isPaid: boolean;
-  scanCount: number;
-  freeScansLeft: number;
-}
-
+type DeviceState = DeviceStatus & {deviceId:string};
 interface AuthContextValue {
-  device: DeviceState | null;
-  isLoading: boolean;
-  isReady: boolean;
-  isPaid: boolean;
-  scanCount: number;
-  freeScansLeft: number;
-  recordScan: () => Promise<{ allowed: boolean; freeScansLeft: number }>;
-  refreshDevice: () => Promise<void>;
-  setPaid: (paid: boolean) => void;
-  purchaseSubscription: () => Promise<{ success: boolean; error?: string }>;
-  restorePurchases: () => Promise<{ success: boolean; isPro: boolean; error?: string }>;
-  rcReady: boolean;
+  device: DeviceState|null;
+  customerId: string|null;
+  isLoading:boolean; isReady:boolean; isPaid:boolean;
+  scanCount:number; freeScansLeft:number; rcReady:boolean; verificationError:string|null;
+  recordScan:()=>Promise<{allowed:boolean;freeScansLeft:number}>;
+  refreshDevice:()=>Promise<void>;
+  purchaseSubscription:()=>Promise<{success:boolean;error?:string}>;
+  restorePurchases:()=>Promise<{success:boolean;isPro:boolean;error?:string}>;
 }
-
-const AuthContext = createContext<AuthContextValue | null>(null);
-
-export function AuthProvider({ children }: { children: ReactNode }) {
-  const [device, setDevice] = useState<DeviceState | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [rcReady, setRcReady] = useState(false);
-
-  useEffect(() => {
-    initApp();
-  }, []);
-
-  async function initApp() {
-    let deviceId: string;
-    let deviceData: { isPaid: boolean; scanCount: number; freeScansLeft: number } = {
-      isPaid: false,
-      scanCount: 0,
-      freeScansLeft: FREE_SCAN_LIMIT,
-    };
-
+const AuthContext=createContext<AuthContextValue|null>(null);
+export function AuthProvider({children}:{children:ReactNode}) {
+  const [device,setDevice]=useState<DeviceState|null>(null);
+  const [customerId,setCustomerId]=useState<string|null>(null);
+  const [isLoading,setIsLoading]=useState(true);
+  const [rcReady,setRcReady]=useState(false);
+  const [verificationError,setVerificationError]=useState<string|null>(null);
+  const refreshDevice=useCallback(async()=>{
     try {
-      deviceId = await getDeviceId();
-      const baseUrl = getApiUrl();
-      const url = new URL("/api/device/status", baseUrl);
-
-      const res = await fetch(url.toString(), {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ deviceId }),
-      });
-
-      if (res.ok) {
-        const data = await res.json();
-        deviceData = {
-          isPaid: data.isPaid ?? false,
-          scanCount: data.scanCount ?? 0,
-          freeScansLeft: data.freeScansLeft ?? FREE_SCAN_LIMIT,
-        };
-      }
-    } catch {
-      deviceId = await getDeviceId();
-    }
-
-    const configured = await configureRevenueCat();
-    setRcReady(configured);
-
-    if (configured) {
-      const isPro = await checkSubscriptionStatus();
-      if (isPro) {
-        deviceData.isPaid = true;
-        deviceData.freeScansLeft = 0;
-      }
-    }
-
-    setDevice({ deviceId: deviceId!, ...deviceData });
-    setIsLoading(false);
-  }
-
-  const recordScan = useCallback(async (): Promise<{ allowed: boolean; freeScansLeft: number }> => {
-    const deviceId = await getDeviceId();
-    const baseUrl = getApiUrl();
-    const url = new URL("/api/device/record-scan", baseUrl);
-
+      const identity=await registerDevice();
+      setCustomerId(identity.customerId);
+      const configured=await configureRevenueCat();
+      setRcReady(configured);
+      const data=await getVerifiedStatus(true);
+      setDevice({...data,deviceId:await getDeviceId()});
+      setVerificationError(null);
+    } catch(error) {
+      // Unknown/unverified is not paid. Do not retain a stale paid flag on failure.
+      setDevice(null);
+      setVerificationError(error instanceof Error ? error.message : "Could not verify this device.");
+    } finally {setIsLoading(false);}
+  },[]);
+  useEffect(()=>{
+    void refreshDevice();
+    const listener=AppState.addEventListener("change",state=>{if(state==="active")void refreshDevice();});
+    const timer=setInterval(()=>{if(AppState.currentState==="active")void refreshDevice();},60000);
+    return ()=>{listener.remove();clearInterval(timer);};
+  },[refreshDevice]);
+  const recordScan=useCallback(async()=>{
     try {
-      const res = await fetch(url.toString(), {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ deviceId }),
-      });
-
-      if (!res.ok) return { allowed: false, freeScansLeft: 0 };
-
-      const data = await res.json();
-
-      setDevice((prev) =>
-        prev
-          ? { ...prev, scanCount: data.scanCount, freeScansLeft: data.freeScansLeft, isPaid: data.isPaid ?? prev.isPaid }
-          : prev,
-      );
-
-      return { allowed: data.allowed, freeScansLeft: data.freeScansLeft };
-    } catch {
-      return { allowed: false, freeScansLeft: 0 };
-    }
-  }, []);
-
-  const refreshDevice = useCallback(async () => {
-    await initApp();
-  }, []);
-
-  const setPaid = useCallback((paid: boolean) => {
-    setDevice((prev) =>
-      prev ? { ...prev, isPaid: paid, freeScansLeft: paid ? 0 : prev.freeScansLeft } : prev,
-    );
-  }, []);
-
-  const purchaseSubscription = useCallback(async (): Promise<{ success: boolean; error?: string }> => {
-    const result = await rcPurchaseSubscription();
-    if (result.success) {
-      setDevice((prev) => (prev ? { ...prev, isPaid: true, freeScansLeft: 0 } : prev));
-    }
-    return result;
-  }, []);
-
-  const restorePurchases = useCallback(async (): Promise<{ success: boolean; isPro: boolean; error?: string }> => {
-    const result = await rcRestorePurchases();
-    if (result.isPro) {
-      setDevice((prev) => (prev ? { ...prev, isPaid: true, freeScansLeft: 0 } : prev));
-    }
-    return result;
-  }, []);
-
-  const value = useMemo(
-    () => ({
-      device,
-      isLoading,
-      isReady: !!device,
-      isPaid: device?.isPaid ?? false,
-      scanCount: device?.scanCount ?? 0,
-      freeScansLeft: device?.freeScansLeft ?? FREE_SCAN_LIMIT,
-      recordScan,
-      refreshDevice,
-      setPaid,
-      purchaseSubscription,
-      restorePurchases,
-      rcReady,
-    }),
-    [device, isLoading, recordScan, refreshDevice, setPaid, purchaseSubscription, restorePurchases, rcReady],
-  );
-
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+      const data=await deviceRequest<{allowed:boolean;freeScansLeft:number}>("record-scan");
+      await refreshDevice();
+      return data;
+    }catch{await refreshDevice();return {allowed:false,freeScansLeft:0};}
+  },[refreshDevice]);
+  const purchaseSubscription=useCallback(async()=>{
+    const purchased=await rcPurchaseSubscription();
+    if(!purchased.success)return purchased;
+    try {
+      const verified=await getVerifiedStatus(true);
+      setDevice({...verified,deviceId:await getDeviceId()});
+      return verified.isPaid ? {success:true} : {success:false,error:"The purchase has not been verified by RevenueCat yet. Refresh your status or restore purchases."};
+    }catch{await refreshDevice();return {success:false,error:"Purchase verification is unavailable. No paid access was granted. Please retry."};}
+  },[refreshDevice]);
+  const restorePurchases=useCallback(async()=>{
+    const restored=await rcRestorePurchases();
+    if(!restored.success)return {...restored,isPro:false};
+    try {
+      const verified=await getVerifiedStatus(true);
+      setDevice({...verified,deviceId:await getDeviceId()});
+      return {success:true,isPro:verified.isPaid};
+    }catch{await refreshDevice();return {success:false,isPro:false,error:"Restored purchases could not be verified. Please retry."};}
+  },[refreshDevice]);
+  return <AuthContext.Provider value={{device,customerId,isLoading,isReady:!!device,isPaid:device?.isPaid===true,
+    scanCount:device?.scanCount??0,freeScansLeft:device?.freeScansLeft??0,rcReady,verificationError,
+    recordScan,refreshDevice,purchaseSubscription,restorePurchases}}>{children}</AuthContext.Provider>;
 }
-
-export function useAuth() {
-  const context = useContext(AuthContext);
-  if (!context) {
-    throw new Error("useAuth must be used within an AuthProvider");
-  }
+export function useAuth(){
+  const context=useContext(AuthContext);
+  if(!context)throw new Error("useAuth must be used within an AuthProvider");
   return context;
 }
