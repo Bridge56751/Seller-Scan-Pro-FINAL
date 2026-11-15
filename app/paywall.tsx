@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Linking, Platform, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Image, Linking, Platform, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Feather } from "@expo/vector-icons";
 import Constants, { ExecutionEnvironment } from "expo-constants";
@@ -160,7 +160,7 @@ export default function PaywallScreen() {
           )}
 
           <View style={styles.hero}>
-            <View style={styles.heroIcon}><Feather name="shopping-bag" size={31} color={C.accent} /></View>
+            <Image source={require("@/assets/images/logo.png")} accessibilityLabel="Seller Scan logo" style={styles.heroIcon} resizeMode="contain" />
             <Text accessibilityRole="header" style={styles.title}>Seller Scan <Text style={styles.pro}>Pro</Text></Text>
             <Text style={styles.headline}>A second look.{"\n"}A better buy.</Text>
             <Text style={styles.subtitle}>Spot something you like? Find it, compare prices, and see where to buy it for less.</Text>
@@ -284,7 +284,7 @@ const styles = StyleSheet.create({
   testTitle: { color: C.text, fontSize: 14, fontWeight: "700", marginBottom: 4 },
   testText: { color: C.textSecondary, fontSize: 13, lineHeight: 19 },
   hero: { alignItems: "center", paddingTop: 22, paddingBottom: 26 },
-  heroIcon: { height: 70, width: 70, borderRadius: 23, backgroundColor: C.accentDim, alignItems: "center", justifyContent: "center", marginBottom: 18, borderWidth: 1, borderColor: C.tintDim },
+  heroIcon: { height: 70, width: 70, borderRadius: 23, marginBottom: 18 },
   title: { fontSize: 23, fontWeight: "700", color: C.text, letterSpacing: -0.5 },
   pro: { color: C.accent },
   headline: { fontSize: 35, lineHeight: 41, letterSpacing: -1.2, fontWeight: "800", color: C.text, textAlign: "center", marginTop: 12 },
