@@ -10,7 +10,7 @@
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "com.sellerscan.pro",
-      "buildNumber": "13",
+      "buildNumber": "14",
       "infoPlist": {
         "NSCameraUsageDescription": "Scan product barcodes or take photos to find shopping matches. Photos use SearchApi and Google Lens; barcode numbers use UPCitemdb."
       }
