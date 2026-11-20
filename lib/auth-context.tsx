@@ -1,8 +1,9 @@
-import { createContext, useContext, useState, useEffect, useCallback, ReactNode } from "react";
+import { createContext, useContext, useState, useEffect, useCallback, useRef, ReactNode } from "react";
 import { AppState } from "react-native";
 import { getDeviceId } from "./device-id";
 import { registerDevice, getVerifiedStatus, type DeviceStatus } from "./device-client";
 import { configureRevenueCat, restorePurchases as rcRestorePurchases, purchaseSubscription as rcPurchaseSubscription } from "./revenuecat";
+import { confirmPurchaseAccess, hasVerifiedScanAccess } from "@/shared/billing-confirmation";
 
 type DeviceState = DeviceStatus & {deviceId:string};
 interface AuthContextValue {
@@ -12,6 +13,8 @@ interface AuthContextValue {
   scanCount:number; freeScansLeft:number; freePhotoScansLeft:number; freeBarcodeScansLeft:number;
   rcReady:boolean; verificationError:string|null;
   refreshDevice:()=>Promise<void>;
+  purchasePending:boolean;
+  verifyPurchase:()=>Promise<{success:boolean;error?:string}>;
   purchaseSubscription:(expectedProductId?:string)=>Promise<{success:boolean;error?:string}>;
   restorePurchases:()=>Promise<{success:boolean;isPro:boolean;error?:string}>;
 }
@@ -22,7 +25,12 @@ export function AuthProvider({children}:{children:ReactNode}) {
   const [isLoading,setIsLoading]=useState(true);
   const [rcReady,setRcReady]=useState(false);
   const [verificationError,setVerificationError]=useState<string|null>(null);
+  const [purchasePending,setPurchasePending]=useState(false);
+  const statusVersion=useRef(0);
+  const confirmation=useRef<Promise<{success:boolean;error?:string}>|null>(null);
   const refreshDevice=useCallback(async()=>{
+    if (confirmation.current) return;
+    const version=++statusVersion.current;
     try {
       const identity=await registerDevice();
       setCustomerId(identity.customerId);
@@ -30,13 +38,17 @@ export function AuthProvider({children}:{children:ReactNode}) {
       // screen open while the purchase SDK contacts its service.
       void configureRevenueCat().then(setRcReady).catch(() => setRcReady(false));
       const data=await getVerifiedStatus();
-      setDevice({...data,deviceId:await getDeviceId()});
+      const deviceId=await getDeviceId();
+      if (version!==statusVersion.current) return;
+      setDevice({...data,deviceId});
+      if (hasVerifiedScanAccess(data)) setPurchasePending(false);
       setVerificationError(null);
     } catch(error) {
+      if (version!==statusVersion.current) return;
       // Unknown/unverified is not paid. Do not retain a stale paid flag on failure.
       setDevice(null);
       setVerificationError(error instanceof Error ? error.message : "Could not verify this device.");
-    } finally {setIsLoading(false);}
+    } finally {if(version===statusVersion.current)setIsLoading(false);}
   },[]);
   useEffect(()=>{
     void refreshDevice();
@@ -44,31 +56,54 @@ export function AuthProvider({children}:{children:ReactNode}) {
     const timer=setInterval(()=>{if(AppState.currentState==="active")void refreshDevice();},300000);
     return ()=>{listener.remove();clearInterval(timer);};
   },[refreshDevice]);
+  const verifyPurchase=useCallback(()=>{
+    if (confirmation.current) return confirmation.current;
+    const version=++statusVersion.current;
+    const task=(async()=>{
+      try {
+        const verified=await confirmPurchaseAccess(()=>getVerifiedStatus(true));
+        const deviceId=await getDeviceId();
+        if(version===statusVersion.current) {
+          setDevice({...verified,deviceId});
+          setVerificationError(null);
+        }
+        const success=hasVerifiedScanAccess(verified);
+        if(success)setPurchasePending(false);
+        return success ? {success:true} : {success:false,error:"Your purchase is still being verified. Tap Check access to retry verification, or Restore purchases. You do not need to buy again."};
+      } catch {
+        const error="Could not verify purchase access right now. Tap Check access to retry. You do not need to buy again.";
+        if(version===statusVersion.current) {
+          setDevice(null);
+          setVerificationError(error);
+        }
+        return {success:false,error};
+      } finally {
+        if(version===statusVersion.current)setIsLoading(false);
+        confirmation.current=null;
+      }
+    })();
+    confirmation.current=task;
+    return task;
+  },[]);
   const purchaseSubscription=useCallback(async(expectedProductId?:string)=>{
+    if(purchasePending)return verifyPurchase();
     const purchased=await rcPurchaseSubscription(expectedProductId);
     if(!purchased.success)return purchased;
-    try {
-      const verified=await getVerifiedStatus(true);
-      setDevice({...verified,deviceId:await getDeviceId()});
-      setVerificationError(null);
-      return verified.isPaid ? {success:true} : {success:false,error:"The purchase has not been verified by RevenueCat yet. Refresh your status or restore purchases."};
-    }catch{await refreshDevice();return {success:false,error:"Purchase verification is unavailable. No paid access was granted. Please retry."};}
-  },[refreshDevice]);
+    setPurchasePending(true);
+    return verifyPurchase();
+  },[purchasePending,verifyPurchase]);
   const restorePurchases=useCallback(async()=>{
     const restored=await rcRestorePurchases();
     if(!restored.success)return {...restored,isPro:false};
-    try {
-      const verified=await getVerifiedStatus(true);
-      setDevice({...verified,deviceId:await getDeviceId()});
-      setVerificationError(null);
-      return {success:true,isPro:verified.isPaid};
-    }catch{await refreshDevice();return {success:false,isPro:false,error:"Restored purchases could not be verified. Please retry."};}
-  },[refreshDevice]);
+    if(restored.isPro)setPurchasePending(true);
+    const result=await verifyPurchase();
+    return {...result,isPro:result.success};
+  },[verifyPurchase]);
   return <AuthContext.Provider value={{device,customerId,isLoading,isReady:!!device,isPaid:device?.isPaid===true,
     hasTestScanAccess:device?.hasTestScanAccess===true,
     scanCount:device?.scanCount??0,freeScansLeft:device?.freeScansLeft??0,
     freePhotoScansLeft:device?.freePhotoScansLeft??0,freeBarcodeScansLeft:device?.freeBarcodeScansLeft??0,
-    rcReady,verificationError,refreshDevice,purchaseSubscription,restorePurchases}}>{children}</AuthContext.Provider>;
+    rcReady,verificationError,refreshDevice,purchasePending,verifyPurchase,purchaseSubscription,restorePurchases}}>{children}</AuthContext.Provider>;
 }
 export function useAuth(){
   const context=useContext(AuthContext);

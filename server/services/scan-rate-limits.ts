@@ -19,7 +19,7 @@ export async function reserveScan(customerId: string, issuePermit = false, permi
   kind: "photo" | "barcode" | "search" = "search") {
   if (!process.env.SUPABASE_DATABASE_URL) throw new Error("Scan limits unavailable");
   // A follow-up permit was already authorized and counted. All new attempts use
-  // server-verified access (production, or approved development-only testing),
+  // server-verified access (Apple production/sandbox, or approved dev Test Store),
   // normally served from the five-minute cache.
   let hasScanAccess = false;
   let testOnly = false;
@@ -27,7 +27,10 @@ export async function reserveScan(customerId: string, issuePermit = false, permi
     try {
       const access = await verifyScanAccess(customerId);
       hasScanAccess = access.isPaid || access.hasTestScanAccess;
-      testOnly = access.hasTestScanAccess && !access.isPaid;
+      // Only simulated Test Store permits require the development allowlist.
+      // Apple's verified sandbox purchases follow the normal authenticated,
+      // single-use permit path, with identical monthly and minute limits.
+      testOnly = access.hasTestScanAccess && !access.isPaid && !access.hasAppleSandboxAccess;
     }
     catch { throw new ScanLimitError(503,"BILLING_UNAVAILABLE",
       "Subscription verification is temporarily unavailable. No scan was used. Please retry."); }

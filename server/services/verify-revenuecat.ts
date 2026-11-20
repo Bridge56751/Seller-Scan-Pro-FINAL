@@ -5,13 +5,14 @@ const connectors = new ReplitConnectors();
 // Bound successful verification to five minutes and subscription expiry.
 const cached = new Map<string, { until: number; value: VerifiedAccess }>();
 const pending = new Map<string, Promise<VerifiedAccess>>();
-export async function verifyRevenueCat(customerId: string, test = false, refresh = false): Promise<VerifiedAccess> {
-  if (test && process.env.NODE_ENV !== "development") throw new Error("Test verification unavailable");
+export async function verifyRevenueCat(customerId: string, test: boolean | "apple-sandbox" = false, refresh = false): Promise<VerifiedAccess> {
+  if (test === true && process.env.NODE_ENV !== "development") throw new Error("Test verification unavailable");
   const project = process.env.REVENUECAT_PROJECT_ID;
   const entitlement = process.env.REVENUECAT_PRO_ENTITLEMENT_ID;
   if (!project || !entitlement) throw new Error("Billing verification not configured");
   const environment = test ? "sandbox" : "production";
-  const cacheKey = `${environment}:${customerId}`;
+  const store = test === true ? "test_store" : "app_store";
+  const cacheKey = `${environment}:${store}:${customerId}`;
   const hit = cached.get(cacheKey);
   if (!refresh && hit && hit.until > Date.now()) return hit.value;
   const running = pending.get(cacheKey);
@@ -20,7 +21,7 @@ export async function verifyRevenueCat(customerId: string, test = false, refresh
     // A post-purchase refresh must not reuse an older pre-purchase lookup.
     await running.catch(() => {});
   }
-  const request = loadAccess(customerId, project, entitlement, environment);
+  const request = loadAccess(customerId, project, entitlement, environment, store);
   pending.set(cacheKey, request);
   try {
     const value = await request;
@@ -37,7 +38,7 @@ export async function verifyRevenueCat(customerId: string, test = false, refresh
 }
 
 async function loadAccess(customerId: string, project: string, entitlement: string,
-  environment: "sandbox" | "production"): Promise<VerifiedAccess> {
+  environment: "sandbox" | "production", store: "app_store" | "test_store"): Promise<VerifiedAccess> {
   const root = `/v2/projects/${encodeURIComponent(project)}/customers/${encodeURIComponent(customerId)}/subscriptions`;
   let path: string | null = `${root}?environment=${environment}&limit=100`;
   const subscriptions: unknown[] = [];
@@ -53,5 +54,5 @@ async function loadAccess(customerId: string, project: string, entitlement: stri
     if (path && !path.startsWith(root + "?")) throw new Error("Unexpected billing continuation");
   }
   if (path) throw new Error("Billing response exceeded verification limit");
-  return subscriptionAccess(subscriptions, entitlement, environment);
+  return subscriptionAccess(subscriptions, entitlement, environment, Date.now(), store);
 }

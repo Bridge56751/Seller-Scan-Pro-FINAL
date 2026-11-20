@@ -29,3 +29,15 @@ test("Verification cache expiry respects an earlier subscription end",()=>{
   assert.equal(subscriptionAccess([{...valid,ends_at:now+1000}],"seller-pro","production",now).expirationDate,
     new Date(now+1000).toISOString());
 });
+
+test("Apple sandbox requires an active exact entitlement and never accepts Test Store",()=>{
+  const appleSandbox={...valid,environment:"sandbox"};
+  const check=(item:unknown)=>subscriptionAccess([item],"seller-pro","sandbox",now,"app_store");
+  assert.equal(check(appleSandbox).hasAccess,true);
+  for(const override of [
+    {store:"test_store"},{store:"play_store"},{environment:"production"},
+    {gives_access:false},{current_period_ends_at:now-1},{ends_at:now-1},
+    {entitlements:{items:[{id:"other"}]}},
+  ]) assert.equal(check({...appleSandbox,...override}).hasAccess,false);
+  assert.equal(subscriptionAccess([appleSandbox],"seller-pro","production",now).hasAccess,false);
+});

@@ -20,14 +20,30 @@ export async function approvedTestIdentity(customerId:string):Promise<string|nul
 }
 
 export async function verifyScanAccess(customerId:string, refresh=false) {
-  const live = await verifyRevenueCat(customerId,false,refresh);
-  let hasTestScanAccess=false;
+  // TestFlight uses Apple's sandbox, not RevenueCat's simulated Test Store.
+  // Both lookups use the authenticated server-owned customer, never a client flag.
+  const [liveResult, sandboxResult] = await Promise.allSettled([
+    verifyRevenueCat(customerId,false,refresh),
+    verifyRevenueCat(customerId,"apple-sandbox",refresh),
+  ]);
+  const live = liveResult.status === "fulfilled" ? liveResult.value : null;
+  const sandbox = sandboxResult.status === "fulfilled" ? sandboxResult.value : null;
+  // A verified current entitlement is sufficient; an outage is never a grant.
+  if (!live?.hasAccess && !sandbox?.hasAccess) {
+    if (liveResult.status === "rejected") throw liveResult.reason;
+    if (sandboxResult.status === "rejected") throw sandboxResult.reason;
+  }
+  let hasTestScanAccess=!live?.hasAccess && sandbox?.hasAccess === true;
+  let expirationDate = live?.hasAccess ? live.expirationDate : sandbox?.expirationDate ?? null;
   // Lookup only server-owned mapping. Never accept a caller-supplied test ID.
-  if (!live.hasAccess) {
+  if (!live?.hasAccess && !hasTestScanAccess) {
     const testId=await approvedTestIdentity(customerId);
     if (testId) {
-      hasTestScanAccess=(await verifyRevenueCat(testId,true,refresh)).hasAccess;
+      const test = await verifyRevenueCat(testId,true,refresh);
+      hasTestScanAccess=test.hasAccess;
+      if (hasTestScanAccess) expirationDate=test.expirationDate;
     }
   }
-  return {isPaid:live.hasAccess,hasTestScanAccess,expirationDate:live.expirationDate};
+  return {isPaid:live?.hasAccess === true,hasTestScanAccess,
+    hasAppleSandboxAccess:sandbox?.hasAccess === true,expirationDate};
 }

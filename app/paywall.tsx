@@ -12,7 +12,7 @@ import type { ProPaywallPlan } from "@/shared/paywall-plan";
 const C = Colors.light;
 const PRIVACY_URL = "https://sellerscanpro.com/privacy.html";
 const TERMS_URL = "https://www.apple.com/legal/internet-services/itunes/dev/stdeula/";
-type Action = "purchase" | "restore";
+type Action = "purchase" | "restore" | "verify";
 type Notice = { kind: "error" | "success" | "neutral"; text: string; retry?: Action };
 
 const benefits = [
@@ -22,7 +22,7 @@ const benefits = [
 ];
 
 export default function PaywallScreen() {
-  const { isPaid, purchaseSubscription, restorePurchases, refreshDevice } = useAuth();
+  const { isPaid, hasTestScanAccess, purchasePending, verifyPurchase, purchaseSubscription, restorePurchases, refreshDevice } = useAuth();
   const [plan, setPlan] = useState<ProPaywallPlan | null>(null);
   const [loading, setLoading] = useState(true);
   const [pricingError, setPricingError] = useState<string | null>(null);
@@ -34,7 +34,7 @@ export default function PaywallScreen() {
   const mounted = useRef(true);
   const preview = __DEV__ && (Platform.OS === "web" || Constants.executionEnvironment === ExecutionEnvironment.StoreClient);
   const testMode = plan?.mode === "test" || preview;
-  const alreadyPro = !testMode && (isPaid || verifiedSuccess);
+  const alreadyPro = !testMode && (isPaid || hasTestScanAccess || verifiedSuccess);
 
   const loadPlan = useCallback(async () => {
     if (locked.current) return;
@@ -78,7 +78,14 @@ export default function PaywallScreen() {
     setBusy(action);
     setNotice(null);
     try {
-      if (testMode) {
+      if (action === "verify" && !testMode) {
+        const result=await verifyPurchase();
+        if (!mounted.current) return;
+        setVerifiedSuccess(result.success);
+        setNotice(result.success
+          ? {kind:"success",text:"Your subscription access is verified. You're ready to scan."}
+          : {kind:"error",text:result.error || "Access is not verified yet.",retry:"verify"});
+      } else if (testMode) {
         if (action === "purchase") {
           const result = await purchaseBillingTest();
           if (!mounted.current) return;
@@ -111,7 +118,7 @@ export default function PaywallScreen() {
         } else if (result.error === "cancelled") {
           setNotice({ kind: "neutral", text: "Purchase cancelled. You haven't been charged." });
         } else {
-          setNotice({ kind: "error", text: result.error || "Your purchase could not be verified. Please try again.", retry: "purchase" });
+          setNotice({ kind: "error", text: result.error || "Your purchase could not be verified. Check access or restore purchases.", retry: "verify" });
         }
       } else {
         const result = await restorePurchases();
@@ -206,16 +213,16 @@ export default function PaywallScreen() {
                 {notice.retry && (
                   <Pressable accessibilityRole="button" disabled={!!busy || loading || (notice.retry === "purchase" && !plan)}
                     onPress={() => void act(notice.retry!)} style={({ pressed }) => [styles.noticeRetry, pressed && styles.pressed]}>
-                    <Text style={styles.inlineLink}>Try again</Text>
+                    <Text style={styles.inlineLink}>{notice.retry === "verify" ? "Check access" : "Try again"}</Text>
                   </Pressable>
                 )}
               </View>
             )}
             <Pressable accessibilityRole="button" accessibilityState={{ disabled: purchaseDisabled, busy: busy === "purchase" }}
-              disabled={purchaseDisabled} onPress={() => void act("purchase")}
+              disabled={purchaseDisabled} onPress={() => void act(purchasePending && !testMode ? "verify" : "purchase")}
               style={({ pressed }) => [styles.subscribe, purchaseDisabled && !alreadyPro && styles.disabled, alreadyPro && styles.activeButton, pressed && styles.buttonPressed]}>
               <Text style={[styles.subscribeText, alreadyPro && styles.activeButtonText]}>
-                {busy === "purchase" ? (testMode ? "Verifying test purchase…" : "Confirming subscription…") : alreadyPro ? "Already Pro" : loading ? "Loading price…" : testMode ? (testSuccess ? "Test Subscribe Again" : "Test Subscribe") : "Subscribe to Pro"}
+                {busy === "verify" ? "Checking access…" : busy === "purchase" ? (testMode ? "Verifying test purchase…" : "Confirming subscription…") : alreadyPro ? "Already Pro" : loading ? "Loading price…" : testMode ? (testSuccess ? "Test Subscribe Again" : "Test Subscribe") : purchasePending ? "Check access" : "Subscribe to Pro"}
               </Text>
               {!busy && !loading && !alreadyPro && <Feather name="arrow-right" size={19} color={C.surface} />}
               {alreadyPro && <Feather name="check" size={19} color={C.accent} />}

@@ -12,14 +12,14 @@ import shoppingRouter from "../server/routes/shopping";
 import deviceRouter from "../server/routes/device";
 
 test("one-time free allowances are separate, atomic, persistent, and fail closed",async t => {
-  let mode: "free"|"paid"|"test"|"failure" = "free";
+  let mode: "free"|"paid"|"test"|"apple"|"failure" = "free";
   let billingCalls=0;
   t.mock.method(ReplitConnectors.prototype,"proxy",async () => {
     billingCalls++;
     if(mode==="failure") return new Response(null,{status:503});
     if(mode==="free") return new Response(null,{status:404});
     return Response.json({items:[{environment:mode==="paid"?"production":"sandbox",
-      store:mode==="paid"?"app_store":"test_store",gives_access:true,
+      store:mode==="paid"||mode==="apple"?"app_store":"test_store",gives_access:true,
       current_period_ends_at:Date.now()+3600000,
       entitlements:{items:[{id:process.env.REVENUECAT_PRO_ENTITLEMENT_ID}]}}]});
   });
@@ -31,11 +31,11 @@ test("one-time free allowances are separate, atomic, persistent, and fail closed
     const accepted=attempts.filter(r=>r.status==="fulfilled");
     assert.equal(accepted.length,1);
     for(const denied of attempts.filter(r=>r.status==="rejected")) assert.equal(denied.reason.code,"SUBSCRIPTION_REQUIRED");
-    assert.equal(billingCalls,1,"Concurrent scan checks share the cached provider request");
+    assert.equal(billingCalls,2,"Concurrent scan checks share one lookup per Apple environment");
     const photoPermit=accepted[0].value.scanPermit!;
     assert.deepEqual(await scanAllowances(id),{freePhotoScansLeft:0,freeBarcodeScansLeft:1,scanCount:1});
     const barcode=await reserveScan(id,true,undefined,"barcode");
-    assert.equal(billingCalls,1,"Barcode uses the cached verification");
+    assert.equal(billingCalls,2,"Barcode uses the cached verification");
     await assert.rejects(reserveScan(id,true,undefined,"barcode"),{code:"SUBSCRIPTION_REQUIRED"});
     await assert.rejects(reserveScan(id),{code:"SUBSCRIPTION_REQUIRED"});
     await reserveScan(id,false,photoPermit);
@@ -48,6 +48,16 @@ test("one-time free allowances are separate, atomic, persistent, and fail closed
     mode="test";
     await verifyRevenueCat(id,false,true);
     await assert.rejects(reserveScan(id,true,undefined,"photo"),{code:"SUBSCRIPTION_REQUIRED"},"Test Store never unlocks scans");
+    mode="apple";
+    await verifyRevenueCat(id,"apple-sandbox",true);
+    const apple=await reserveScan(id,true,undefined,"barcode");
+    await reserveScan(id,false,apple.scanPermit);
+    await assert.rejects(reserveScan(id,false,apple.scanPermit),{code:"INVALID_SCAN_PERMIT"});
+    await db.query("UPDATE customer_scan_limits SET monthly_count=1000 WHERE customer_id=$1",[id]);
+    await assert.rejects(reserveScan(id),{code:"MONTHLY_SCAN_LIMIT"},"Apple sandbox has the same cap");
+    await db.query("UPDATE customer_scan_limits SET monthly_count=3,recent_scans='{}' WHERE customer_id=$1",[id]);
+    mode="free";
+    await verifyRevenueCat(id,"apple-sandbox",true);
     mode="paid";
     await verifyRevenueCat(id,false,true);
     await reserveScan(id,true,undefined,"photo");

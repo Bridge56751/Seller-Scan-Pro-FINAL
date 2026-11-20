@@ -5,9 +5,10 @@ export function subscriptionAccess(
   entitlementId: string,
   environment: "production" | "sandbox",
   now = Date.now(),
+  store: "app_store" | "test_store" = environment === "production" ? "app_store" : "test_store",
 ): VerifiedAccess {
   const eligible = items.filter((item: any) => item && item.environment === environment && item.gives_access === true &&
-    (environment === "production" ? item.store === "app_store" : item.store === "test_store") &&
+    item.store === store &&
     Array.isArray(item.entitlements?.items) && item.entitlements.items.some((e: any) => e.id === entitlementId) &&
     typeof item.current_period_ends_at === "number" && item.current_period_ends_at > now &&
     (item.ends_at == null || (typeof item.ends_at === "number" && item.ends_at > now))) as Array<{current_period_ends_at:number;ends_at?:number|null}>;
