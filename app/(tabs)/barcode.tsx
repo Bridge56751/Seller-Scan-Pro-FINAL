@@ -189,6 +189,7 @@ export default function BarcodeScreen() {
             key={cameraKey}
             style={StyleSheet.absoluteFill}
             facing="back"
+            responsiveOrientationWhenOrientationLocked={false}
             autofocus={refocusing && wantsCamera ? "on" : "off"}
             enableTorch={torch && wantsCamera && cameraActive}
             active={wantsCamera && cameraActive}

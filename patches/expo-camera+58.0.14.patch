@@ -1,0 +1,16 @@
+diff --git a/node_modules/expo-camera/ios/Current/CameraView.swift b/node_modules/expo-camera/ios/Current/CameraView.swift
+--- a/node_modules/expo-camera/ios/Current/CameraView.swift
++++ b/node_modules/expo-camera/ios/Current/CameraView.swift
+@@ -411,6 +411,12 @@
+ 
+   @available(iOS 17.0, *)
+   private func applyPreviewRotationAngle(from coordinator: AVCaptureDevice.RotationCoordinator) {
++    // Respect the interface orientation lock rather than horizon-leveling the
++    // preview independently inside a portrait-only barcode screen.
++    guard responsiveWhenOrientationLocked else {
++      applyLegacyPreviewOrientation()
++      return
++    }
+     guard let connection = previewLayer.connection else {
+       return
+     }
