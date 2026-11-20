@@ -8,7 +8,7 @@ import { StatusBar } from "expo-status-bar";
 import { useFonts, Inter_400Regular, Inter_500Medium, Inter_600SemiBold, Inter_700Bold } from "@expo-google-fonts/inter";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { queryClient } from "@/lib/query-client";
-import { AuthProvider, useAuth } from "@/lib/auth-context";
+import { AuthProvider } from "@/lib/auth-context";
 import { ActivityIndicator, Text, View } from "react-native";
 import Colors from "@/constants/colors";
 import { ScanSessionProvider } from "@/lib/scan-session";
@@ -16,16 +16,8 @@ import { ScanSessionProvider } from "@/lib/scan-session";
 SplashScreen.preventAutoHideAsync();
 
 function RootLayoutNav() {
-  const { isLoading } = useAuth();
-
-  if (isLoading) {
-    return (
-      <View style={{ flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: Colors.light.surface }}>
-        <ActivityIndicator size="large" color={Colors.light.accent} />
-      </View>
-    );
-  }
-
+  // Local history/navigation must not wait for network-backed device verification.
+  // Scan requests still await registration and are authorized by the server.
   return (
     <Stack screenOptions={{ headerBackTitle: "Back" }}>
       <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
