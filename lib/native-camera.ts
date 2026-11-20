@@ -1,6 +1,7 @@
 import * as ImagePicker from "expo-image-picker";
 import { manipulateAsync, SaveFormat } from "expo-image-manipulator";
 import { discardTemporaryPhoto } from "./temporary-photo";
+import { ensurePhotoConsent } from "./photo-consent";
 
 export type CameraCaptureResult =
   | { status: "captured"; uri: string }
@@ -9,6 +10,7 @@ export type CameraCaptureResult =
 
 /** Opens the OS camera interface, not an embedded camera or barcode scanner. */
 export async function captureProductPhoto(): Promise<CameraCaptureResult> {
+  if (!await ensurePhotoConsent()) return { status: "canceled" };
   let permission = await ImagePicker.getCameraPermissionsAsync();
   if (!permission.granted && permission.canAskAgain) {
     permission = await ImagePicker.requestCameraPermissionsAsync();

@@ -3,6 +3,7 @@ import { prepareProductPhoto } from "./native-camera";
 import { registerDevice } from "./device-client";
 import { getDeviceCredentials } from "./device-id";
 import { throwIfCanceled } from "@/shared/cancellation";
+import { ensurePhotoConsent } from "./photo-consent";
 import type { BarcodeProduct } from "@/shared/barcode";
 import { type Identification, type Comparison, type ComparisonInput, type ListingSearchInput, type ListingSearch } from "@/shared/shopping";
 
@@ -53,6 +54,9 @@ async function shoppingRequest<T>(route: string, body: unknown, signal?: AbortSi
 
 // Only called for a user-accepted camera photo or an explicit retry.
 export async function identifyPhoto(uri: string, country: string, signal?: AbortSignal) {
+  throwIfCanceled(signal);
+  // Also cover retries of photos saved before the disclosure was introduced.
+  if (!await ensurePhotoConsent()) throw new Error("Photo sharing was not allowed. No photo was uploaded.");
   throwIfCanceled(signal);
   const start = Date.now();
   let image: string;
