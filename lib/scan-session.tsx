@@ -8,6 +8,7 @@ import { manipulateAsync, SaveFormat } from "expo-image-manipulator";
 import { randomUUID } from "expo-crypto";
 import { photoScanHistory, type PhotoScanHistoryItem } from "./photo-scan-history";
 import { discardTemporaryPhoto } from "./temporary-photo";
+import { recordSuccessfulBarcodeScan } from "./barcode-review";
 
 export type ScanSession = {
   source?: "photo" | "barcode";
@@ -65,7 +66,7 @@ export function ScanSessionProvider({ children }: { children: ReactNode }) {
   }
   const lastStage = useRef<"identify" | "barcode" | "search">("identify");
   const conditionRef = useRef<"any" | "new" | "used">("any");
-  const historyRef = useRef<{ id: string; timestamp: number; thumbnail: string | null; saved: boolean } | null>(null);
+  const historyRef = useRef<{ id: string; timestamp: number; thumbnail: string | null; saved: boolean; restored?: boolean } | null>(null);
   const patch = (value: Partial<ScanSession>) => {
     state.current = { ...state.current, ...value };
     setSession(state.current);
@@ -105,7 +106,7 @@ export function ScanSessionProvider({ children }: { children: ReactNode }) {
   }
   function restore(item: PhotoScanHistoryItem) {
     if (lock.current) return false;
-    historyRef.current = { id: item.id, timestamp: item.timestamp, thumbnail: item.photoUri, saved: true };
+    historyRef.current = { id: item.id, timestamp: item.timestamp, thumbnail: item.photoUri, saved: true, restored: true };
     conditionRef.current = item.condition;
     lastStage.current = item.query ? "search" : item.barcode ? "barcode" : "identify";
     patch({ ...empty, photoUri: item.photoUri, query: item.query, matches: item.matches,
@@ -138,7 +139,17 @@ export function ScanSessionProvider({ children }: { children: ReactNode }) {
   async function finish(op: AbortController) {
     if (!isCurrent(op)) return;
     await saveHistory(op);
-    if (isCurrent(op)) { lock.current = false; operation.current = null; }
+    if (isCurrent(op)) {
+      const info = historyRef.current;
+      const successfulBarcode = state.current.source === "barcode" &&
+        state.current.stage === "ready" && !state.current.error &&
+        (state.current.result?.offers.length ?? 0) > 0;
+      lock.current = false;
+      operation.current = null;
+      if (successfulBarcode && info && !info.restored) {
+        void recordSuccessfulBarcodeScan(info.id);
+      }
+    }
   }
   async function processBarcode(barcode: string, op: AbortController) {
     lastStage.current = "barcode";
