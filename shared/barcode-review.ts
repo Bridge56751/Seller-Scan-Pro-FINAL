@@ -6,9 +6,17 @@ type Dependencies = {
   request: () => Promise<void>;
 };
 
+export function isReviewEligibleScan(scan: {
+  source?: string; stage: string; error: string | null;
+  result: { offers: unknown[] } | null;
+}) {
+  return (scan.source === "barcode" || scan.source === "photo") &&
+    scan.stage === "ready" && !scan.error && (scan.result?.offers.length ?? 0) > 0;
+}
+
 // Serialize completion events and persist before requesting: retrying the same
 // scan, reopening history, or restarting the app must not prompt repeatedly.
-export function createBarcodeReviewTracker(deps: Dependencies) {
+export function createScanReviewTracker(deps: Dependencies) {
   let queue = Promise.resolve();
   return (scanId: string) => {
     const task = queue.then(async () => {

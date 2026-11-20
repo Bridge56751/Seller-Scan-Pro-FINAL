@@ -8,7 +8,8 @@ import { manipulateAsync, SaveFormat } from "expo-image-manipulator";
 import { randomUUID } from "expo-crypto";
 import { photoScanHistory, type PhotoScanHistoryItem } from "./photo-scan-history";
 import { discardTemporaryPhoto } from "./temporary-photo";
-import { recordSuccessfulBarcodeScan } from "./barcode-review";
+import { recordSuccessfulScan } from "./barcode-review";
+import { isReviewEligibleScan } from "@/shared/barcode-review";
 
 export type ScanSession = {
   source?: "photo" | "barcode";
@@ -141,13 +142,11 @@ export function ScanSessionProvider({ children }: { children: ReactNode }) {
     await saveHistory(op);
     if (isCurrent(op)) {
       const info = historyRef.current;
-      const successfulBarcode = state.current.source === "barcode" &&
-        state.current.stage === "ready" && !state.current.error &&
-        (state.current.result?.offers.length ?? 0) > 0;
+      const successfulScan = isReviewEligibleScan(state.current);
       lock.current = false;
       operation.current = null;
-      if (successfulBarcode && info && !info.restored) {
-        void recordSuccessfulBarcodeScan(info.id);
+      if (successfulScan && info && !info.restored) {
+        void recordSuccessfulScan(info.id);
       }
     }
   }
