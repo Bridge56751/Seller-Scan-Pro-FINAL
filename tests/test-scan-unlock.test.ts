@@ -39,8 +39,8 @@ test("approved verified tester scans past free limits without paid access; caps 
     process.env.REPLIT_ENVIRONMENT="production";
     for(const [customer,tid] of [[id,testId],[other,`ss_test_${randomUUID()}`]]){
       await db.query("INSERT INTO device_customers(device_hash,credential_hash,customer_id,test_customer_id) VALUES($1,$2,$1,$3)",[customer,"a".repeat(64),tid]);
-      await db.query(`INSERT INTO customer_scan_limits(customer_id,month_start,free_photo_used,free_barcode_used)
-        VALUES($1,date_trunc('month',now() AT TIME ZONE 'UTC') AT TIME ZONE 'UTC',true,true)`,[customer]);
+      await db.query(`INSERT INTO customer_scan_limits(customer_id,month_start,free_successful_scans)
+        VALUES($1,date_trunc('month',now() AT TIME ZONE 'UTC') AT TIME ZONE 'UTC',5)`,[customer]);
     }
     const access=await verifyScanAccess(id);
     assert.equal(access.isPaid,false);

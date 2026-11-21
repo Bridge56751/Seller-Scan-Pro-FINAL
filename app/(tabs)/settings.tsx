@@ -12,7 +12,7 @@ const TERMS_OF_SERVICE_URL = "https://www.apple.com/legal/internet-services/itun
 
 export default function SettingsScreen() {
   const insets = useSafeAreaInsets();
-  const { isPaid, hasTestScanAccess, isLoading, scanCount, freePhotoScansLeft, freeBarcodeScansLeft, restorePurchases, verificationError, refreshDevice } = useAuth();
+  const { isPaid, hasTestScanAccess, isLoading, scanCount, freeScansLeft, restorePurchases, verificationError, refreshDevice } = useAuth();
   useFocusEffect(useCallback(() => { void refreshDevice(); },[refreshDevice]));
   const [restoring, setRestoring] = useState(false);
   const webTopInset = Platform.OS === "web" ? 67 : 0;
@@ -62,12 +62,8 @@ export default function SettingsScreen() {
             <View style={styles.divider} />
 
             <View style={styles.statRow}>
-              <Text style={styles.statLabel}>Free photo scan</Text>
-              <Text style={styles.statValue}>{isLoading ? "Checking…" : verificationError ? "Unavailable" : `${freePhotoScansLeft} of 1 left`}</Text>
-            </View>
-            <View style={styles.statRow}>
-              <Text style={styles.statLabel}>Free barcode scan</Text>
-              <Text style={styles.statValue}>{isLoading ? "Checking…" : verificationError ? "Unavailable" : `${freeBarcodeScansLeft} of 1 left`}</Text>
+              <Text style={styles.statLabel}>Free scans · photo or barcode</Text>
+              <Text style={styles.statValue}>{isLoading ? "Checking…" : verificationError ? "Unavailable" : `${freeScansLeft} of 5 left`}</Text>
             </View>
             <View style={styles.statRow}>
               <Text style={styles.statLabel}>Scans since allowance update</Text>

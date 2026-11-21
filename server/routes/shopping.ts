@@ -5,7 +5,7 @@ import { comparisonSchema, countryInfo, listingSearchSchema } from "../../shared
 import { searchApi, ShoppingError, normalizeOffers, normalizeLensOffers, shoppingQuery } from "../services/searchapi";
 import { storePhoto, deletePhoto, startPhotoCleanup } from "../services/photo-store";
 import { authenticateDevice, DeviceError } from "../services/device-customers";
-import { reserveScan, ScanLimitError } from "../services/scan-rate-limits";
+import { reserveScan, finishFreeScan, ScanLimitError } from "../services/scan-rate-limits";
 import { randomUUID } from "node:crypto";
 import { findListings } from "../services/listing-search";
 import { throwIfCanceled } from "../../shared/cancellation";
@@ -74,6 +74,7 @@ async function timed<T>(res: Response, stage: string, work: () => Promise<T>): P
 }
 router.post("/identify", limit, express.json({ limit: "5mb" }), async (req, res, next) => {
   let id: string | undefined;
+  let pending: { customerId: string; id?: string } | undefined;
   try {
     const input = photoSchema.parse(req.body);
     const device = await timed(res, "deviceAuthenticationMs", () => authenticateDevice(req));
@@ -90,6 +91,7 @@ router.post("/identify", limit, express.json({ limit: "5mb" }), async (req, res,
     }
     throwIfCanceled(res.locals.scanSignal);
     const allowance = await reserveScan(device.customer_id, true, undefined, "photo");
+    pending = { customerId: device.customer_id, id: allowance.reservationId };
     throwIfCanceled(res.locals.scanSignal);
     const stored = await timed(res, "photoStorageMs", () => storePhoto(image)).catch(() => {
       throw new ShoppingError(503, "PHOTO_STORAGE_UNAVAILABLE", "Your photo could not be prepared for identification. Please retry.");
@@ -106,12 +108,15 @@ router.post("/identify", limit, express.json({ limit: "5mb" }), async (req, res,
       title: offer.title, source: offer.seller, url: offer.url, imageUrl: offer.imageUrl,
     }));
     res.locals.timings.matchCount = matches.length;
+    await finishFreeScan(device.customer_id, allowance.reservationId, lensResults.offers.length > 0);
+    pending = undefined;
     res.json({ matches, country: input.country, scanPermit: allowance.scanPermit,
       result: { ...lensResults, country: input.country,
         currency: countryInfo(input.country)![2], fetchedAt: new Date().toISOString(),
         query: matches[0]?.title || "", matchStatus: "possible" } });
   } catch (error) { next(error); }
   finally {
+    if (pending) await finishFreeScan(pending.customerId, pending.id, false).catch(() => console.warn("[Shopping] Reservation release delayed."));
     if (id) await deletePhoto(id).catch(() =>
       console.warn("[Shopping] Photo cleanup delayed; link expires automatically."));
     res.locals.releaseSearch?.();
@@ -119,27 +124,36 @@ router.post("/identify", limit, express.json({ limit: "5mb" }), async (req, res,
 });
 
 router.post("/barcode", limit, express.json({ limit: "1kb" }), async (req, res, next) => {
+  let pending: { customerId: string; id?: string } | undefined;
   try {
     const input = z.object({ barcode: z.string().max(14).refine(value => !!normalizeBarcode(value)) }).strict().parse(req.body);
     const device = await authenticateDevice(req);
     throwIfCanceled(res.locals.scanSignal);
     const allowance = await reserveScan(device.customer_id, true, undefined, "barcode");
+    pending = { customerId: device.customer_id, id: allowance.reservationId };
     throwIfCanceled(res.locals.scanSignal);
     const product = await timed(res, "barcodeLookupMs", () => lookupBarcode(input.barcode, res.locals.scanSignal));
     throwIfCanceled(res.locals.scanSignal);
     res.json({ ...product, scanPermit: allowance.scanPermit });
+    // Barcode success is settled by its included marketplace lookup, not identification alone.
+    pending = undefined;
   } catch (error) { next(error); }
-  finally { res.locals.releaseSearch?.(); }
+  finally {
+    if (pending) await finishFreeScan(pending.customerId, pending.id, false).catch(() => console.warn("[Shopping] Reservation release delayed."));
+    res.locals.releaseSearch?.();
+  }
 });
 
 // Results-first searches are suggestions, not a claim that the shopper confirmed a variant.
 router.post("/search", limit, express.json({ limit: "8kb" }), async (req, res, next) => {
+  let pending: { customerId: string; id?: string } | undefined;
   try {
     const input = listingSearchSchema.parse(req.body);
     const country = requireCountry(input.country);
     const device = await authenticateDevice(req);
     throwIfCanceled(res.locals.scanSignal);
-    await reserveScan(device.customer_id, false, req.get("x-scan-permit"));
+    const allowance = await reserveScan(device.customer_id, false, req.get("x-scan-permit"));
+    pending = { customerId: device.customer_id, id: allowance.reservationId };
     throwIfCanceled(res.locals.scanSignal);
     const result = await timed(res, "listingSearchMs", () => findListings(input, country[2], searchApi,
       (attempt, ms, offers) => {
@@ -150,9 +164,14 @@ router.post("/search", limit, express.json({ limit: "8kb" }), async (req, res, n
     res.locals.timings.offerCount = result.offers.length;
     res.locals.timings.excludedCount = result.excluded;
     res.locals.timings.fallbackUsed = result.fallbackUsed;
+    await finishFreeScan(device.customer_id, allowance.reservationId, result.offers.length > 0);
+    pending = undefined;
     res.json(result);
   } catch (error) { next(error); }
-  finally { res.locals.releaseSearch?.(); }
+  finally {
+    if (pending) await finishFreeScan(pending.customerId, pending.id, false).catch(() => console.warn("[Shopping] Reservation release delayed."));
+    res.locals.releaseSearch?.();
+  }
 });
 
 router.post("/compare", limit, express.json({ limit: "8kb" }), async (req, res, next) => {

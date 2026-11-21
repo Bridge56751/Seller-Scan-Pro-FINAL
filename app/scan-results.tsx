@@ -24,6 +24,7 @@ export default function ScanResultsScreen() {
   const [localError, setLocalError] = useState<string | null>(null);
   const [openingUrl, setOpeningUrl] = useState(false);
   const linkLock = useRef(false);
+  const paywallShown = useRef(false);
   const [imageFailed, setImageFailed] = useState(false);
   const isBarcode = session.source === "barcode" || !!session.barcode;
   const productImage = isBarcode && session.productImageUrl && /^https:\/\//i.test(session.productImageUrl) ? session.productImageUrl : null;
@@ -40,6 +41,14 @@ export default function ScanResultsScreen() {
   useEffect(() => { setQuery(session.query); }, [session.query]);
   useEffect(() => { setPriceSort("accurate"); }, [session.result]);
   useEffect(() => { setImageFailed(false); }, [productImage]);
+  useEffect(() => {
+    if (session.errorCode !== "SUBSCRIPTION_REQUIRED") {
+      paywallShown.current = false;
+    } else if (!paywallShown.current) {
+      paywallShown.current = true;
+      router.push("/paywall");
+    }
+  }, [session.errorCode]);
 
   async function scanAgain() {
     if (busy || isWeb) return;

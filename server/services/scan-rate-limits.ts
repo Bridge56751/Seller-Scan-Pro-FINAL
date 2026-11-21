@@ -13,7 +13,7 @@ export class ScanLimitError extends Error {
 /**
  * A row lock serializes all reservations for a customer, even across replicas.
  * One initial photo/barcode lookup includes one single-use follow-up price search.
- * Retries/refinements are new reservations: failed upstream calls can still cost money.
+ * Attempts count toward abuse limits; only successful results use the free allowance.
  */
 export async function reserveScan(customerId: string, issuePermit = false, permit?: string,
   kind: "photo" | "barcode" | "search" = "search") {
@@ -52,11 +52,12 @@ export async function reserveScan(customerId: string, issuePermit = false, permi
         AND (NOT test_only OR $3) RETURNING id`, [permit,customerId,allowTest]);
       if (!claimed.rowCount)
         throw new ScanLimitError(409, "INVALID_SCAN_PERMIT", "This scan's price lookup has expired or was already used. Please retry.");
+      const reservation = await db.query("SELECT id FROM free_scan_reservations WHERE id=$1 AND customer_id=$2", [permit,customerId]);
       await db.query("COMMIT");
-      return { scanPermit: undefined };
+      return { scanPermit: undefined, reservationId: reservation.rows[0]?.id as string | undefined };
     }
     // Use the database clock after acquiring the lock, not the app server clock.
-    const result = await db.query(`SELECT monthly_count, month_start, free_photo_used, free_barcode_used,
+    const result = await db.query(`SELECT monthly_count, month_start, free_successful_scans,
       ARRAY(SELECT stamp FROM unnest(recent_scans) stamp
         WHERE stamp>clock_timestamp()-interval '1 minute' ORDER BY stamp) AS recent,
       clock_timestamp() AS now,
@@ -67,11 +68,15 @@ export async function reserveScan(customerId: string, issuePermit = false, permi
     const month = new Date(row.month);
     const used = new Date(row.month_start).getTime() === month.getTime() ? row.monthly_count : 0;
     const recent: Date[] = row.recent;
-    if (!hasScanAccess && (kind === "search" || (kind === "photo" ? row.free_photo_used : row.free_barcode_used))) {
+    await db.query("DELETE FROM free_scan_reservations WHERE customer_id=$1 AND expires_at<=clock_timestamp()", [customerId]);
+    const pending = await db.query("SELECT count(*)::int AS count FROM free_scan_reservations WHERE customer_id=$1", [customerId]);
+    if (!hasScanAccess && (kind === "search" || row.free_successful_scans >= 5)) {
       throw new ScanLimitError(402, "SUBSCRIPTION_REQUIRED",
-        kind === "search" ? "Additional price searches require an active subscription. Your first photo and barcode scans each include one price lookup." :
-          `Your one free ${kind === "photo" ? "photo" : "barcode"} scan has been used. An active subscription is required for another. Restore an existing purchase in Settings.`);
+        kind === "search" ? "Additional price searches require an active subscription. Each free scan includes one price lookup." :
+          "You've used your five free scans. Upgrade to Seller Scan Pro to keep scanning, or restore an existing purchase in Settings.");
     }
+    if (!hasScanAccess && row.free_successful_scans + pending.rows[0].count >= 5)
+      throw new ScanLimitError(409, "SCAN_IN_PROGRESS", "Please wait for your current scans to finish before starting another.");
     if (used >= 1000) {
       const reset = Date.UTC(month.getUTCFullYear(), month.getUTCMonth()+1, 1);
       throw new ScanLimitError(429, "MONTHLY_SCAN_LIMIT",
@@ -88,14 +93,17 @@ export async function reserveScan(customerId: string, issuePermit = false, permi
       free_photo_used=free_photo_used OR $5,
       free_barcode_used=free_barcode_used OR $6 WHERE customer_id=$1`,
     [customerId,month,used+1,[...recent,new Date(now)],!hasScanAccess && kind==="photo",!hasScanAccess && kind==="barcode"]);
-    const scanPermit = issuePermit ? randomUUID() : undefined;
+    const reservationId = !hasScanAccess ? randomUUID() : undefined;
+    const scanPermit = issuePermit ? reservationId ?? randomUUID() : undefined;
+    if (reservationId) await db.query(`INSERT INTO free_scan_reservations(id,customer_id,expires_at)
+      VALUES($1,$2,clock_timestamp()+interval '5 minutes')`, [reservationId,customerId]);
     if (scanPermit) {
       await db.query(`INSERT INTO scan_search_permits(id,customer_id,expires_at,test_only)
         VALUES($1,$2,clock_timestamp()+interval '5 minutes',$3)`, [scanPermit,customerId,testOnly]);
     }
     await db.query("DELETE FROM scan_search_permits WHERE customer_id=$1 AND expires_at<=clock_timestamp()", [customerId]);
     await db.query("COMMIT");
-    return { scanPermit };
+    return { scanPermit, reservationId };
   } catch (error) {
     await db.query("ROLLBACK").catch(() => {});
     throw error;
@@ -103,12 +111,34 @@ export async function reserveScan(customerId: string, issuePermit = false, permi
 }
 
 export async function scanAllowances(customerId: string) {
-  const result = await pool.query(`SELECT free_photo_used,free_barcode_used,total_scans
+  const result = await pool.query(`SELECT free_successful_scans,total_scans
     FROM customer_scan_limits WHERE customer_id=$1`,[customerId]);
   const row = result.rows[0];
   return {
-    freePhotoScansLeft: row?.free_photo_used ? 0 : 1,
-    freeBarcodeScansLeft: row?.free_barcode_used ? 0 : 1,
+    freeScansLeft: Math.max(0, 5 - (row?.free_successful_scans ?? 0)),
+    freePhotoScansLeft: Math.max(0, 5 - (row?.free_successful_scans ?? 0)),
+    freeBarcodeScansLeft: Math.max(0, 5 - (row?.free_successful_scans ?? 0)),
     scanCount: row?.total_scans ?? 0,
   };
+}
+
+// Called only by server routes after provider results, never by a client-reported success.
+export async function finishFreeScan(customerId: string, id: string | undefined, success: boolean) {
+  if (!id) return;
+  const db = await pool.connect();
+  try {
+    await db.query("BEGIN");
+    await db.query("SELECT customer_id FROM customer_scan_limits WHERE customer_id=$1 FOR UPDATE", [customerId]);
+    const claimed = await db.query(`DELETE FROM free_scan_reservations
+      WHERE id=$1 AND customer_id=$2 RETURNING expires_at>clock_timestamp() AS valid`, [id,customerId]);
+    if (!success) await db.query("DELETE FROM scan_search_permits WHERE id=$1 AND customer_id=$2", [id,customerId]);
+    if (success) {
+      if (!claimed.rows[0]?.valid) throw new ScanLimitError(409, "SCAN_EXPIRED", "This scan expired. Please try again.");
+      await db.query("UPDATE customer_scan_limits SET free_successful_scans=free_successful_scans+1 WHERE customer_id=$1", [customerId]);
+    }
+    await db.query("COMMIT");
+  } catch (error) {
+    await db.query("ROLLBACK").catch(() => {});
+    throw error;
+  } finally { db.release(); }
 }

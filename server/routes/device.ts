@@ -30,7 +30,6 @@ router.post("/api/device/status", async (req,res,next) => {
     const access = await verifyScanAccess(device.customer_id, req.query.refresh === "true");
     const allowance = await scanAllowances(device.customer_id);
     res.json({customerId:device.customer_id,isPaid:access.isPaid,hasTestScanAccess:access.hasTestScanAccess,...allowance,
-      freeScansLeft:allowance.freePhotoScansLeft+allowance.freeBarcodeScansLeft,
       billingVerified:true,expirationDate:access.expirationDate});
   } catch(error){next(error);}
 });
